@@ -1,0 +1,1679 @@
+{
+  "info": {
+    "name": "Restify API",
+    "description": "Restify API - Collection generated from route files",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "restify-api-generator"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /api/auth/login/:rol",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login/:rol",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                ":rol"
+              ],
+              "variable": [
+                {
+                  "key": "rol",
+                  "value": "{{rol}}",
+                  "description": "rol parameter"
+                }
+              ]
+            },
+            "description": "POST /api/auth/login/:rol Login endpoint Protected with rate limiting: 5 attempts per 15 minutes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@restify.com\",\n  \"password\": \"Restify123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/auth/verify-user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-user",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify-user"
+              ]
+            },
+            "description": "POST /api/auth/verify-user Verify user endpoint Protected with rate limiting: 3 attempts per 15 minutes (prevents email enumeration)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/auth/set-password/:user_id",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/set-password/:user_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "set-password",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "{{user_id}}",
+                  "description": "user_id parameter"
+                }
+              ]
+            },
+            "description": "POST /api/auth/set-password/:user_id Set password endpoint Protected with rate limiting: 3 attempts per 15 minutes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"NewPassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Employee Salaries",
+      "item": [
+        {
+          "name": "POST /api/employee-salary/",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employee-salary/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employee-salary"
+              ]
+            },
+            "description": "POST /api/employee-salary/"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/employee-salary/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employee-salary/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employee-salary"
+              ]
+            },
+            "description": "GET /api/employee-salary/"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Expenses",
+      "item": [
+        {
+          "name": "POST /api/expense/",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/expense/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expense"
+              ]
+            },
+            "description": "POST /api/expense/"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/expense/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/expense/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expense"
+              ]
+            },
+            "description": "GET /api/expense/"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/expense/:expense_id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/expense/:expense_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expense",
+                ":expense_id"
+              ],
+              "variable": [
+                {
+                  "key": "expense_id",
+                  "value": "{{expense_id}}",
+                  "description": "expense_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/expense/:expense_id"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /api/expense/:expense_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/expense/:expense_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expense",
+                ":expense_id"
+              ],
+              "variable": [
+                {
+                  "key": "expense_id",
+                  "value": "{{expense_id}}",
+                  "description": "expense_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/expense/:expense_id"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/expense/:expense_id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/expense/:expense_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expense",
+                ":expense_id"
+              ],
+              "variable": [
+                {
+                  "key": "expense_id",
+                  "value": "{{expense_id}}",
+                  "description": "expense_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/expense/:expense_id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "GET /api/health Health check endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Menu Categories",
+      "item": [
+        {
+          "name": "POST /api/menu-category/",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-category/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-category"
+              ]
+            },
+            "description": "POST /api/menu-categories Create menu category endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/menu-category/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-category/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-category"
+              ]
+            },
+            "description": "GET /api/menu-categories List menu categories endpoint (with optional filters) NOTE: This must come before /:category_id route"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/menu-category/:category_id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-category/:category_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-category",
+                ":category_id"
+              ],
+              "variable": [
+                {
+                  "key": "category_id",
+                  "value": "{{category_id}}",
+                  "description": "category_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/menu-categories/:category_id Get menu category by ID endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /api/menu-category/:category_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-category/:category_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-category",
+                ":category_id"
+              ],
+              "variable": [
+                {
+                  "key": "category_id",
+                  "value": "{{category_id}}",
+                  "description": "category_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/menu-categories/:category_id Update menu category endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/menu-category/:category_id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-category/:category_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-category",
+                ":category_id"
+              ],
+              "variable": [
+                {
+                  "key": "category_id",
+                  "value": "{{category_id}}",
+                  "description": "category_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/menu-categories/:category_id Delete menu category endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Menu Items",
+      "item": [
+        {
+          "name": "POST /api/menu-item/",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-item/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-item"
+              ]
+            },
+            "description": "POST /api/menu-items Create menu item endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/menu-item/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-item/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-item"
+              ]
+            },
+            "description": "GET /api/menu-items List menu items endpoint (with optional filters) NOTE: This must come before /:menu_item_id route"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/menu-item/:menu_item_id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-item/:menu_item_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-item",
+                ":menu_item_id"
+              ],
+              "variable": [
+                {
+                  "key": "menu_item_id",
+                  "value": "{{menu_item_id}}",
+                  "description": "menu_item_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/menu-items/:menu_item_id Get menu item by ID endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /api/menu-item/:menu_item_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-item/:menu_item_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-item",
+                ":menu_item_id"
+              ],
+              "variable": [
+                {
+                  "key": "menu_item_id",
+                  "value": "{{menu_item_id}}",
+                  "description": "menu_item_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/menu-items/:menu_item_id Update menu item endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/menu-item/:menu_item_id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-item/:menu_item_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-item",
+                ":menu_item_id"
+              ],
+              "variable": [
+                {
+                  "key": "menu_item_id",
+                  "value": "{{menu_item_id}}",
+                  "description": "menu_item_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/menu-items/:menu_item_id Delete menu item endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "POST /api/order/",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/order/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "order"
+              ]
+            },
+            "description": "POST /api/orders Create order endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/order/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/order/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "order"
+              ]
+            },
+            "description": "GET /api/orders List orders endpoint (with optional filters) NOTE: This must come before /:order_id route"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/order/:order_id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/order/:order_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "order",
+                ":order_id"
+              ],
+              "variable": [
+                {
+                  "key": "order_id",
+                  "value": "{{order_id}}",
+                  "description": "order_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/orders/:order_id Get order by ID endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /api/order/:order_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/order/:order_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "order",
+                ":order_id"
+              ],
+              "variable": [
+                {
+                  "key": "order_id",
+                  "value": "{{order_id}}",
+                  "description": "order_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/orders/:order_id Update order endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/order/:order_id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/order/:order_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "order",
+                ":order_id"
+              ],
+              "variable": [
+                {
+                  "key": "order_id",
+                  "value": "{{order_id}}",
+                  "description": "order_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/orders/:order_id Delete order endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "POST /api/payment/cash",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/cash",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "cash"
+              ]
+            },
+            "description": "POST /api/payment/cash"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/payment/transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "transfer"
+              ]
+            },
+            "description": "POST /api/payment/transfer"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/payment/card-physical",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/card-physical",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "card-physical"
+              ]
+            },
+            "description": "POST /api/payment/card-physical"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/payment/card-stripe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/card-stripe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "card-stripe"
+              ]
+            },
+            "description": "POST /api/payment/card-stripe"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/payment/split",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/split",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "split"
+              ]
+            },
+            "description": "POST /api/payment/split"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/payment/stripe/confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/stripe/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "stripe",
+                "confirm"
+              ]
+            },
+            "description": "POST /api/payment/stripe/confirm"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/payment/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment"
+              ]
+            },
+            "description": "GET /api/payment/"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/payment/:payment_id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/:payment_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                ":payment_id"
+              ],
+              "variable": [
+                {
+                  "key": "payment_id",
+                  "value": "{{payment_id}}",
+                  "description": "payment_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/payment/:payment_id"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/payment/:payment_id/session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/:payment_id/session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                ":payment_id",
+                "session"
+              ],
+              "variable": [
+                {
+                  "key": "payment_id",
+                  "value": "{{payment_id}}",
+                  "description": "payment_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/payment/:payment_id/session"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "POST /api/product/",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "product"
+              ]
+            },
+            "description": "POST /api/products Create product endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/product/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "product"
+              ]
+            },
+            "description": "GET /api/products List products endpoint (with optional filters) NOTE: This must come before /:product_id route"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/product/:product_id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/:product_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "product",
+                ":product_id"
+              ],
+              "variable": [
+                {
+                  "key": "product_id",
+                  "value": "{{product_id}}",
+                  "description": "product_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/products/:product_id Get product by ID endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /api/product/:product_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/:product_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "product",
+                ":product_id"
+              ],
+              "variable": [
+                {
+                  "key": "product_id",
+                  "value": "{{product_id}}",
+                  "description": "product_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/products/:product_id Update product endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/product/:product_id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/:product_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "product",
+                ":product_id"
+              ],
+              "variable": [
+                {
+                  "key": "product_id",
+                  "value": "{{product_id}}",
+                  "description": "product_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/products/:product_id Delete product endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Refunds",
+      "item": [
+        {
+          "name": "POST /api/refund/",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/refund/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "refund"
+              ]
+            },
+            "description": "POST /api/refund/"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/refund/stripe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/refund/stripe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "refund",
+                "stripe"
+              ]
+            },
+            "description": "POST /api/refund/stripe"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/refund/stripe/process",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/refund/stripe/process",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "refund",
+                "stripe",
+                "process"
+              ]
+            },
+            "description": "POST /api/refund/stripe/process"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/refund/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/refund/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "refund"
+              ]
+            },
+            "description": "GET /api/refund/"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/refund/:refund_id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/refund/:refund_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "refund",
+                ":refund_id"
+              ],
+              "variable": [
+                {
+                  "key": "refund_id",
+                  "value": "{{refund_id}}",
+                  "description": "refund_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/refund/:refund_id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "GET /api/report/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/report/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "report"
+              ]
+            },
+            "description": "GET /api/report/"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tables",
+      "item": [
+        {
+          "name": "POST /api/table/",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/table/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "table"
+              ]
+            },
+            "description": "POST /api/tables Create table endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/table/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/table/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "table"
+              ]
+            },
+            "description": "GET /api/tables List tables endpoint (with optional filters) NOTE: This must come before /:table_id route"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/table/:table_id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/table/:table_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "table",
+                ":table_id"
+              ],
+              "variable": [
+                {
+                  "key": "table_id",
+                  "value": "{{table_id}}",
+                  "description": "table_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/tables/:table_id Get table by ID endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /api/table/:table_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/table/:table_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "table",
+                ":table_id"
+              ],
+              "variable": [
+                {
+                  "key": "table_id",
+                  "value": "{{table_id}}",
+                  "description": "table_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/tables/:table_id Update table endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/table/:table_id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/table/:table_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "table",
+                ":table_id"
+              ],
+              "variable": [
+                {
+                  "key": "table_id",
+                  "value": "{{table_id}}",
+                  "description": "table_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/tables/:table_id Delete table endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "POST /api/user/",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "user"
+              ]
+            },
+            "description": "POST /api/users Create user endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/user/",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "user"
+              ]
+            },
+            "description": "GET /api/users List users endpoint (with optional filters) NOTE: This must come before /:user_id route"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/user/:user_id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/:user_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "{{user_id}}",
+                  "description": "user_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/users/:user_id Get user by ID endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /api/user/:user_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/:user_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "{{user_id}}",
+                  "description": "user_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/users/:user_id Update user endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/user/:user_id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/:user_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "{{user_id}}",
+                  "description": "user_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/users/:user_id Delete user endpoint"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

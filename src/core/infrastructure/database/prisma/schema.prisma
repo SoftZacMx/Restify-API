@@ -1,0 +1,385 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// User Entity
+model User {
+  id               String   @id @default(uuid())
+  name             String
+  last_name        String
+  second_last_name String?
+  email            String   @unique
+  password         String
+  phone            String?
+  status           Boolean  @default(true)
+  rol              UserRole
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  orders                  Order[]
+  products                Product[]
+  payments                Payment[]
+  salaryPayments          EmployeeSalaryPayment[]
+  tables                  Table[]
+  menuItems               MenuItem[]
+  expenses                Expense[]
+
+  @@index([email])
+  @@index([rol])
+  @@index([status])
+  @@map("users")
+}
+
+// Product Entity
+model Product {
+  id               String   @id @default(uuid())
+  name             String
+  description      String?
+  registrationDate DateTime @default(now())
+  status           Boolean  @default(true)
+  userId           String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  user                     User                      @relation(fields: [userId], references: [id])
+  orderItems               OrderItem[]
+  expenseItems             ExpenseItem[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("products")
+}
+
+// Order Entity
+model Order {
+  id            String   @id @default(uuid())
+  date          DateTime @default(now())
+  status        Boolean  @default(false)
+  paymentMethod Int?     // NULL for split payments, 1: Cash, 2: Transfer, 3: Card
+  total         Decimal  @db.Decimal(10, 2)
+  subtotal      Decimal  @db.Decimal(10, 2)
+  iva           Decimal  @default(0) @db.Decimal(10, 2)
+  delivered     Boolean  @default(false)
+  tableId       String? // Relation to Table
+  tip           Decimal  @default(0) @db.Decimal(10, 2)
+  origin        String // 'Local', 'Delivery', 'Order', etc.
+  client        String?
+  paymentDiffer Boolean  @default(false)
+  note          String?
+  userId        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user                   User                    @relation(fields: [userId], references: [id])
+  table                  Table?                  @relation(fields: [tableId], references: [id])
+  orderItems             OrderItem[]
+  orderMenuItems         OrderMenuItem[]
+  payments               Payment[]
+  paymentDifferentiation PaymentDifferentiation?
+
+  @@index([userId])
+  @@index([tableId])
+  @@index([date])
+  @@index([status])
+  @@index([paymentMethod])
+  @@index([origin])
+  @@map("orders")
+}
+
+// Order Item Entity
+model OrderItem {
+  id        String   @id @default(uuid())
+  quantity  Int
+  price     Decimal  @db.Decimal(10, 2)
+  orderId   String
+  productId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+// Payment Entity
+model Payment {
+  id                   String          @id @default(uuid())
+  orderId              String?
+  userId               String
+  amount               Decimal         @db.Decimal(10, 2)
+  currency             String          @default("USD")
+  status               PaymentStatus
+  paymentMethod        PaymentMethod
+  gateway              PaymentGateway? // NULL for CASH, TRANSFER, CARD_PHYSICAL
+  gatewayTransactionId String?
+  metadata             Json?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  // Relations
+  order          Order?          @relation(fields: [orderId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  refunds        Refund[]
+  paymentSession PaymentSession?
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([status])
+  @@index([gatewayTransactionId])
+  @@map("payments")
+}
+
+// Payment Session Entity
+model PaymentSession {
+  id           String   @id @default(uuid())
+  paymentId    String   @unique
+  clientSecret String
+  connectionId String? // WebSocket connection
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  // Relations
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@map("payment_sessions")
+}
+
+// Payment Differentiation (Split Payments)
+model PaymentDifferentiation {
+  id                  String        @id @default(uuid())
+  orderId             String        @unique
+  firstPaymentAmount  Decimal       @db.Decimal(10, 2)
+  firstPaymentMethod  PaymentMethod // CASH, TRANSFER, or CARD_PHYSICAL only
+  secondPaymentAmount Decimal       @db.Decimal(10, 2)
+  secondPaymentMethod PaymentMethod // CASH, TRANSFER, or CARD_PHYSICAL only
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Relations
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("payments_differentiations")
+}
+
+// Refund Entity
+model Refund {
+  id              String       @id @default(uuid())
+  paymentId       String
+  amount          Decimal      @db.Decimal(10, 2)
+  reason          String?
+  gatewayRefundId String?
+  status          RefundStatus
+  createdAt       DateTime     @default(now())
+
+  // Relations
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@index([paymentId])
+  @@map("refunds")
+}
+
+// Employee Salary Payment Entity
+model EmployeeSalaryPayment {
+  id            String   @id @default(uuid())
+  userId        String
+  amount        Decimal  @db.Decimal(10, 2)
+  paymentMethod Int // 1: Cash, 2: Transfer, 3: Card
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([date])
+  @@map("employee_salaries_payments")
+}
+
+// Table Entity (Restaurant Tables)
+model Table {
+  id                 String   @id @default(uuid())
+  numberTable        Int      @unique
+  userId             String
+  status             Boolean  @default(true)
+  availabilityStatus Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  user   User    @relation(fields: [userId], references: [id])
+  orders Order[]
+
+  @@index([userId])
+  @@index([numberTable])
+  @@index([status])
+  @@index([availabilityStatus])
+  @@map("tables")
+}
+
+// Menu Category Entity (Categories for menu items)
+model MenuCategory {
+  id        String   @id @default(uuid())
+  name      String
+  status    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  menuItems MenuItem[]
+
+  @@index([status])
+  @@map("menu_categories")
+}
+
+// Menu Item Entity (Dishes/Menu Items - previously "saources")
+model MenuItem {
+  id         String   @id @default(uuid())
+  name       String
+  price      Decimal  @db.Decimal(10, 2)
+  status     Boolean  @default(true)
+  categoryId String
+  userId     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  category       MenuCategory    @relation(fields: [categoryId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  orderMenuItems OrderMenuItem[]
+
+  @@index([categoryId])
+  @@index([userId])
+  @@index([status])
+  @@map("menu_items")
+}
+
+// Order Menu Item Entity (Relation between Orders and Menu Items - previously "orders_saourcers")
+model OrderMenuItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  menuItemId String
+  amount     Int // Quantity
+  unitPrice  Decimal  @db.Decimal(10, 2)
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@index([orderId])
+  @@index([menuItemId])
+  @@map("order_menu_items")
+}
+
+// Expense Entity (Unified expenses module - replaces PurchaseMerchandise and BusinessServicePayment)
+model Expense {
+  id            String      @id @default(uuid())
+  type          ExpenseType
+  date          DateTime    @default(now())
+  total         Decimal     @db.Decimal(10, 2)
+  subtotal      Decimal     @db.Decimal(10, 2)
+  iva           Decimal     @default(0) @db.Decimal(10, 2)
+  description   String?
+  paymentMethod Int         // 1: Cash, 2: Transfer, 3: Card
+  userId        String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relations
+  user  User         @relation(fields: [userId], references: [id])
+  items ExpenseItem[] // Only populated when type = MERCHANDISE
+
+  @@index([userId])
+  @@index([date])
+  @@index([type])
+  @@map("expenses")
+}
+
+// Expense Item Entity (Products in merchandise purchases - only for MERCHANDISE type)
+model ExpenseItem {
+  id        String   @id @default(uuid())
+  expenseId String
+  productId String
+  amount    Decimal  @db.Decimal(10, 2)
+  subtotal Decimal  @db.Decimal(10, 2)
+  total     Decimal  @db.Decimal(10, 2)
+  unitOfMeasure String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([expenseId])
+  @@index([productId])
+  @@map("expense_items")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  MANAGER
+  WAITER
+  CHEF
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  REQUIRES_ACTION
+  SUCCEEDED
+  FAILED
+  CANCELED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentMethod {
+  CASH              // Efectivo
+  TRANSFER          // Transferencia bancaria
+  CARD_PHYSICAL     // Tarjeta física (POS local)
+  CARD_STRIPE       // Tarjeta vía Stripe (online)
+}
+
+enum PaymentGateway {
+  STRIPE
+  PAYPAL
+  CASH
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+enum ExpenseType {
+  SERVICE_BUSINESS // Servicios del negocio (limpieza, seguridad, etc.)
+  UTILITY           // Servicios públicos (luz, agua, internet)
+  RENT              // Renta
+  MERCHANDISE       // Compra de mercancía (con items de productos)
+  OTHER             // Otros gastos
+}

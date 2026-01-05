@@ -1,0 +1,140 @@
+import { PrismaClient } from '@prisma/client';
+import { IMenuItemRepository, MenuItemFilters } from '../../../domain/interfaces/menu-item-repository.interface';
+import { MenuItem } from '../../../domain/entities/menu-item.entity';
+
+export class MenuItemRepository implements IMenuItemRepository {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  async findById(id: string): Promise<MenuItem | null> {
+    const menuItem = await this.prisma.menuItem.findUnique({
+      where: { id },
+    });
+
+    if (!menuItem) {
+      return null;
+    }
+
+    return new MenuItem(
+      menuItem.id,
+      menuItem.name,
+      Number(menuItem.price),
+      menuItem.status,
+      menuItem.categoryId,
+      menuItem.userId,
+      menuItem.createdAt,
+      menuItem.updatedAt
+    );
+  }
+
+  async findAll(filters?: MenuItemFilters): Promise<MenuItem[]> {
+    const where: any = {};
+
+    if (filters?.status !== undefined) {
+      where.status = filters.status;
+    }
+
+    if (filters?.categoryId) {
+      where.categoryId = filters.categoryId;
+    }
+
+    if (filters?.userId) {
+      where.userId = filters.userId;
+    }
+
+    if (filters?.search) {
+      where.name = { contains: filters.search };
+    }
+
+    const menuItems = await this.prisma.menuItem.findMany({
+      where,
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    return menuItems.map(
+      (menuItem) =>
+        new MenuItem(
+          menuItem.id,
+          menuItem.name,
+          Number(menuItem.price),
+          menuItem.status,
+          menuItem.categoryId,
+          menuItem.userId,
+          menuItem.createdAt,
+          menuItem.updatedAt
+        )
+    );
+  }
+
+  async create(data: {
+    name: string;
+    price: number;
+    status: boolean;
+    categoryId: string;
+    userId: string;
+  }): Promise<MenuItem> {
+    const menuItem = await this.prisma.menuItem.create({
+      data: {
+        name: data.name,
+        price: data.price,
+        status: data.status,
+        categoryId: data.categoryId,
+        userId: data.userId,
+      },
+    });
+
+    return new MenuItem(
+      menuItem.id,
+      menuItem.name,
+      Number(menuItem.price),
+      menuItem.status,
+      menuItem.categoryId,
+      menuItem.userId,
+      menuItem.createdAt,
+      menuItem.updatedAt
+    );
+  }
+
+  async update(
+    id: string,
+    data: {
+      name?: string;
+      price?: number;
+      status?: boolean;
+      categoryId?: string;
+      userId?: string;
+    }
+  ): Promise<MenuItem> {
+    const updateData: any = {};
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.price !== undefined) updateData.price = data.price;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
+    if (data.userId !== undefined) updateData.userId = data.userId;
+
+    const menuItem = await this.prisma.menuItem.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return new MenuItem(
+      menuItem.id,
+      menuItem.name,
+      Number(menuItem.price),
+      menuItem.status,
+      menuItem.categoryId,
+      menuItem.userId,
+      menuItem.createdAt,
+      menuItem.updatedAt
+    );
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.menuItem.delete({
+      where: { id },
+    });
+  }
+}
+

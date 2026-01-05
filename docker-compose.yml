@@ -1,0 +1,73 @@
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: restify-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: restify
+      MYSQL_USER: restify_user
+      MYSQL_PASSWORD: restify_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - restify-network
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: restify-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - restify-network
+
+  # LocalStack (AWS Services Emulator)
+  localstack:
+    image: localstack/localstack:latest
+    container_name: restify-localstack
+    ports:
+      - "4566:4566"
+      - "4510-4559:4510-4559"
+    environment:
+      - SERVICES=sqs,dynamodb,eventbridge,secretsmanager
+      - DEBUG=1
+      - DATA_DIR=/var/lib/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - PERSISTENCE=1
+      - TMPDIR=/var/lib/localstack/tmp
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - "./localstack/init-scripts:/etc/localstack/init/ready.d"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - restify-network
+
+volumes:
+  mysql_data:
+  redis_data:
+  localstack_data:
+
+networks:
+  restify-network:
+    driver: bridge
+

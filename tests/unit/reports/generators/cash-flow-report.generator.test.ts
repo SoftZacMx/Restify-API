@@ -1,0 +1,300 @@
+import { CashFlowReportGenerator } from '../../../../src/core/application/reports/generators/cash-flow-report.generator';
+import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
+import { IExpenseRepository } from '../../../../src/core/domain/interfaces/expense-repository.interface';
+import { IEmployeeSalaryPaymentRepository } from '../../../../src/core/domain/interfaces/employee-salary-payment-repository.interface';
+import { ReportType } from '../../../../src/core/domain/interfaces/report-generator.interface';
+import { Order } from '../../../../src/core/domain/entities/order.entity';
+import { Expense } from '../../../../src/core/domain/entities/expense.entity';
+import { EmployeeSalaryPayment } from '../../../../src/core/domain/entities/employee-salary-payment.entity';
+import { ExpenseType } from '@prisma/client';
+
+describe('CashFlowReportGenerator', () => {
+  let generator: CashFlowReportGenerator;
+  let mockOrderRepository: jest.Mocked<IOrderRepository>;
+  let mockExpenseRepository: jest.Mocked<IExpenseRepository>;
+  let mockEmployeeSalaryPaymentRepository: jest.Mocked<IEmployeeSalaryPaymentRepository>;
+
+  beforeEach(() => {
+    mockOrderRepository = {
+      findById: jest.fn(),
+      findAll: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      createOrderItem: jest.fn(),
+      findOrderItemsByOrderId: jest.fn(),
+      createOrderMenuItem: jest.fn(),
+      findOrderMenuItemsByOrderId: jest.fn(),
+    };
+
+    mockExpenseRepository = {
+      findById: jest.fn(),
+      findAll: jest.fn(),
+      count: jest.fn(),
+      create: jest.fn(),
+      createWithItems: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      createItem: jest.fn(),
+      findItemsByExpenseId: jest.fn(),
+      updateItem: jest.fn(),
+      deleteItem: jest.fn(),
+      deleteItemsByExpenseId: jest.fn(),
+    };
+
+    mockEmployeeSalaryPaymentRepository = {
+      findById: jest.fn(),
+      findAll: jest.fn(),
+      count: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+
+    generator = new CashFlowReportGenerator(
+      mockOrderRepository,
+      mockExpenseRepository,
+      mockEmployeeSalaryPaymentRepository
+    );
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('getType', () => {
+    it('should return CASH_FLOW type', () => {
+      expect(generator.getType()).toBe(ReportType.CASH_FLOW);
+    });
+  });
+
+  describe('generate', () => {
+    const baseFilters = {
+      dateFrom: new Date('2024-01-01'),
+      dateTo: new Date('2024-01-31'),
+    };
+
+    it('should generate cash flow report successfully', async () => {
+      // Mock orders (incomes)
+      const mockOrders = [
+        new Order(
+          'order-1',
+          new Date('2024-01-15'),
+          true,
+          1, // Cash
+          1000,
+          900,
+          100,
+          true,
+          null,
+          50,
+          'Local',
+          null,
+          false,
+          null,
+          'user-1',
+          new Date(),
+          new Date()
+        ),
+        new Order(
+          'order-2',
+          new Date('2024-01-20'),
+          true,
+          2, // Transfer
+          2000,
+          1800,
+          200,
+          true,
+          null,
+          0,
+          'Delivery',
+          null,
+          false,
+          null,
+          'user-1',
+          new Date(),
+          new Date()
+        ),
+      ];
+
+      // Mock expenses
+      const mockBusinessServices = [
+        new Expense(
+          'expense-1',
+          ExpenseType.SERVICE_BUSINESS,
+          new Date('2024-01-10'),
+          500,
+          450,
+          50,
+          'Cleaning service',
+          1,
+          'user-1',
+          new Date(),
+          new Date()
+        ),
+      ];
+
+      const mockMerchandise = [
+        new Expense(
+          'expense-2',
+          ExpenseType.MERCHANDISE,
+          new Date('2024-01-12'),
+          800,
+          700,
+          100,
+          'Food supplies',
+          2,
+          'user-1',
+          new Date(),
+          new Date()
+        ),
+      ];
+
+      const mockEmployeeSalaries = [
+        new EmployeeSalaryPayment(
+          'salary-1',
+          'user-1',
+          2000,
+          1,
+          new Date('2024-01-05'),
+          new Date(),
+          new Date()
+        ),
+      ];
+
+      mockOrderRepository.findAll.mockResolvedValue(mockOrders);
+      mockExpenseRepository.findAll
+        .mockResolvedValueOnce(mockBusinessServices) // First call for business services
+        .mockResolvedValueOnce(mockMerchandise); // Second call for merchandise
+      mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue(mockEmployeeSalaries);
+
+      const result = await generator.generate(baseFilters);
+
+      expect(result.type).toBe(ReportType.CASH_FLOW);
+      expect(result.data).toBeDefined();
+      expect(result.data.incomes.totalIncomes).toBe(3000); // 1000 + 2000
+      expect(result.data.expenses.totalExpenses).toBe(3350); // 500 + 800 + 2000 + 50 (tip from order-1)
+      expect(result.data.cashFlow.balance).toBe(-350); // 3000 - 3350
+      expect(result.data.cashFlow.status).toBe('NEGATIVE');
+    });
+
+    it('should calculate positive balance correctly', async () => {
+      const mockOrders = [
+        new Order(
+          'order-1',
+          new Date('2024-01-15'),
+          true,
+          1,
+          5000,
+          4500,
+          500,
+          true,
+          null,
+          0,
+          'Local',
+          null,
+          false,
+          null,
+          'user-1',
+          new Date(),
+          new Date()
+        ),
+      ];
+
+      const mockBusinessServices: Expense[] = [];
+      const mockMerchandise: Expense[] = [];
+      const mockEmployeeSalaries: EmployeeSalaryPayment[] = [];
+
+      mockOrderRepository.findAll.mockResolvedValue(mockOrders);
+      mockExpenseRepository.findAll
+        .mockResolvedValueOnce(mockBusinessServices)
+        .mockResolvedValueOnce(mockMerchandise);
+      mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue(mockEmployeeSalaries);
+
+      const result = await generator.generate(baseFilters);
+
+      expect(result.data.cashFlow.balance).toBe(5000);
+      expect(result.data.cashFlow.status).toBe('POSITIVE');
+    });
+
+    it('should group incomes by payment method', async () => {
+      const mockOrders = [
+        new Order('order-1', new Date(), true, 1, 1000, 900, 100, true, null, 0, 'Local', null, false, null, 'user-1', new Date(), new Date()),
+        new Order('order-2', new Date(), true, 2, 2000, 1800, 200, true, null, 0, 'Local', null, false, null, 'user-1', new Date(), new Date()),
+        new Order('order-3', new Date(), true, 3, 1500, 1350, 150, true, null, 0, 'Local', null, false, null, 'user-1', new Date(), new Date()),
+      ];
+
+      mockOrderRepository.findAll.mockResolvedValue(mockOrders);
+      mockExpenseRepository.findAll
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
+
+      const result = await generator.generate(baseFilters);
+
+      expect(result.data.incomes.byPaymentMethod.cash).toBe(1000);
+      expect(result.data.incomes.byPaymentMethod.transfer).toBe(2000);
+      expect(result.data.incomes.byPaymentMethod.card).toBe(1500);
+    });
+
+    it('should include tips in expenses', async () => {
+      const mockOrders = [
+        new Order(
+          'order-1',
+          new Date('2024-01-15'),
+          true,
+          1,
+          1000,
+          900,
+          100,
+          true,
+          null,
+          100, // Tip
+          'Local',
+          null,
+          false,
+          null,
+          'user-1',
+          new Date(),
+          new Date()
+        ),
+      ];
+
+      mockOrderRepository.findAll.mockResolvedValue(mockOrders);
+      mockExpenseRepository.findAll
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
+
+      const result = await generator.generate(baseFilters);
+
+      expect(result.data.expenses.tips.total).toBe(100);
+      expect(result.data.expenses.totalExpenses).toBe(100);
+    });
+
+    it('should handle empty data correctly', async () => {
+      mockOrderRepository.findAll.mockResolvedValue([]);
+      mockExpenseRepository.findAll
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
+
+      const result = await generator.generate(baseFilters);
+
+      expect(result.data.incomes.totalIncomes).toBe(0);
+      expect(result.data.expenses.totalExpenses).toBe(0);
+      expect(result.data.cashFlow.balance).toBe(0);
+      expect(result.data.cashFlow.status).toBe('BREAK_EVEN');
+    });
+
+    it('should validate date filters', async () => {
+      const invalidFilters = {
+        dateFrom: new Date('2024-01-31'),
+        dateTo: new Date('2024-01-01'), // dateFrom > dateTo
+      };
+
+      await expect(generator.generate(invalidFilters)).rejects.toThrow();
+    });
+  });
+});
+
