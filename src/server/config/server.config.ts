@@ -22,6 +22,7 @@ const CORS_ALLOWED_ORIGINS = [
   'https://restify-qa.up.railway.app',
   'http://localhost:5173',
   'http://localhost:3000',
+  'https://restify-frontend-production-9ce6.up.railway.app'
 ];
 
 export const getServerConfig = (): ServerConfig => {
