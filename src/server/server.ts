@@ -17,8 +17,6 @@ import { RequestLoggerMiddleware } from './middleware/request-logger.middleware'
 import { apiRateLimiter } from './middleware/rate-limit.middleware';
 import { WebSocketServer } from './websocket/websocket.server';
 import { container } from 'tsyringe';
-import { PaymentNotificationWorker } from '../core/application/workers/payment-notification.worker';
-import { OrderNotificationWorker } from '../core/application/workers/order-notification.worker';
 import { PrismaService } from '../core/infrastructure/config/prisma.config';
 import '../core/infrastructure/config/dependency-injection';
 
@@ -27,8 +25,6 @@ class LocalServer {
   private httpServer: http.Server;
   private config: ReturnType<typeof getServerConfig>;
   private webSocketServer: WebSocketServer | null = null;
-  private paymentNotificationWorker: PaymentNotificationWorker | null = null;
-  private orderNotificationWorker: OrderNotificationWorker | null = null;
 
   constructor() {
     this.app = express();
@@ -38,7 +34,6 @@ class LocalServer {
     this.setupRoutes();
     this.setupErrorHandling();
     this.setupWebSocket();
-    this.setupWorkers();
   }
 
   private setupMiddleware(): void {
@@ -96,28 +91,6 @@ class LocalServer {
   private setupWebSocket(): void {
     // Initialize WebSocket server
     this.webSocketServer = new WebSocketServer(this.httpServer);
-  }
-
-  private setupWorkers(): void {
-    // Start payment notification worker to process SQS queue
-    // Uses Long Polling to minimize AWS API calls and costs
-    try {
-      this.paymentNotificationWorker = container.resolve(PaymentNotificationWorker);
-      this.paymentNotificationWorker.start(); // Uses Long Polling (cost-optimized)
-    } catch (error) {
-      console.error('[Server] Error starting payment notification worker:', error);
-      // Don't fail server startup if worker fails
-    }
-
-    // Start order notification worker to process SQS queue
-    // Uses Long Polling to minimize AWS API calls and costs
-    try {
-      this.orderNotificationWorker = container.resolve(OrderNotificationWorker);
-      this.orderNotificationWorker.start(); // Uses Long Polling (cost-optimized)
-    } catch (error) {
-      console.error('[Server] Error starting order notification worker:', error);
-      // Don't fail server startup if worker fails
-    }
   }
 
   public async start(): Promise<void> {
