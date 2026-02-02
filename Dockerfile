@@ -1,5 +1,5 @@
-# Restify API - Node.js backend
-FROM node:20-alpine AS builder
+# Restify API - Node.js backend (Debian base for Prisma/OpenSSL compatibility)
+FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ RUN npx prisma generate --schema=./src/core/infrastructure/database/prisma/schem
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine AS runner
+FROM node:20-bookworm-slim AS runner
 
 WORKDIR /app
 
