@@ -41,8 +41,18 @@ class LocalServer {
     this.app.set('trust proxy', 1);
 
     const { cors: corsConfig } = this.config;
+    const normalizeOrigin = (o: string) => o.trim().replace(/\/$/, '');
+    const allowedNormalized = (corsConfig.allowedOrigins || []).map(normalizeOrigin);
+
     const corsOptions: cors.CorsOptions = {
-      origin: corsConfig.origin,
+      origin: (origin, callback) => {
+        const normalized = normalizeOrigin(origin || '');
+        if (!origin || allowedNormalized.length === 0 || allowedNormalized.includes(normalized)) {
+          callback(null, true); // refleja el origen de la petición (nunca otro)
+        } else {
+          callback(null, false);
+        }
+      },
       credentials: corsConfig.credentials,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
@@ -51,10 +61,11 @@ class LocalServer {
     // 1) OPTIONS explícito PRIMERO: Railway y Express — el preflight debe recibir CORS siempre.
     this.app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.method !== 'OPTIONS') return next();
-      const origin = (req.headers.origin || '').trim();
-      const allowed = corsConfig.allowedOrigins;
-      const allowOrigin =
-        origin && (allowed.length === 0 || allowed.includes(origin)) ? origin : allowed[0] || null;
+      const rawOrigin = (req.headers.origin || '').trim();
+      const origin = normalizeOrigin(rawOrigin);
+      const isAllowed = origin && (allowedNormalized.length === 0 || allowedNormalized.includes(origin));
+      // Siempre devolver el origen de la petición si está permitido (nunca otro de la lista).
+      const allowOrigin = isAllowed ? (rawOrigin.replace(/\/$/, '') || origin) : null;
       if (allowOrigin) {
         res.setHeader('Access-Control-Allow-Origin', allowOrigin);
         res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -63,7 +74,7 @@ class LocalServer {
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       res.setHeader('Access-Control-Max-Age', '86400');
       console.log(
-        `[CORS] Preflight OPTIONS ${req.path} → Origin: ${origin || '(none)'} → Allow-Origin: ${allowOrigin || '(rejected)'}`
+        `[CORS] Preflight OPTIONS ${req.path} → Origin: ${rawOrigin || '(none)'} → Allow-Origin: ${allowOrigin || '(rejected)'}`
       );
       res.status(204).end();
     });
