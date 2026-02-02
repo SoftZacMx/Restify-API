@@ -37,15 +37,28 @@ class LocalServer {
   }
 
   private setupMiddleware(): void {
-    // CORS: paquete estándar; refleja el origen de la petición (cualquier origen permitido) y permite credentials.
-    this.app.use(
-      cors({
-        origin: true, // refleja req.headers.origin (cualquier origen)
-        credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
-      })
-    );
+    const corsOptions: cors.CorsOptions = {
+      origin: true,
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    };
+
+    // 1) OPTIONS explícito PRIMERO: Railway y Express — el preflight debe recibir CORS siempre.
+    this.app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.method !== 'OPTIONS') return next();
+      const origin = req.headers.origin || '*';
+      res.setHeader('Access-Control-Allow-Origin', origin === '*' ? '*' : origin);
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Allow-Credentials', origin === '*' ? 'false' : 'true');
+      res.setHeader('Access-Control-Max-Age', '86400');
+      res.status(204).end();
+    });
+
+    // 2) CORS para el resto de peticiones (GET, POST, etc.)
+    this.app.options('*', cors(corsOptions));
+    this.app.use(cors(corsOptions));
     // Cookie parser - must be before body parsing
     this.app.use(cookieParser());
 
