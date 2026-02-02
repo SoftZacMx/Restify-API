@@ -40,9 +40,10 @@ class LocalServer {
     // Trust proxy (Railway, etc.) para que express-rate-limit use X-Forwarded-For correctamente.
     this.app.set('trust proxy', 1);
 
+    const { cors: corsConfig } = this.config;
     const corsOptions: cors.CorsOptions = {
-      origin: true,
-      credentials: true,
+      origin: corsConfig.origin,
+      credentials: corsConfig.credentials,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
     };
@@ -50,14 +51,20 @@ class LocalServer {
     // 1) OPTIONS explícito PRIMERO: Railway y Express — el preflight debe recibir CORS siempre.
     this.app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.method !== 'OPTIONS') return next();
-      const origin = req.headers.origin || '*';
-      const allowOrigin = origin === '*' ? '*' : origin;
-      res.setHeader('Access-Control-Allow-Origin', allowOrigin);
+      const origin = (req.headers.origin || '').trim();
+      const allowed = corsConfig.allowedOrigins;
+      const allowOrigin =
+        origin && (allowed.length === 0 || allowed.includes(origin)) ? origin : allowed[0] || null;
+      if (allowOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', allowOrigin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+      }
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-      res.setHeader('Access-Control-Allow-Credentials', origin === '*' ? 'false' : 'true');
       res.setHeader('Access-Control-Max-Age', '86400');
-      console.log(`[CORS] Preflight OPTIONS ${req.path} → Origin: ${origin} → Allow-Origin: ${allowOrigin}`);
+      console.log(
+        `[CORS] Preflight OPTIONS ${req.path} → Origin: ${origin || '(none)'} → Allow-Origin: ${allowOrigin || '(rejected)'}`
+      );
       res.status(204).end();
     });
 

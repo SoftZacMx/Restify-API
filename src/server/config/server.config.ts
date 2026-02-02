@@ -17,16 +17,22 @@ export function stripEnvQuotes(s: string): string {
   return t;
 }
 
+/** Orígenes permitidos por CORS: restify-qa (y todas sus rutas) + localhost en dev. */
+const CORS_ALLOWED_ORIGINS = [
+  'https://restify-qa.up.railway.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
 export const getServerConfig = (): ServerConfig => {
-  // CORS: siempre cualquier origen, sin restricción (dev, qa, producción).
   return {
     port: parseInt(process.env.PORT || '3000', 10),
     host: process.env.HOST || '0.0.0.0',
     environment: process.env.NODE_ENV || 'development',
     cors: {
-      origin: true,
+      origin: CORS_ALLOWED_ORIGINS,
       credentials: true,
-      allowedOrigins: [],
+      allowedOrigins: CORS_ALLOWED_ORIGINS,
     },
   };
 };
