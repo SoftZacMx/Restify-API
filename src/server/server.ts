@@ -7,7 +7,6 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 import express, { Express } from 'express';
 import http from 'http';
-import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { getServerConfig } from './config/server.config';
 import routes from './routes';
@@ -37,14 +36,6 @@ class LocalServer {
   }
 
   private setupMiddleware(): void {
-    // CORS
-    this.app.use(
-      cors({
-        origin: this.config.cors.origin,
-        credentials: this.config.cors.credentials,
-      })
-    );
-
     // Cookie parser - must be before body parsing
     this.app.use(cookieParser());
 
