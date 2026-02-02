@@ -3,15 +3,17 @@ services:
   mysql:
     image: mysql:8.0
     container_name: restify-mysql
+    command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: restify
-      MYSQL_USER: restify_user
-      MYSQL_PASSWORD: restify_password
+      # MYSQL_USER y MYSQL_PASSWORD se crean automáticamente en scripts/mysql-init/01-setup-user.sql
+      # para asegurar que use mysql_native_password desde el inicio (compatible con Prisma)
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./scripts/mysql-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
       interval: 10s
@@ -61,6 +63,7 @@ services:
       start_period: 30s
     networks:
       - restify-network
+
 
 volumes:
   mysql_data:

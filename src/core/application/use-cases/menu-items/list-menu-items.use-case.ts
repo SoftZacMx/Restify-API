@@ -7,7 +7,8 @@ export interface ListMenuItemsResult {
   name: string;
   price: number;
   status: boolean;
-  categoryId: string;
+  isExtra: boolean;
+  categoryId: string | null;
   userId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -23,6 +24,7 @@ export class ListMenuItemsUseCase {
     const filters = input
       ? {
           status: input.status,
+          isExtra: input.isExtra,
           categoryId: input.categoryId,
           userId: input.userId,
           search: input.search,
@@ -36,6 +38,7 @@ export class ListMenuItemsUseCase {
       name: menuItem.name,
       price: menuItem.price,
       status: menuItem.status,
+      isExtra: menuItem.isExtra,
       categoryId: menuItem.categoryId,
       userId: menuItem.userId,
       createdAt: menuItem.createdAt,

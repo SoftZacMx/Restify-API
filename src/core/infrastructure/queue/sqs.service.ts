@@ -78,7 +78,6 @@ export class SQSService {
       });
 
       await this.client.send(command);
-      console.log(`[SQS] Payment notification sent to queue: ${message.paymentId}`);
     } catch (error) {
       console.error('[SQS] Error sending payment notification:', error);
       throw error;
@@ -155,7 +154,6 @@ export class SQSService {
       });
 
       await this.client.send(command);
-      console.log(`[SQS] Order notification sent to queue: ${message.orderId} (${message.notificationType})`);
     } catch (error) {
       console.error('[SQS] Error sending order notification:', error);
       throw error;

@@ -1,6 +1,6 @@
 import { Order } from '../entities/order.entity';
 import { OrderItem } from '../entities/order-item.entity';
-import { OrderMenuItem } from '../entities/order-menu-item.entity';
+import { OrderItemExtra } from '../entities/order-item-extra.entity';
 
 export interface OrderFilters {
   status?: boolean;
@@ -52,18 +52,30 @@ export interface IOrderRepository {
     quantity: number;
     price: number;
     orderId: string;
-    productId: string;
+    productId: string | null;
+    menuItemId: string | null;
+    note: string | null;
   }): Promise<OrderItem>;
+  updateOrderItem(id: string, data: {
+    quantity?: number;
+    price?: number;
+    note?: string | null;
+  }): Promise<OrderItem>;
+  deleteOrderItem(id: string): Promise<void>;
+  deleteOrderItemsByOrderId(orderId: string): Promise<void>;
   findOrderItemsByOrderId(orderId: string): Promise<OrderItem[]>;
   
-  // Order Menu Items
-  createOrderMenuItem(data: {
+  // Order Item Extras
+  createOrderItemExtra(data: {
     orderId: string;
-    menuItemId: string;
-    amount: number;
-    unitPrice: number;
-    note: string | null;
-  }): Promise<OrderMenuItem>;
-  findOrderMenuItemsByOrderId(orderId: string): Promise<OrderMenuItem[]>;
+    orderItemId: string;
+    extraId: string;
+    quantity: number;
+    price: number;
+  }): Promise<OrderItemExtra>;
+  deleteOrderItemExtrasByOrderId(orderId: string): Promise<void>;
+  deleteOrderItemExtrasByOrderItemId(orderItemId: string): Promise<void>;
+  findOrderItemExtrasByOrderId(orderId: string): Promise<OrderItemExtra[]>;
+  findOrderItemExtrasByOrderItemId(orderItemId: string): Promise<OrderItemExtra[]>;
 }
 

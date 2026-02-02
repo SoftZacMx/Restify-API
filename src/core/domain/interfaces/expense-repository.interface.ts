@@ -10,6 +10,27 @@ export interface ExpenseFilters {
   paymentMethod?: number;
 }
 
+/** Resultado de gasto con usuario (join) para listado */
+export interface ExpenseWithUser {
+  id: string;
+  title: string;
+  type: ExpenseType;
+  date: Date;
+  total: number;
+  subtotal: number;
+  iva: number;
+  description: string | null;
+  paymentMethod: number;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  user: {
+    name: string;
+    last_name: string;
+    second_last_name: string | null;
+  };
+}
+
 export interface ExpenseItemInput {
   productId: string;
   amount: number;
@@ -24,8 +45,13 @@ export interface IExpenseRepository {
     filters?: ExpenseFilters,
     pagination?: { skip?: number; take?: number }
   ): Promise<Expense[]>;
+  findAllWithUser(
+    filters?: ExpenseFilters,
+    pagination?: { skip?: number; take?: number }
+  ): Promise<ExpenseWithUser[]>;
   count(filters?: ExpenseFilters): Promise<number>;
   create(data: {
+    title: string;
     type: ExpenseType;
     date: Date;
     total: number;
@@ -36,6 +62,7 @@ export interface IExpenseRepository {
     userId: string;
   }): Promise<Expense>;
   createWithItems(data: {
+    title: string;
     type: ExpenseType;
     date: Date;
     total: number;
@@ -49,6 +76,7 @@ export interface IExpenseRepository {
   update(
     id: string,
     data: {
+      title?: string;
       date?: Date;
       total?: number;
       subtotal?: number;

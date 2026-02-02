@@ -4,7 +4,6 @@ import {
   payOrderWithTransferHandler,
   payOrderWithCardPhysicalHandler,
   payOrderWithCardStripeHandler,
-  payOrderWithSplitPaymentHandler,
   confirmStripePaymentHandler,
   getPaymentHandler,
   listPaymentsHandler,
@@ -95,24 +94,7 @@ router.post('/card-stripe', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/split', async (req: Request, res: Response) => {
-  try {
-    const event = HttpToLambdaAdapter.convertRequest(req);
-    const context = HttpToLambdaAdapter.createContext();
-    const response = await payOrderWithSplitPaymentHandler(event as any, context);
-    HttpToLambdaAdapter.convertResponse(response, res);
-  } catch (error) {
-    console.error('Pay order with split payment route error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'ROUTE_ERROR',
-        message: 'An error occurred processing the payment request',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+// Pago dividido: usar POST /api/orders/:order_id/pay con body { firstPayment, secondPayment }
 
 router.post('/stripe/confirm', async (req: Request, res: Response) => {
   try {

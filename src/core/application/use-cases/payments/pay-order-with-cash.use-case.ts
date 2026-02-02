@@ -1,6 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { IPaymentRepository } from '../../../domain/interfaces/payment-repository.interface';
+import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { PayOrderWithCashInput } from '../../dto/payment.dto';
 import { PaymentStatus, PaymentMethod, PaymentGateway } from '@prisma/client';
 import { AppError } from '../../../../shared/errors';
@@ -19,13 +20,15 @@ export interface PayOrderWithCashResult {
     status: boolean;
     paymentMethod: number | null;
   };
+  tableReleased?: boolean;
 }
 
 @injectable()
 export class PayOrderWithCashUseCase {
   constructor(
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
-    @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository
+    @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository,
+    @inject('ITableRepository') private readonly tableRepository: ITableRepository
   ) {}
 
   async execute(input: PayOrderWithCashInput): Promise<PayOrderWithCashResult> {
@@ -56,6 +59,15 @@ export class PayOrderWithCashUseCase {
       paymentMethod: 1, // 1 = Cash
     });
 
+    // 4. Release table if order is local and has a table assigned
+    let tableReleased = false;
+    if (order.tableId && order.origin.toLowerCase() === 'local') {
+      await this.tableRepository.update(order.tableId, {
+        availabilityStatus: true, // Mark table as available
+      });
+      tableReleased = true;
+    }
+
     return {
       payment: {
         id: payment.id,
@@ -70,6 +82,7 @@ export class PayOrderWithCashUseCase {
         status: updatedOrder.status,
         paymentMethod: updatedOrder.paymentMethod,
       },
+      tableReleased,
     };
   }
 }

@@ -1,6 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import { IPaymentRepository } from '../../../domain/interfaces/payment-repository.interface';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
+import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { ConfirmStripePaymentInput } from '../../dto/payment.dto';
 import { PaymentStatus } from '@prisma/client';
 import { AppError } from '../../../../shared/errors';
@@ -19,6 +20,7 @@ export interface ConfirmStripePaymentResult {
     status: boolean;
     paymentMethod: number | null;
   };
+  tableReleased?: boolean;
 }
 
 @injectable()
@@ -26,6 +28,7 @@ export class ConfirmStripePaymentUseCase {
   constructor(
     @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository,
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
+    @inject('ITableRepository') private readonly tableRepository: ITableRepository,
     @inject('StripeService') private readonly stripeService: StripeService,
     @inject(QueuePaymentNotificationUseCase) private readonly queuePaymentNotificationUseCase: QueuePaymentNotificationUseCase
   ) {}
@@ -61,9 +64,14 @@ export class ConfirmStripePaymentUseCase {
       status: newStatus,
     });
 
-    // 4. If succeeded, update order status
+    // 4. If succeeded, update order status and release table if applicable
     let updatedOrder: { id: string; status: boolean; paymentMethod: number | null } | undefined = undefined;
+    let tableReleased = false;
+    
     if (input.status === 'succeeded' && payment.orderId) {
+      // First, get the order to check tableId and origin
+      const existingOrder = await this.orderRepository.findById(payment.orderId);
+      
       const order = await this.orderRepository.update(payment.orderId, {
         status: true,
         paymentMethod: 3, // 3 = Card
@@ -73,9 +81,17 @@ export class ConfirmStripePaymentUseCase {
         status: order.status,
         paymentMethod: order.paymentMethod,
       };
+
+      // 5. Release table if order is local and has a table assigned
+      if (existingOrder && existingOrder.tableId && existingOrder.origin.toLowerCase() === 'local') {
+        await this.tableRepository.update(existingOrder.tableId, {
+          availabilityStatus: true, // Mark table as available
+        });
+        tableReleased = true;
+      }
     }
 
-    // 5. Queue payment notification via SQS (non-blocking, decoupled)
+    // 6. Queue payment notification via SQS (non-blocking, decoupled)
     // This ensures notifications are delivered even if client is disconnected
     this.queuePaymentNotificationUseCase
       .execute({
@@ -97,6 +113,7 @@ export class ConfirmStripePaymentUseCase {
         gatewayTransactionId: updatedPayment.gatewayTransactionId,
       },
       order: updatedOrder,
+      tableReleased,
     };
   }
 }

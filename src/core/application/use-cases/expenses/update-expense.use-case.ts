@@ -5,6 +5,7 @@ import { AppError } from '../../../../shared/errors';
 
 export interface UpdateExpenseResult {
   id: string;
+  title: string;
   type: string;
   date: Date;
   total: number;
@@ -31,6 +32,7 @@ export class UpdateExpenseUseCase {
 
     // 2. Prepare update data
     const updateData: any = {};
+    if (input.title !== undefined) updateData.title = input.title;
     if (input.date !== undefined) updateData.date = new Date(input.date);
     if (input.total !== undefined) updateData.total = input.total;
     if (input.subtotal !== undefined) updateData.subtotal = input.subtotal;
@@ -43,6 +45,7 @@ export class UpdateExpenseUseCase {
 
     return {
       id: updatedExpense.id,
+      title: updatedExpense.title,
       type: updatedExpense.type,
       date: updatedExpense.date,
       total: updatedExpense.total,

@@ -43,9 +43,11 @@ docker-compose up -d
 ```
 
 Esto iniciará:
-- **MySQL** en el puerto `3306`
+- **MySQL** en el puerto `3306` (configurado con `mysql_native_password` para compatibilidad con Prisma)
 - **Redis** en el puerto `6379`
 - **LocalStack** (AWS services) en el puerto `4566`
+
+**Nota:** Si es la primera vez que inicias el proyecto, MySQL se configurará automáticamente con el plugin de autenticación correcto. Espera 30-60 segundos después de iniciar los contenedores para que MySQL se inicialice completamente.
 
 ### 4. Generar Prisma Client
 
@@ -215,6 +217,41 @@ Asegúrate de que:
 1. MySQL está corriendo: `docker-compose ps`
 2. La URL en `.env.local` es correcta
 3. Has esperado suficiente tiempo para que MySQL inicie (puede tardar 10-20 segundos)
+
+### Error: "Unknown authentication plugin 'sha256_password'"
+
+Este error ocurre cuando MySQL 8.0 usa un plugin de autenticación incompatible con Prisma.
+
+**Solución automática (recomendada para equipos nuevos):**
+El proyecto ya está configurado para evitar este problema. Si es la primera vez que inicias el proyecto, simplemente:
+
+```bash
+# Limpiar volúmenes existentes (si los hay)
+docker compose down -v
+
+# Iniciar servicios (se configurará automáticamente)
+docker compose up -d
+
+# Esperar 30-60 segundos para que MySQL se inicialice completamente
+```
+
+**Solución para bases de datos existentes:**
+Si ya tienes una base de datos con este problema, ejecuta el script de corrección:
+
+```bash
+# Opción 1: Usar el script automático
+./scripts/fix-mysql-auth.sh
+
+# Opción 2: Manualmente
+docker exec -it restify-mysql mysql -u root -proot_password -e "ALTER USER 'restify_user'@'%' IDENTIFIED WITH mysql_native_password BY 'restify_password'; FLUSH PRIVILEGES;"
+```
+
+**Verificar que está corregido:**
+```bash
+docker exec -it restify-mysql mysql -u root -proot_password -e "SELECT user, host, plugin FROM mysql.user WHERE user = 'restify_user';"
+```
+
+Deberías ver `mysql_native_password` en la columna `plugin`.
 
 ## 📚 Próximos Pasos
 

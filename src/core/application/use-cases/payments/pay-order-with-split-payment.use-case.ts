@@ -2,6 +2,7 @@ import { inject, injectable } from 'tsyringe';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { IPaymentRepository } from '../../../domain/interfaces/payment-repository.interface';
 import { IPaymentDifferentiationRepository } from '../../../domain/interfaces/payment-differentiation-repository.interface';
+import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { PayOrderWithSplitPaymentInput } from '../../dto/payment.dto';
 import { PaymentStatus, PaymentMethod } from '@prisma/client';
 import { AppError } from '../../../../shared/errors';
@@ -27,6 +28,7 @@ export interface PayOrderWithSplitPaymentResult {
     paymentDiffer: boolean;
     paymentMethod: number | null;
   };
+  tableReleased?: boolean;
 }
 
 @injectable()
@@ -34,7 +36,8 @@ export class PayOrderWithSplitPaymentUseCase {
   constructor(
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository,
-    @inject('IPaymentDifferentiationRepository') private readonly paymentDiffRepository: IPaymentDifferentiationRepository
+    @inject('IPaymentDifferentiationRepository') private readonly paymentDiffRepository: IPaymentDifferentiationRepository,
+    @inject('ITableRepository') private readonly tableRepository: ITableRepository
   ) {}
 
   async execute(input: PayOrderWithSplitPaymentInput): Promise<PayOrderWithSplitPaymentResult> {
@@ -127,6 +130,15 @@ export class PayOrderWithSplitPaymentUseCase {
       paymentMethod: null, // NULL for split payment
     });
 
+    // 7. Release table if order is local and has a table assigned
+    let tableReleased = false;
+    if (order.tableId && order.origin.toLowerCase() === 'local') {
+      await this.tableRepository.update(order.tableId, {
+        availabilityStatus: true, // Mark table as available
+      });
+      tableReleased = true;
+    }
+
     return {
       paymentDifferentiation: {
         id: paymentDiff.id,
@@ -156,6 +168,7 @@ export class PayOrderWithSplitPaymentUseCase {
         paymentDiffer: updatedOrder.paymentDiffer,
         paymentMethod: updatedOrder.paymentMethod,
       },
+      tableReleased,
     };
   }
 }

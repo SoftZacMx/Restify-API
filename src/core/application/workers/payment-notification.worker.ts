@@ -31,12 +31,10 @@ export class PaymentNotificationWorker {
    */
   start(): void {
     if (this.isRunning) {
-      console.log('[PaymentNotificationWorker] Worker is already running');
       return;
     }
 
     this.isRunning = true;
-    console.log('[PaymentNotificationWorker] Starting worker with Long Polling (cost-optimized)...');
 
     // Start continuous processing (no interval - uses Long Polling instead)
     this.startContinuousProcessing();
@@ -51,7 +49,6 @@ export class PaymentNotificationWorker {
     }
 
     this.isRunning = false;
-    console.log('[PaymentNotificationWorker] Worker stopped');
   }
 
   /**
@@ -102,8 +99,6 @@ export class PaymentNotificationWorker {
         return; // No messages to process
       }
 
-      console.log(`[PaymentNotificationWorker] Processing ${messages.length} notification(s)`);
-
       // Process messages in parallel
       const processingPromises = messages.map(async (msg) => {
         try {
@@ -121,11 +116,8 @@ export class PaymentNotificationWorker {
           if (result.notified) {
             // Successfully notified, delete message from queue
             await this.sqsService.deleteMessage(msg.receiptHandle);
-            console.log(`[PaymentNotificationWorker] Notification delivered: ${msg.body.paymentId}`);
           } else {
             // Client not connected, message will be retried by SQS
-            // SQS will make the message visible again after visibility timeout
-            console.log(`[PaymentNotificationWorker] Client not connected, will retry: ${msg.body.paymentId}`);
             // Don't delete message - let SQS handle retry
           }
         } catch (error) {

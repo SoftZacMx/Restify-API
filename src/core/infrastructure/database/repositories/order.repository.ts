@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { IOrderRepository, OrderFilters } from '../../../domain/interfaces/order-repository.interface';
 import { Order } from '../../../domain/entities/order.entity';
 import { OrderItem } from '../../../domain/entities/order-item.entity';
-import { OrderMenuItem } from '../../../domain/entities/order-menu-item.entity';
+import { OrderItemExtra } from '../../../domain/entities/order-item-extra.entity';
 
 export class OrderRepository implements IOrderRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -226,7 +226,9 @@ export class OrderRepository implements IOrderRepository {
     quantity: number;
     price: number;
     orderId: string;
-    productId: string;
+    productId: string | null;
+    menuItemId: string | null;
+    note: string | null;
   }): Promise<OrderItem> {
     const orderItem = await this.prisma.orderItem.create({
       data: {
@@ -234,6 +236,8 @@ export class OrderRepository implements IOrderRepository {
         price: data.price,
         orderId: data.orderId,
         productId: data.productId,
+        menuItemId: data.menuItemId,
+        note: data.note,
       },
     });
 
@@ -243,9 +247,54 @@ export class OrderRepository implements IOrderRepository {
       Number(orderItem.price),
       orderItem.orderId,
       orderItem.productId,
+      orderItem.menuItemId,
+      orderItem.note,
       orderItem.createdAt,
       orderItem.updatedAt
     );
+  }
+
+  async updateOrderItem(
+    id: string,
+    data: {
+      quantity?: number;
+      price?: number;
+      note?: string | null;
+    }
+  ): Promise<OrderItem> {
+    const updateData: any = {};
+    if (data.quantity !== undefined) updateData.quantity = data.quantity;
+    if (data.price !== undefined) updateData.price = data.price;
+    if (data.note !== undefined) updateData.note = data.note;
+
+    const orderItem = await this.prisma.orderItem.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return new OrderItem(
+      orderItem.id,
+      orderItem.quantity,
+      Number(orderItem.price),
+      orderItem.orderId,
+      orderItem.productId,
+      orderItem.menuItemId,
+      orderItem.note,
+      orderItem.createdAt,
+      orderItem.updatedAt
+    );
+  }
+
+  async deleteOrderItem(id: string): Promise<void> {
+    await this.prisma.orderItem.delete({
+      where: { id },
+    });
+  }
+
+  async deleteOrderItemsByOrderId(orderId: string): Promise<void> {
+    await this.prisma.orderItem.deleteMany({
+      where: { orderId },
+    });
   }
 
   async findOrderItemsByOrderId(orderId: string): Promise<OrderItem[]> {
@@ -261,58 +310,92 @@ export class OrderRepository implements IOrderRepository {
           Number(item.price),
           item.orderId,
           item.productId,
+          item.menuItemId,
+          item.note,
           item.createdAt,
           item.updatedAt
         )
     );
   }
 
-  // Order Menu Items
-  async createOrderMenuItem(data: {
+  // Order Item Extras
+  async createOrderItemExtra(data: {
     orderId: string;
-    menuItemId: string;
-    amount: number;
-    unitPrice: number;
-    note: string | null;
-  }): Promise<OrderMenuItem> {
-    const orderMenuItem = await this.prisma.orderMenuItem.create({
+    orderItemId: string;
+    extraId: string;
+    quantity: number;
+    price: number;
+  }): Promise<OrderItemExtra> {
+    const orderItemExtra = await this.prisma.orderItemExtra.create({
       data: {
         orderId: data.orderId,
-        menuItemId: data.menuItemId,
-        amount: data.amount,
-        unitPrice: data.unitPrice,
-        note: data.note,
+        orderItemId: data.orderItemId,
+        extraId: data.extraId,
+        quantity: data.quantity,
+        price: data.price,
       },
     });
 
-    return new OrderMenuItem(
-      orderMenuItem.id,
-      orderMenuItem.orderId,
-      orderMenuItem.menuItemId,
-      orderMenuItem.amount,
-      Number(orderMenuItem.unitPrice),
-      orderMenuItem.note,
-      orderMenuItem.createdAt,
-      orderMenuItem.updatedAt
+    return new OrderItemExtra(
+      orderItemExtra.id,
+      orderItemExtra.orderId,
+      orderItemExtra.orderItemId,
+      orderItemExtra.extraId,
+      orderItemExtra.quantity,
+      Number(orderItemExtra.price),
+      orderItemExtra.createdAt,
+      orderItemExtra.updatedAt
     );
   }
 
-  async findOrderMenuItemsByOrderId(orderId: string): Promise<OrderMenuItem[]> {
-    const orderMenuItems = await this.prisma.orderMenuItem.findMany({
+  async deleteOrderItemExtrasByOrderId(orderId: string): Promise<void> {
+    await this.prisma.orderItemExtra.deleteMany({
+      where: { orderId },
+    });
+  }
+
+  async deleteOrderItemExtrasByOrderItemId(orderItemId: string): Promise<void> {
+    await this.prisma.orderItemExtra.deleteMany({
+      where: { orderItemId },
+    });
+  }
+
+  async findOrderItemExtrasByOrderId(orderId: string): Promise<OrderItemExtra[]> {
+    const orderItemExtras = await this.prisma.orderItemExtra.findMany({
       where: { orderId },
     });
 
-    return orderMenuItems.map(
-      (item) =>
-        new OrderMenuItem(
-          item.id,
-          item.orderId,
-          item.menuItemId,
-          item.amount,
-          Number(item.unitPrice),
-          item.note,
-          item.createdAt,
-          item.updatedAt
+    return orderItemExtras.map(
+      (extra) =>
+        new OrderItemExtra(
+          extra.id,
+          extra.orderId,
+          extra.orderItemId,
+          extra.extraId,
+          extra.quantity,
+          Number(extra.price),
+          extra.createdAt,
+          extra.updatedAt
+        )
+    );
+  }
+
+  async findOrderItemExtrasByOrderItemId(orderItemId: string): Promise<OrderItemExtra[]> {
+    const orderItemExtras = await this.prisma.orderItemExtra.findMany({
+      where: { orderItemId },
+    });
+
+    return orderItemExtras.map(
+      (extra) =>
+        new OrderItemExtra(
+          extra.id,
+          extra.orderId,
+          extra.orderItemId,
+          extra.extraId,
+          extra.quantity,
+          Number(extra.price),
+          extra.createdAt,
+          extra.updatedAt
         )
     );
   }

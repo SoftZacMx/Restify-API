@@ -1,19 +1,31 @@
 import { z } from 'zod';
 
-// Order Item Schema (for creating orders with products)
-export const orderItemSchema = z.object({
-  productId: z.string().uuid('Invalid product ID format'),
-  quantity: z.number().int().positive('Quantity must be positive'),
+// Order Item Extra Schema
+export const orderItemExtraSchema = z.object({
+  extraId: z.string().uuid('Invalid extra ID format'),
+  quantity: z.number().int().positive('Quantity must be positive').default(1),
   price: z.number().positive('Price must be positive').multipleOf(0.01, 'Price must have at most 2 decimal places'),
 });
 
-// Order Menu Item Schema (for creating orders with menu items)
-export const orderMenuItemSchema = z.object({
-  menuItemId: z.string().uuid('Invalid menu item ID format'),
-  amount: z.number().int().positive('Amount must be positive'),
-  unitPrice: z.number().positive('Unit price must be positive').multipleOf(0.01, 'Unit price must have at most 2 decimal places'),
+// Order Item Schema (unified for products and menu items)
+export const orderItemSchema = z.object({
+  productId: z.string().uuid('Invalid product ID format').optional().nullable(),
+  menuItemId: z.string().uuid('Invalid menu item ID format').optional().nullable(),
+  quantity: z.number().int().positive('Quantity must be positive'),
+  price: z.number().positive('Price must be positive').multipleOf(0.01, 'Price must have at most 2 decimal places'),
   note: z.string().max(500, 'Note is too long').optional().nullable(),
-});
+  extras: z.array(orderItemExtraSchema).optional().default([]),
+}).refine(
+  (data) => {
+    // Either productId or menuItemId must be provided, but not both
+    const hasProductId = !!data.productId;
+    const hasMenuItemId = !!data.menuItemId;
+    return (hasProductId && !hasMenuItemId) || (!hasProductId && hasMenuItemId);
+  },
+  {
+    message: 'Either productId or menuItemId must be provided, but not both',
+  }
+);
 
 // Create Order Schema
 export const createOrderSchema = z.object({
@@ -25,17 +37,27 @@ export const createOrderSchema = z.object({
   paymentDiffer: z.boolean().optional().default(false),
   note: z.string().max(1000, 'Note is too long').optional().nullable(),
   userId: z.string().uuid('Invalid user ID format'),
-  orderItems: z.array(orderItemSchema).optional().default([]),
-  orderMenuItems: z.array(orderMenuItemSchema).optional().default([]),
+  orderItems: z.array(orderItemSchema).min(1, 'At least one order item must be provided'),
+});
+
+// Update Order Item Schema (for existing items - includes optional id)
+export const updateOrderItemSchema = z.object({
+  id: z.string().uuid('Invalid order item ID format').optional(), // If provided, update existing; if not, create new
+  productId: z.string().uuid('Invalid product ID format').optional().nullable(),
+  menuItemId: z.string().uuid('Invalid menu item ID format').optional().nullable(),
+  quantity: z.number().int().positive('Quantity must be positive'),
+  price: z.number().positive('Price must be positive').multipleOf(0.01, 'Price must have at most 2 decimal places'),
+  note: z.string().max(500, 'Note is too long').optional().nullable(),
+  extras: z.array(orderItemExtraSchema).optional().default([]),
 }).refine(
   (data) => {
-    // At least one item (product or menu item) must be provided
-    const hasOrderItems = data.orderItems && data.orderItems.length > 0;
-    const hasOrderMenuItems = data.orderMenuItems && data.orderMenuItems.length > 0;
-    return hasOrderItems || hasOrderMenuItems;
+    // Either productId or menuItemId must be provided, but not both
+    const hasProductId = !!data.productId;
+    const hasMenuItemId = !!data.menuItemId;
+    return (hasProductId && !hasMenuItemId) || (!hasProductId && hasMenuItemId);
   },
   {
-    message: 'At least one order item or menu item must be provided',
+    message: 'Either productId or menuItemId must be provided, but not both',
   }
 );
 
@@ -50,6 +72,8 @@ export const updateOrderSchema = z.object({
   paymentDiffer: z.boolean().optional(),
   note: z.string().max(1000, 'Note is too long').optional().nullable(),
   tableId: z.string().uuid('Invalid table ID format').optional().nullable(),
+  // Order items - if provided, replaces all existing items
+  orderItems: z.array(updateOrderItemSchema).min(1, 'At least one order item must be provided').optional(),
 });
 
 // Get Order Schema (path parameter)
@@ -87,5 +111,6 @@ export type GetOrderInput = z.infer<typeof getOrderSchema>;
 export type ListOrdersInput = z.infer<typeof listOrdersSchema>;
 export type DeleteOrderInput = z.infer<typeof deleteOrderSchema>;
 export type OrderItemInput = z.infer<typeof orderItemSchema>;
-export type OrderMenuItemInput = z.infer<typeof orderMenuItemSchema>;
+export type UpdateOrderItemInput = z.infer<typeof updateOrderItemSchema>;
+export type OrderItemExtraInput = z.infer<typeof orderItemExtraSchema>;
 

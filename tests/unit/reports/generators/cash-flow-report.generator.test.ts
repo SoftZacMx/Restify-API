@@ -121,6 +121,7 @@ describe('CashFlowReportGenerator', () => {
       const mockBusinessServices = [
         new Expense(
           'expense-1',
+          'Cleaning service',
           ExpenseType.SERVICE_BUSINESS,
           new Date('2024-01-10'),
           500,
@@ -137,6 +138,7 @@ describe('CashFlowReportGenerator', () => {
       const mockMerchandise = [
         new Expense(
           'expense-2',
+          'Food supplies',
           ExpenseType.MERCHANDISE,
           new Date('2024-01-12'),
           800,

@@ -3,6 +3,7 @@ import { ExpenseType } from '@prisma/client';
 export class Expense {
   constructor(
     public readonly id: string,
+    public readonly title: string,
     public readonly type: ExpenseType,
     public readonly date: Date,
     public readonly total: number,
@@ -18,6 +19,7 @@ export class Expense {
   static fromPrisma(data: any): Expense {
     return new Expense(
       data.id,
+      data.title,
       data.type,
       data.date,
       Number(data.total),

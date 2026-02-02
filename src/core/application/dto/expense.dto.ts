@@ -1,11 +1,15 @@
 import { z } from 'zod';
-import { ExpenseType } from '@prisma/client';
+import { ExpenseType, UnitOfMeasure } from '@prisma/client';
 
 // Expense Type enum validation
 const expenseTypeEnum = z.nativeEnum(ExpenseType);
 
+// Unidades de medida: Kilogramos (KG), Gramos (G), Piezas (PCS), Otros (OTHER)
+export const unitOfMeasureEnum = z.nativeEnum(UnitOfMeasure);
+
 // Create Expense Schema
 export const createExpenseSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(200, 'Title must be at most 200 characters'),
   type: expenseTypeEnum,
   date: z.string().optional(), // ISO date string, defaults to now
   total: z.number().positive('Total must be positive').multipleOf(0.01, 'Total must have at most 2 decimal places'),
@@ -21,7 +25,7 @@ export const createExpenseSchema = z.object({
         amount: z.number().positive('Amount must be positive').multipleOf(0.01, 'Amount must have at most 2 decimal places'),
         subtotal: z.number().positive('Subtotal must be positive').multipleOf(0.01, 'Subtotal must have at most 2 decimal places'),
         total: z.number().positive('Total must be positive').multipleOf(0.01, 'Total must have at most 2 decimal places'),
-        unitOfMeasure: z.string().max(50, 'Unit of measure is too long').optional().nullable(),
+        unitOfMeasure: unitOfMeasureEnum.optional().nullable(),
       })
     )
     .optional(),
@@ -52,11 +56,11 @@ export const getExpenseSchema = z.object({
   expense_id: z.string().uuid('Invalid expense ID format'),
 });
 
-// List Expenses Schema
+// List Expenses Schema (query params llegan como string; paymentMethod se coerciona a número)
 export const listExpensesSchema = z.object({
   type: expenseTypeEnum.optional(),
   userId: z.string().uuid('Invalid user ID format').optional(),
-  paymentMethod: z.number().int().min(1).max(3).optional(),
+  paymentMethod: z.optional(z.coerce.number().int().min(1).max(3)),
   dateFrom: z.string().optional(), // ISO date string
   dateTo: z.string().optional(), // ISO date string
   page: z.string().regex(/^\d+$/).optional().transform((val) => (val ? parseInt(val, 10) : undefined)),
@@ -65,6 +69,7 @@ export const listExpensesSchema = z.object({
 
 // Update Expense Schema
 export const updateExpenseSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(200, 'Title must be at most 200 characters').optional(),
   date: z.string().optional(), // ISO date string
   total: z.number().positive('Total must be positive').multipleOf(0.01, 'Total must have at most 2 decimal places').optional(),
   subtotal: z.number().positive('Subtotal must be positive').multipleOf(0.01, 'Subtotal must have at most 2 decimal places').optional(),
@@ -78,4 +83,5 @@ export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type GetExpenseInput = z.infer<typeof getExpenseSchema>;
 export type ListExpensesInput = z.infer<typeof listExpensesSchema>;
 export type UpdateExpenseInput = z.infer<typeof updateExpenseSchema>;
+export type { UnitOfMeasure };
 

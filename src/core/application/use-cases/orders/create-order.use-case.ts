@@ -31,18 +31,19 @@ export interface CreateOrderResult {
     id: string;
     quantity: number;
     price: number;
-    productId: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }>;
-  orderMenuItems?: Array<{
-    id: string;
-    menuItemId: string;
-    amount: number;
-    unitPrice: number;
+    productId: string | null;
+    menuItemId: string | null;
     note: string | null;
     createdAt: Date;
     updatedAt: Date;
+    extras?: Array<{
+      id: string;
+      extraId: string;
+      quantity: number;
+      price: number;
+      createdAt: Date;
+      updatedAt: Date;
+    }>;
   }>;
 }
 
@@ -64,40 +65,59 @@ export class CreateOrderUseCase {
       throw new AppError('USER_NOT_FOUND');
     }
 
-    // Verify that table exists if provided
+    // Verify that table exists and is available if provided
     if (input.tableId) {
       const table = await this.tableRepository.findById(input.tableId);
       if (!table) {
         throw new AppError('TABLE_NOT_FOUND');
       }
-    }
-
-    // Verify all products exist and calculate subtotal from orderItems
-    let orderItemsSubtotal = 0;
-    if (input.orderItems && input.orderItems.length > 0) {
-      for (const item of input.orderItems) {
-        const product = await this.productRepository.findById(item.productId);
-        if (!product) {
-          throw new AppError('PRODUCT_NOT_FOUND', `Product with ID ${item.productId} not found`);
-        }
-        orderItemsSubtotal += item.price * item.quantity;
+      
+      // If order is local and has a table assigned, verify table is available
+      if (input.origin.toLowerCase() === 'local' && !table.availabilityStatus) {
+        throw new AppError('TABLE_NOT_AVAILABLE');
       }
     }
 
-    // Verify all menu items exist and calculate subtotal from orderMenuItems
-    let orderMenuItemsSubtotal = 0;
-    if (input.orderMenuItems && input.orderMenuItems.length > 0) {
-      for (const item of input.orderMenuItems) {
-        const menuItem = await this.menuItemRepository.findById(item.menuItemId);
-        if (!menuItem) {
-          throw new AppError('MENU_ITEM_NOT_FOUND', `Menu item with ID ${item.menuItemId} not found`);
+    // Verify all items exist and calculate subtotal from orderItems (including extras)
+    let subtotal = 0;
+    if (input.orderItems && input.orderItems.length > 0) {
+      for (const item of input.orderItems) {
+        if (item.productId) {
+          const product = await this.productRepository.findById(item.productId);
+          if (!product) {
+            throw new AppError('PRODUCT_NOT_FOUND', `Product with ID ${item.productId} not found`);
+          }
+        } else if (item.menuItemId) {
+          const menuItem = await this.menuItemRepository.findById(item.menuItemId);
+          if (!menuItem) {
+            throw new AppError('MENU_ITEM_NOT_FOUND', `Menu item with ID ${item.menuItemId} not found`);
+          }
+          // Verify that menu item is not an extra (extras should be in extras array)
+          if (menuItem.isExtra) {
+            throw new AppError('INVALID_MENU_ITEM', `Menu item with ID ${item.menuItemId} is an extra and should be in the extras array`);
+          }
         }
-        orderMenuItemsSubtotal += item.unitPrice * item.amount;
+        
+        // Calculate item subtotal
+        subtotal += item.price * item.quantity;
+        
+        // Verify and calculate extras subtotal
+        if (item.extras && item.extras.length > 0) {
+          for (const extra of item.extras) {
+            const extraMenuItem = await this.menuItemRepository.findById(extra.extraId);
+            if (!extraMenuItem) {
+              throw new AppError('MENU_ITEM_NOT_FOUND', `Extra with ID ${extra.extraId} not found`);
+            }
+            if (!extraMenuItem.isExtra) {
+              throw new AppError('INVALID_EXTRA', `Menu item with ID ${extra.extraId} is not an extra`);
+            }
+            subtotal += extra.price * extra.quantity;
+          }
+        }
       }
     }
 
     // Calculate totals
-    const subtotal = orderItemsSubtotal + orderMenuItemsSubtotal;
     const iva = subtotal * 0.16; // 16% IVA (puede ser configurable)
     const total = subtotal + iva + (input.tip || 0);
 
@@ -118,34 +138,53 @@ export class CreateOrderUseCase {
       userId: input.userId,
     });
 
-    // Create order items
+    // Mark table as unavailable if order is local and has a table assigned
+    if (order.tableId && order.origin.toLowerCase() === 'local') {
+      await this.tableRepository.update(order.tableId, {
+        availabilityStatus: false, // Mark table as unavailable
+      });
+    }
+
+    // Create order items and their extras
     if (input.orderItems && input.orderItems.length > 0) {
       for (const item of input.orderItems) {
-        await this.orderRepository.createOrderItem({
+        const createdOrderItem = await this.orderRepository.createOrderItem({
           quantity: item.quantity,
           price: item.price,
           orderId: order.id,
-          productId: item.productId,
-        });
-      }
-    }
-
-    // Create order menu items
-    if (input.orderMenuItems && input.orderMenuItems.length > 0) {
-      for (const item of input.orderMenuItems) {
-        await this.orderRepository.createOrderMenuItem({
-          orderId: order.id,
-          menuItemId: item.menuItemId,
-          amount: item.amount,
-          unitPrice: item.unitPrice,
+          productId: item.productId || null,
+          menuItemId: item.menuItemId || null,
           note: item.note || null,
         });
+
+        // Create extras for this order item
+        if (item.extras && item.extras.length > 0) {
+          for (const extra of item.extras) {
+            await this.orderRepository.createOrderItemExtra({
+              orderId: order.id,
+              orderItemId: createdOrderItem.id,
+              extraId: extra.extraId,
+              quantity: extra.quantity,
+              price: extra.price,
+            });
+          }
+        }
       }
     }
 
     // Get created order items
     const createdOrderItems = await this.orderRepository.findOrderItemsByOrderId(order.id);
-    const finalOrderMenuItems = await this.orderRepository.findOrderMenuItemsByOrderId(order.id);
+    // Get all extras for this order (optimized query)
+    const allExtras = await this.orderRepository.findOrderItemExtrasByOrderId(order.id);
+    
+    // Group extras by orderItemId
+    const extrasByItemId = allExtras.reduce((acc, extra) => {
+      if (!acc[extra.orderItemId]) {
+        acc[extra.orderItemId] = [];
+      }
+      acc[extra.orderItemId].push(extra);
+      return acc;
+    }, {} as Record<string, typeof allExtras>);
 
     const orderResult = {
       id: order.id,
@@ -170,17 +209,18 @@ export class CreateOrderUseCase {
         quantity: item.quantity,
         price: item.price,
         productId: item.productId,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-      })),
-      orderMenuItems: finalOrderMenuItems.map((item) => ({
-        id: item.id,
         menuItemId: item.menuItemId,
-        amount: item.amount,
-        unitPrice: item.unitPrice,
         note: item.note,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
+        extras: (extrasByItemId[item.id] || []).map((extra) => ({
+          id: extra.id,
+          extraId: extra.extraId,
+          quantity: extra.quantity,
+          price: extra.price,
+          createdAt: extra.createdAt,
+          updatedAt: extra.updatedAt,
+        })),
       })),
     };
 

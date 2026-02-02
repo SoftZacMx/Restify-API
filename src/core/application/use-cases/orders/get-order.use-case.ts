@@ -1,5 +1,6 @@
 import { inject, injectable } from 'tsyringe';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
+import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { GetOrderInput } from '../../dto/order.dto';
 import { AppError } from '../../../../shared/errors';
 
@@ -13,6 +14,13 @@ export interface GetOrderResult {
   iva: number;
   delivered: boolean;
   tableId: string | null;
+  /** Mesa asociada (incluida cuando la orden tiene tableId). Para mostrar "Mesa N" en la vista. */
+  table?: {
+    id: string;
+    numberTable: number;
+    status: boolean;
+    availabilityStatus: boolean;
+  };
   tip: number;
   origin: string;
   client: string | null;
@@ -25,25 +33,27 @@ export interface GetOrderResult {
     id: string;
     quantity: number;
     price: number;
-    productId: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }>;
-  orderMenuItems?: Array<{
-    id: string;
-    menuItemId: string;
-    amount: number;
-    unitPrice: number;
+    productId: string | null;
+    menuItemId: string | null;
     note: string | null;
     createdAt: Date;
     updatedAt: Date;
+    extras?: Array<{
+      id: string;
+      extraId: string;
+      quantity: number;
+      price: number;
+      createdAt: Date;
+      updatedAt: Date;
+    }>;
   }>;
 }
 
 @injectable()
 export class GetOrderUseCase {
   constructor(
-    @inject('IOrderRepository') private readonly orderRepository: IOrderRepository
+    @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
+    @inject('ITableRepository') private readonly tableRepository: ITableRepository
   ) {}
 
   async execute(input: GetOrderInput): Promise<GetOrderResult> {
@@ -53,9 +63,33 @@ export class GetOrderUseCase {
       throw new AppError('ORDER_NOT_FOUND');
     }
 
-    // Get order items and menu items
+    // Get order items
     const orderItems = await this.orderRepository.findOrderItemsByOrderId(order.id);
-    const orderMenuItems = await this.orderRepository.findOrderMenuItemsByOrderId(order.id);
+    
+    // Get all extras for this order (optimized query with orderId)
+    const allExtras = await this.orderRepository.findOrderItemExtrasByOrderId(order.id);
+    
+    // Group extras by orderItemId
+    const extrasByItemId = allExtras.reduce((acc, extra) => {
+      if (!acc[extra.orderItemId]) {
+        acc[extra.orderItemId] = [];
+      }
+      acc[extra.orderItemId].push(extra);
+      return acc;
+    }, {} as Record<string, typeof allExtras>);
+
+    let table: GetOrderResult['table'];
+    if (order.tableId) {
+      const tableEntity = await this.tableRepository.findById(order.tableId);
+      if (tableEntity) {
+        table = {
+          id: tableEntity.id,
+          numberTable: tableEntity.numberTable,
+          status: tableEntity.status,
+          availabilityStatus: tableEntity.availabilityStatus,
+        };
+      }
+    }
 
     return {
       id: order.id,
@@ -67,6 +101,7 @@ export class GetOrderUseCase {
       iva: order.iva,
       delivered: order.delivered,
       tableId: order.tableId,
+      table,
       tip: order.tip,
       origin: order.origin,
       client: order.client,
@@ -80,17 +115,18 @@ export class GetOrderUseCase {
         quantity: item.quantity,
         price: item.price,
         productId: item.productId,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-      })),
-      orderMenuItems: orderMenuItems.map((item) => ({
-        id: item.id,
         menuItemId: item.menuItemId,
-        amount: item.amount,
-        unitPrice: item.unitPrice,
         note: item.note,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
+        extras: (extrasByItemId[item.id] || []).map((extra) => ({
+          id: extra.id,
+          extraId: extra.extraId,
+          quantity: extra.quantity,
+          price: extra.price,
+          createdAt: extra.createdAt,
+          updatedAt: extra.updatedAt,
+        })),
       })),
     };
   }

@@ -63,7 +63,6 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.patch('/:user_id/reactivate', async (req: Request, res: Response) => {
   try {
-    console.log('Reactivate route hit:', req.params.user_id);
     const event = HttpToLambdaAdapter.convertRequest(req, { user_id: req.params.user_id });
     const context = HttpToLambdaAdapter.createContext();
     const response = await reactivateUserHandler(event as any, context);

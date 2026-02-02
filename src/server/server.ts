@@ -1,14 +1,9 @@
 import 'reflect-metadata';
-// Load environment variables
+// Load environment variables from .env only
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load .env.local first, then .env as fallback
-const envLocalPath = path.resolve(process.cwd(), '.env.local');
-const envPath = path.resolve(process.cwd(), '.env');
-
-dotenv.config({ path: envLocalPath });
-dotenv.config({ path: envPath, override: false }); // Don't override .env.local values
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 import express, { Express } from 'express';
 import http from 'http';
@@ -24,6 +19,7 @@ import { WebSocketServer } from './websocket/websocket.server';
 import { container } from 'tsyringe';
 import { PaymentNotificationWorker } from '../core/application/workers/payment-notification.worker';
 import { OrderNotificationWorker } from '../core/application/workers/order-notification.worker';
+import { PrismaService } from '../core/infrastructure/config/prisma.config';
 import '../core/infrastructure/config/dependency-injection';
 
 class LocalServer {
@@ -108,7 +104,6 @@ class LocalServer {
     try {
       this.paymentNotificationWorker = container.resolve(PaymentNotificationWorker);
       this.paymentNotificationWorker.start(); // Uses Long Polling (cost-optimized)
-      console.log('[Server] Payment notification worker started (Long Polling enabled)');
     } catch (error) {
       console.error('[Server] Error starting payment notification worker:', error);
       // Don't fail server startup if worker fails
@@ -119,30 +114,32 @@ class LocalServer {
     try {
       this.orderNotificationWorker = container.resolve(OrderNotificationWorker);
       this.orderNotificationWorker.start(); // Uses Long Polling (cost-optimized)
-      console.log('[Server] Order notification worker started (Long Polling enabled)');
     } catch (error) {
       console.error('[Server] Error starting order notification worker:', error);
       // Don't fail server startup if worker fails
     }
   }
 
-  public start(): void {
+  public async start(): Promise<void> {
     const port = this.config.port;
     const host = this.config.host;
 
-    this.httpServer.listen(port, host, () => {
-      console.log(`
-╔══════════════════════════════════════════════════════════╗
-║         Restify API - Local Development Server         ║
-╠══════════════════════════════════════════════════════════╣
-║  Environment: ${this.config.environment.padEnd(43)} ║
-║  Server:      http://${host}:${port.toString().padEnd(36)} ║
-║  Health:      http://${host}:${port}/health${' '.padEnd(27)} ║
-║  API:         http://${host}:${port}/api${' '.padEnd(30)} ║
-║  WebSocket:   ws://${host}:${port}/socket.io${' '.padEnd(20)} ║
-╚══════════════════════════════════════════════════════════╝
-      `);
-    });
+    // Verify database connection before starting server
+    try {
+      const prismaService = container.resolve(PrismaService);
+      await prismaService.connect();
+      
+      const isHealthy = await prismaService.healthCheck();
+      if (!isHealthy) {
+        console.warn('⚠️  [Server] Advertencia: La base de datos no responde correctamente');
+      }
+    } catch (error) {
+      console.error('❌ [Server] Error al conectar con la base de datos:', error);
+      console.error('❌ [Server] El servidor se iniciará pero puede no funcionar correctamente');
+      // No bloqueamos el inicio del servidor, pero advertimos
+    }
+
+    this.httpServer.listen(port, host);
   }
 
   public getApp(): Express {
@@ -157,7 +154,10 @@ class LocalServer {
 // Start server if this file is executed directly
 if (require.main === module) {
   const server = new LocalServer();
-  server.start();
+  server.start().catch((error) => {
+    console.error('❌ [Server] Error al iniciar el servidor:', error);
+    process.exit(1);
+  });
 }
 
 export default LocalServer;

@@ -1,9 +1,10 @@
-import { PrismaClient, ExpenseType } from '@prisma/client';
+import { PrismaClient, ExpenseType, UnitOfMeasure } from '@prisma/client';
 import { injectable } from 'tsyringe';
 import {
   IExpenseRepository,
   ExpenseFilters,
   ExpenseItemInput,
+  ExpenseWithUser,
 } from '../../../domain/interfaces/expense-repository.interface';
 import { Expense } from '../../../domain/entities/expense.entity';
 import { ExpenseItem } from '../../../domain/entities/expense-item.entity';
@@ -64,6 +65,71 @@ export class ExpenseRepository implements IExpenseRepository {
     return expenses.map((expense) => Expense.fromPrisma(expense));
   }
 
+  async findAllWithUser(
+    filters?: ExpenseFilters,
+    pagination?: { skip?: number; take?: number }
+  ): Promise<ExpenseWithUser[]> {
+    const where: any = {};
+
+    if (filters?.type) {
+      where.type = filters.type;
+    }
+
+    if (filters?.userId) {
+      where.userId = filters.userId;
+    }
+
+    if (filters?.paymentMethod) {
+      where.paymentMethod = filters.paymentMethod;
+    }
+
+    if (filters?.dateFrom || filters?.dateTo) {
+      where.date = {};
+      if (filters.dateFrom) {
+        where.date.gte = filters.dateFrom;
+      }
+      if (filters.dateTo) {
+        where.date.lte = filters.dateTo;
+      }
+    }
+
+    const expenses = await this.prisma.expense.findMany({
+      where,
+      orderBy: { date: 'desc' },
+      skip: pagination?.skip,
+      take: pagination?.take,
+      include: {
+        user: {
+          select: {
+            name: true,
+            last_name: true,
+            second_last_name: true,
+          },
+        },
+      },
+    });
+
+    return expenses.map((expense) => ({
+      id: expense.id,
+      title: expense.title,
+      type: expense.type,
+      date: expense.date,
+      total: Number(expense.total),
+      subtotal: Number(expense.subtotal),
+      iva: Number(expense.iva),
+      description: expense.description,
+      paymentMethod: expense.paymentMethod,
+      userId: expense.userId,
+      createdAt: expense.createdAt,
+      updatedAt: expense.updatedAt,
+      user: {
+        name: expense.user.name,
+        last_name: expense.user.last_name,
+        second_last_name: expense.user.second_last_name,
+      },
+    }));
+  }
+
   async count(filters?: ExpenseFilters): Promise<number> {
     const where: any = {};
 
@@ -93,6 +159,7 @@ export class ExpenseRepository implements IExpenseRepository {
   }
 
   async create(data: {
+    title: string;
     type: ExpenseType;
     date: Date;
     total: number;
@@ -104,6 +171,7 @@ export class ExpenseRepository implements IExpenseRepository {
   }): Promise<Expense> {
     const expense = await this.prisma.expense.create({
       data: {
+        title: data.title,
         type: data.type,
         date: data.date,
         total: data.total,
@@ -119,6 +187,7 @@ export class ExpenseRepository implements IExpenseRepository {
   }
 
   async createWithItems(data: {
+    title: string;
     type: ExpenseType;
     date: Date;
     total: number;
@@ -134,6 +203,7 @@ export class ExpenseRepository implements IExpenseRepository {
       // Create expense
       const expense = await tx.expense.create({
         data: {
+          title: data.title,
           type: data.type,
           date: data.date,
           total: data.total,
@@ -157,7 +227,7 @@ export class ExpenseRepository implements IExpenseRepository {
                     amount: item.amount,
                     subtotal: item.subtotal,
                     total: item.total,
-                    unitOfMeasure: item.unitOfMeasure || null,
+                    unitOfMeasure: (item.unitOfMeasure || null) as UnitOfMeasure | null,
                   },
                 })
               )
@@ -176,6 +246,7 @@ export class ExpenseRepository implements IExpenseRepository {
   async update(
     id: string,
     data: {
+      title?: string;
       date?: Date;
       total?: number;
       subtotal?: number;
@@ -186,6 +257,7 @@ export class ExpenseRepository implements IExpenseRepository {
   ): Promise<Expense> {
     const updateData: any = {};
 
+    if (data.title !== undefined) updateData.title = data.title;
     if (data.date !== undefined) updateData.date = data.date;
     if (data.total !== undefined) updateData.total = data.total;
     if (data.subtotal !== undefined) updateData.subtotal = data.subtotal;
@@ -223,7 +295,7 @@ export class ExpenseRepository implements IExpenseRepository {
         amount: data.amount,
         subtotal: data.subtotal,
         total: data.total,
-        unitOfMeasure: data.unitOfMeasure || null,
+        unitOfMeasure: (data.unitOfMeasure || null) as UnitOfMeasure | null,
       },
     });
 

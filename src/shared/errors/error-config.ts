@@ -110,6 +110,16 @@ export const ERROR_CONFIG = {
     statusCode: 404,
     category: 'BUSINESS',
   },
+  INVALID_MENU_ITEM: {
+    message: 'Menu item is an extra and should be in the extras array',
+    statusCode: 400,
+    category: 'VALIDATION',
+  },
+  INVALID_EXTRA: {
+    message: 'Menu item is not an extra',
+    statusCode: 400,
+    category: 'VALIDATION',
+  },
   INSUFFICIENT_STOCK: {
     message: 'Insufficient stock',
     statusCode: 400,
@@ -122,6 +132,11 @@ export const ERROR_CONFIG = {
   },
   ORDER_ALREADY_PAID: {
     message: 'Order has already been paid',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
+  PAYMENT_AMOUNT_MISMATCH: {
+    message: 'Payment amount must match order total',
     statusCode: 400,
     category: 'BUSINESS',
   },

@@ -7,8 +7,9 @@ export class PrismaService {
 
   constructor() {
     this.client = new PrismaClient({
-      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+      log: ['error'],
     });
+    
   }
 
   getClient(): PrismaClient {
@@ -16,7 +17,12 @@ export class PrismaService {
   }
 
   async connect(): Promise<void> {
-    await this.client.$connect();
+    try {
+      await this.client.$connect();
+    } catch (error) {
+      console.error('❌ [Prisma] Error al conectar a la base de datos:', error);
+      throw error;
+    }
   }
 
   async disconnect(): Promise<void> {
@@ -27,7 +33,8 @@ export class PrismaService {
     try {
       await this.client.$queryRaw`SELECT 1`;
       return true;
-    } catch {
+    } catch (error) {
+      console.error('❌ [Prisma] Health check falló:', error);
       return false;
     }
   }

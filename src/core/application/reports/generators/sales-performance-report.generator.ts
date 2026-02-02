@@ -34,7 +34,7 @@ export class SalesPerformanceReportGenerator extends BaseReportGenerator {
   constructor(
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
-    @inject('PrismaService') private readonly prismaService: PrismaService
+    @inject(PrismaService) private readonly prismaService: PrismaService
   ) {
     super();
     this.prisma = this.prismaService.getClient();
@@ -53,10 +53,11 @@ export class SalesPerformanceReportGenerator extends BaseReportGenerator {
       if (filters.dateTo) dateFilter.date.lte = filters.dateTo;
     }
 
-    // Fetch order menu items with relations for the date range
-    // Only include completed orders (status = true)
-    const orderMenuItems = await this.prisma.orderMenuItem.findMany({
+    // Fetch order items with menu items for the date range
+    // Only include completed orders (status = true) and items that have menuItemId
+    const orderItems = await this.prisma.orderItem.findMany({
       where: {
+        menuItemId: { not: null },
         order: {
           status: true, // Only paid orders
           ...dateFilter,
@@ -82,13 +83,13 @@ export class SalesPerformanceReportGenerator extends BaseReportGenerator {
     const allMenuItems = await this.menuItemRepository.findAll({ status: true });
 
     return {
-      orderMenuItems,
+      orderItems,
       allMenuItems,
     };
   }
 
   protected transformData(rawData: any, filters: BaseReportFilters): SalesPerformanceReportData {
-    const { orderMenuItems, allMenuItems } = rawData;
+    const { orderItems, allMenuItems } = rawData;
 
     // Group sales by menu item
     const salesMap = new Map<string, {
@@ -99,12 +100,14 @@ export class SalesPerformanceReportGenerator extends BaseReportGenerator {
       totalSold: number;
     }>();
 
-    // Process all order menu items
-    orderMenuItems.forEach((orderMenuItem: any) => {
-      const menuItemId = orderMenuItem.menuItemId;
-      const menuItem = orderMenuItem.menuItem;
-      const quantity = orderMenuItem.amount;
-      const unitPrice = Number(orderMenuItem.unitPrice);
+    // Process all order items with menu items
+    orderItems.forEach((orderItem: any) => {
+      if (!orderItem.menuItemId) return; // Skip items without menuItemId
+      
+      const menuItemId = orderItem.menuItemId;
+      const menuItem = orderItem.menuItem;
+      const quantity = orderItem.quantity;
+      const unitPrice = Number(orderItem.price);
       const total = quantity * unitPrice;
 
       if (!salesMap.has(menuItemId)) {

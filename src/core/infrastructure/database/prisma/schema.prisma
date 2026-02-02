@@ -84,7 +84,7 @@ model Order {
   user                   User                    @relation(fields: [userId], references: [id])
   table                  Table?                  @relation(fields: [tableId], references: [id])
   orderItems             OrderItem[]
-  orderMenuItems         OrderMenuItem[]
+  orderItemExtras        OrderItemExtra[]
   payments               Payment[]
   paymentDifferentiation PaymentDifferentiation?
 
@@ -99,21 +99,48 @@ model Order {
 
 // Order Item Entity
 model OrderItem {
-  id        String   @id @default(uuid())
-  quantity  Int
-  price     Decimal  @db.Decimal(10, 2)
-  orderId   String
-  productId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(uuid())
+  quantity   Int
+  price      Decimal  @db.Decimal(10, 2)
+  orderId    String
+  productId  String?
+  menuItemId String?
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relations
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  order    Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product  Product?         @relation(fields: [productId], references: [id])
+  menuItem MenuItem?        @relation(fields: [menuItemId], references: [id])
+  extras   OrderItemExtra[]
 
   @@index([orderId])
   @@index([productId])
+  @@index([menuItemId])
   @@map("order_items")
+}
+
+// Order Item Extra Entity (Extras associated with order items)
+model OrderItemExtra {
+  id          String   @id @default(uuid())
+  orderId     String
+  orderItemId String
+  extraId     String   // MenuItem with isExtra: true
+  quantity    Int      @default(1)
+  price       Decimal  @db.Decimal(10, 2) // Price snapshot at order time
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  extra     MenuItem  @relation(fields: [extraId], references: [id])
+
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([extraId])
+  @@map("order_item_extras")
 }
 
 // Payment Entity
@@ -255,45 +282,29 @@ model MenuItem {
   name       String
   price      Decimal  @db.Decimal(10, 2)
   status     Boolean  @default(true)
-  categoryId String
+  isExtra    Boolean  @default(false) // Flag to identify extras
+  categoryId String?  // Optional - menu item can exist without a category
   userId     String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   // Relations
-  category       MenuCategory    @relation(fields: [categoryId], references: [id])
+  category       MenuCategory?   @relation(fields: [categoryId], references: [id])
   user           User            @relation(fields: [userId], references: [id])
-  orderMenuItems OrderMenuItem[]
+  orderItems     OrderItem[]
+  orderItemExtras OrderItemExtra[]
 
   @@index([categoryId])
   @@index([userId])
   @@index([status])
+  @@index([isExtra])
   @@map("menu_items")
-}
-
-// Order Menu Item Entity (Relation between Orders and Menu Items - previously "orders_saourcers")
-model OrderMenuItem {
-  id         String   @id @default(uuid())
-  orderId    String
-  menuItemId String
-  amount     Int // Quantity
-  unitPrice  Decimal  @db.Decimal(10, 2)
-  note       String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  // Relations
-  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
-
-  @@index([orderId])
-  @@index([menuItemId])
-  @@map("order_menu_items")
 }
 
 // Expense Entity (Unified expenses module - replaces PurchaseMerchandise and BusinessServicePayment)
 model Expense {
   id            String      @id @default(uuid())
+  title         String      // Título obligatorio del gasto (máx. 200 caracteres)
   type          ExpenseType
   date          DateTime    @default(now())
   total         Decimal     @db.Decimal(10, 2)
@@ -323,7 +334,7 @@ model ExpenseItem {
   amount    Decimal  @db.Decimal(10, 2)
   subtotal Decimal  @db.Decimal(10, 2)
   total     Decimal  @db.Decimal(10, 2)
-  unitOfMeasure String?
+  unitOfMeasure UnitOfMeasure?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -382,4 +393,12 @@ enum ExpenseType {
   RENT              // Renta
   MERCHANDISE       // Compra de mercancía (con items de productos)
   OTHER             // Otros gastos
+}
+
+// Unidades de medida para ítems de gastos (mercancía): Kilogramos, Gramos, Piezas, Otros
+enum UnitOfMeasure {
+  KG    // Kilogramos
+  G     // Gramos
+  PCS   // Piezas
+  OTHER // Otros
 }

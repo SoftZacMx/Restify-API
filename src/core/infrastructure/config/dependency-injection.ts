@@ -40,6 +40,10 @@ import { WebSocketConnectionRepository } from '../database/repositories/websocke
 import { IWebSocketConnectionRepository } from '../../domain/interfaces/websocket-connection-repository.interface';
 import { RegisterWebSocketConnectionUseCase } from '../../application/use-cases/websocket/register-websocket-connection.use-case';
 import { UnregisterWebSocketConnectionUseCase } from '../../application/use-cases/websocket/unregister-websocket-connection.use-case';
+import { PayOrderUseCase } from '../../application/use-cases/orders/pay-order.use-case';
+import { GetDashboardUseCase } from '../../application/use-cases/dashboard/get-dashboard.use-case';
+import { GetKitchenTicketUseCase } from '../../application/use-cases/tickets/get-kitchen-ticket.use-case';
+import { GetSaleTicketUseCase } from '../../application/use-cases/tickets/get-sale-ticket.use-case';
 
 // Register Prisma Service
 container.registerSingleton(PrismaService);
@@ -135,6 +139,16 @@ container.registerSingleton<IWebSocketConnectionRepository>(
 // Register WebSocket Connection Use Cases
 container.register(RegisterWebSocketConnectionUseCase, RegisterWebSocketConnectionUseCase);
 container.register(UnregisterWebSocketConnectionUseCase, UnregisterWebSocketConnectionUseCase);
+
+// Pay order (unified endpoint, transaction)
+container.register(PayOrderUseCase, PayOrderUseCase);
+
+// Dashboard
+container.register(GetDashboardUseCase, GetDashboardUseCase);
+
+// Tickets (kitchen-ticket, sale-ticket)
+container.register(GetKitchenTicketUseCase, GetKitchenTicketUseCase);
+container.register(GetSaleTicketUseCase, GetSaleTicketUseCase);
 
 export { container };
 

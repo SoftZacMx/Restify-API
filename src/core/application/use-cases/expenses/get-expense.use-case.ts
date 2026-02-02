@@ -5,6 +5,7 @@ import { AppError } from '../../../../shared/errors';
 
 export interface GetExpenseResult {
   id: string;
+  title: string;
   type: string;
   date: Date;
   total: number;
@@ -45,6 +46,7 @@ export class GetExpenseUseCase {
 
     return {
       id: expense.id,
+      title: expense.title,
       type: expense.type,
       date: expense.date,
       total: expense.total,

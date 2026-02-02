@@ -8,6 +8,7 @@ import { ExpenseType } from '@prisma/client';
 export interface CreateExpenseResult {
   expense: {
     id: string;
+    title: string;
     type: ExpenseType;
     date: Date;
     total: number;
@@ -82,6 +83,7 @@ export class CreateExpenseUseCase {
 
       // Create expense with items in a transaction
       const result = await this.expenseRepository.createWithItems({
+        title: input.title,
         type: input.type,
         date: input.date ? new Date(input.date) : new Date(),
         total: input.total,
@@ -102,6 +104,7 @@ export class CreateExpenseUseCase {
       return {
         expense: {
           id: result.expense.id,
+          title: result.expense.title,
           type: result.expense.type,
           date: result.expense.date,
           total: result.expense.total,
@@ -129,6 +132,7 @@ export class CreateExpenseUseCase {
 
       // Create expense without items
       const expense = await this.expenseRepository.create({
+        title: input.title,
         type: input.type,
         date: input.date ? new Date(input.date) : new Date(),
         total: input.total,
@@ -142,6 +146,7 @@ export class CreateExpenseUseCase {
       return {
         expense: {
           id: expense.id,
+          title: expense.title,
           type: expense.type,
           date: expense.date,
           total: expense.total,

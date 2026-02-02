@@ -18,7 +18,8 @@ export class MenuItemRepository implements IMenuItemRepository {
       menuItem.id,
       menuItem.name,
       Number(menuItem.price),
-      menuItem.status,
+      Boolean(menuItem.status),
+      Boolean(menuItem.isExtra), // Asegurar conversión explícita a boolean
       menuItem.categoryId,
       menuItem.userId,
       menuItem.createdAt,
@@ -31,6 +32,10 @@ export class MenuItemRepository implements IMenuItemRepository {
 
     if (filters?.status !== undefined) {
       where.status = filters.status;
+    }
+
+    if (filters?.isExtra !== undefined) {
+      where.isExtra = filters.isExtra;
     }
 
     if (filters?.categoryId) {
@@ -58,7 +63,8 @@ export class MenuItemRepository implements IMenuItemRepository {
           menuItem.id,
           menuItem.name,
           Number(menuItem.price),
-          menuItem.status,
+          Boolean(menuItem.status),
+          Boolean(menuItem.isExtra), // Asegurar conversión explícita a boolean
           menuItem.categoryId,
           menuItem.userId,
           menuItem.createdAt,
@@ -71,7 +77,8 @@ export class MenuItemRepository implements IMenuItemRepository {
     name: string;
     price: number;
     status: boolean;
-    categoryId: string;
+    isExtra: boolean;
+    categoryId: string | null;
     userId: string;
   }): Promise<MenuItem> {
     const menuItem = await this.prisma.menuItem.create({
@@ -79,6 +86,7 @@ export class MenuItemRepository implements IMenuItemRepository {
         name: data.name,
         price: data.price,
         status: data.status,
+        isExtra: data.isExtra,
         categoryId: data.categoryId,
         userId: data.userId,
       },
@@ -88,7 +96,8 @@ export class MenuItemRepository implements IMenuItemRepository {
       menuItem.id,
       menuItem.name,
       Number(menuItem.price),
-      menuItem.status,
+      Boolean(menuItem.status),
+      Boolean(menuItem.isExtra), // Asegurar conversión explícita a boolean
       menuItem.categoryId,
       menuItem.userId,
       menuItem.createdAt,
@@ -102,6 +111,7 @@ export class MenuItemRepository implements IMenuItemRepository {
       name?: string;
       price?: number;
       status?: boolean;
+      isExtra?: boolean;
       categoryId?: string;
       userId?: string;
     }
@@ -111,6 +121,7 @@ export class MenuItemRepository implements IMenuItemRepository {
     if (data.name !== undefined) updateData.name = data.name;
     if (data.price !== undefined) updateData.price = data.price;
     if (data.status !== undefined) updateData.status = data.status;
+    if (data.isExtra !== undefined) updateData.isExtra = data.isExtra;
     if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
     if (data.userId !== undefined) updateData.userId = data.userId;
 
@@ -123,7 +134,8 @@ export class MenuItemRepository implements IMenuItemRepository {
       menuItem.id,
       menuItem.name,
       Number(menuItem.price),
-      menuItem.status,
+      Boolean(menuItem.status),
+      Boolean(menuItem.isExtra), // Asegurar conversión explícita a boolean
       menuItem.categoryId,
       menuItem.userId,
       menuItem.createdAt,

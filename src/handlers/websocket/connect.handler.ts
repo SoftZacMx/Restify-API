@@ -22,8 +22,6 @@ const connectHandlerBase = async (
   const paymentId = queryParams.paymentId;
   const userId = queryParams.userId;
 
-  console.log(`[WebSocket Connect] Connection ID: ${connectionId}, Custom: ${customConnectionId}`);
-
   // Register connection
   const registerUseCase = container.resolve(RegisterWebSocketConnectionUseCase);
   const result = await registerUseCase.execute({

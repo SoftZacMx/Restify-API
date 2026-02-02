@@ -34,8 +34,6 @@ export class WebSocketServer {
 
   private setupEventHandlers(): void {
     this.io.on('connection', async (socket: Socket) => {
-      console.log(`[WebSocket] Client connected: ${socket.id}`);
-
       // Handle connection registration
       socket.on('register_connection', async (data: { connectionId: string; paymentId?: string; userId?: string; token?: string }) => {
         try {
@@ -205,7 +203,6 @@ export class WebSocketServer {
           };
 
           socket.emit(WebSocketEventType.CONNECTION_ACK, ackMessage);
-          console.log(`[WebSocket] Connection registered: ${connectionId} (socket: ${socket.id})`);
         } catch (error) {
           console.error('[WebSocket] Error registering connection:', error);
           socket.emit(WebSocketEventType.ERROR, {
@@ -221,7 +218,6 @@ export class WebSocketServer {
 
       // Handle disconnect
       socket.on('disconnect', () => {
-        console.log(`[WebSocket] Client disconnected: ${socket.id}`);
         this.connectionManager.removeConnection(socket.id);
       });
 

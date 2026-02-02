@@ -4,7 +4,8 @@ export class MenuItem {
     public readonly name: string,
     public readonly price: number,
     public readonly status: boolean,
-    public readonly categoryId: string,
+    public readonly isExtra: boolean,
+    public readonly categoryId: string | null,
     public readonly userId: string,
     public readonly createdAt: Date,
     public readonly updatedAt: Date

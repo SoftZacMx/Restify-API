@@ -14,8 +14,6 @@ const disconnectHandlerBase = async (
 ): Promise<APIGatewayProxyWebsocketResult> => {
   const connectionId = event.requestContext.connectionId;
 
-  console.log(`[WebSocket Disconnect] Connection ID: ${connectionId}`);
-
   // Unregister connection
   const unregisterUseCase = container.resolve(UnregisterWebSocketConnectionUseCase);
   await unregisterUseCase.execute({ connectionId });

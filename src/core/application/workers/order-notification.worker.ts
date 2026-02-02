@@ -30,12 +30,10 @@ export class OrderNotificationWorker {
    */
   start(): void {
     if (this.isRunning) {
-      console.log('[OrderNotificationWorker] Worker is already running');
       return;
     }
 
     this.isRunning = true;
-    console.log('[OrderNotificationWorker] Starting worker with Long Polling (cost-optimized)...');
 
     // Start continuous processing (no interval - uses Long Polling instead)
     this.startContinuousProcessing();
@@ -50,7 +48,6 @@ export class OrderNotificationWorker {
     }
 
     this.isRunning = false;
-    console.log('[OrderNotificationWorker] Worker stopped');
   }
 
   /**
@@ -101,8 +98,6 @@ export class OrderNotificationWorker {
         return; // No messages to process
       }
 
-      console.log(`[OrderNotificationWorker] Processing ${messages.length} notification(s)`);
-
       // Process messages in parallel
       const processingPromises = messages.map(async (msg) => {
         try {
@@ -124,11 +119,8 @@ export class OrderNotificationWorker {
           if (result.notified) {
             // Successfully notified, delete message from queue
             await this.sqsService.deleteOrderMessage(msg.receiptHandle);
-            console.log(`[OrderNotificationWorker] Notification delivered: ${msg.body.orderId} (${msg.body.notificationType})`);
           } else {
             // Staff not connected, message will be retried by SQS
-            // SQS will make the message visible again after visibility timeout
-            console.log(`[OrderNotificationWorker] Staff not connected, will retry: ${msg.body.orderId}`);
             // Don't delete message - let SQS handle retry
           }
         } catch (error) {

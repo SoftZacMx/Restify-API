@@ -58,6 +58,51 @@ export const payOrderWithSplitPaymentSchema = z.object({
   }
 );
 
+// Pay Order - Single payment payload (for unified endpoint)
+const payOrderSinglePayload = z.object({
+  paymentMethod: z.enum(['CASH', 'TRANSFER', 'CARD_PHYSICAL'], {
+    errorMap: () => ({ message: 'paymentMethod must be CASH, TRANSFER or CARD_PHYSICAL' }),
+  }),
+  amount: z.number().positive('Amount must be positive').multipleOf(0.01, 'Amount must have at most 2 decimal places'),
+  transferNumber: z.string().max(100, 'Transfer number is too long').optional(),
+});
+
+// Pay Order - Split payment payload (for unified endpoint)
+const payOrderSplitPayload = z
+  .object({
+    firstPayment: z.object({
+      amount: z.number().positive('Amount must be positive').multipleOf(0.01, 'Amount must have at most 2 decimal places'),
+      paymentMethod: z.enum(['CASH', 'TRANSFER', 'CARD_PHYSICAL'], {
+        errorMap: () => ({ message: 'First payment method must be CASH, TRANSFER or CARD_PHYSICAL' }),
+      }),
+    }),
+    secondPayment: z.object({
+      amount: z.number().positive('Amount must be positive').multipleOf(0.01, 'Amount must have at most 2 decimal places'),
+      paymentMethod: z.enum(['CASH', 'TRANSFER', 'CARD_PHYSICAL'], {
+        errorMap: () => ({ message: 'Second payment method must be CASH, TRANSFER or CARD_PHYSICAL' }),
+      }),
+    }),
+  })
+  .refine((data) => data.firstPayment.paymentMethod !== data.secondPayment.paymentMethod, {
+    message: 'Split payments must use different payment methods',
+    path: ['secondPayment', 'paymentMethod'],
+  })
+  .refine((data) => data.firstPayment.amount + data.secondPayment.amount > 0, {
+    message: 'Total payment amount must be positive',
+  });
+
+/**
+ * Pay Order Schema (POST /api/orders/:order_id/pay) - UNIFIED: pago único O pago dividido.
+ * Body: orderId (from path) + either single { paymentMethod, amount, transferNumber? } or split { firstPayment, secondPayment }.
+ */
+export const payOrderSchema = z
+  .object({
+    orderId: z.string().uuid('Invalid order ID format'),
+  })
+  .and(z.union([payOrderSplitPayload, payOrderSinglePayload]));
+
+export type PayOrderInput = z.infer<typeof payOrderSchema>;
+
 // Confirm Stripe Payment Schema
 export const confirmStripePaymentSchema = z.object({
   paymentIntentId: z.string().min(1, 'Payment intent ID is required'),

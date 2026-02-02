@@ -10,7 +10,8 @@ export interface CreateMenuItemResult {
   name: string;
   price: number;
   status: boolean;
-  categoryId: string;
+  isExtra: boolean;
+  categoryId: string | null;
   userId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -25,10 +26,12 @@ export class CreateMenuItemUseCase {
   ) {}
 
   async execute(input: CreateMenuItemInput): Promise<CreateMenuItemResult> {
-    // Verify that category exists
-    const category = await this.menuCategoryRepository.findById(input.categoryId);
-    if (!category) {
-      throw new AppError('MENU_CATEGORY_NOT_FOUND');
+    // Verify that category exists (only if provided)
+    if (input.categoryId) {
+      const category = await this.menuCategoryRepository.findById(input.categoryId);
+      if (!category) {
+        throw new AppError('MENU_CATEGORY_NOT_FOUND');
+      }
     }
 
     // Verify that user exists
@@ -42,7 +45,8 @@ export class CreateMenuItemUseCase {
       name: input.name,
       price: input.price,
       status: input.status ?? true,
-      categoryId: input.categoryId,
+      isExtra: input.isExtra ?? false,
+      categoryId: input.categoryId || null,
       userId: input.userId,
     });
 
@@ -51,6 +55,7 @@ export class CreateMenuItemUseCase {
       name: menuItem.name,
       price: menuItem.price,
       status: menuItem.status,
+      isExtra: menuItem.isExtra,
       categoryId: menuItem.categoryId,
       userId: menuItem.userId,
       createdAt: menuItem.createdAt,

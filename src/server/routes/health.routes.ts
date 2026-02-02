@@ -13,11 +13,26 @@ router.get('/', async (req: Request, res: Response) => {
     const prismaService = container.resolve(PrismaService);
     const dbHealthy = await prismaService.healthCheck();
 
+    // Get database connection info (without sensitive data)
+    const dbUrl = process.env.DATABASE_URL;
+    let dbInfo = 'unknown';
+    if (dbUrl) {
+      try {
+        const urlObj = new URL(dbUrl.replace('mysql://', 'http://'));
+        dbInfo = `${urlObj.hostname}:${urlObj.port || 3306}/${urlObj.pathname.replace('/', '')}`;
+      } catch {
+        dbInfo = 'configured';
+      }
+    }
+
     const health = {
-      status: 'ok',
+      status: dbHealthy ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
       services: {
-        database: dbHealthy ? 'healthy' : 'unhealthy',
+        database: {
+          status: dbHealthy ? 'healthy' : 'unhealthy',
+          connection: dbInfo,
+        },
         api: 'healthy',
       },
     };
@@ -25,12 +40,15 @@ router.get('/', async (req: Request, res: Response) => {
     const statusCode = dbHealthy ? 200 : 503;
     res.status(statusCode).json(health);
   } catch (error) {
-    console.error('Health check error:', error);
+    console.error('❌ [Health] Health check error:', error);
     res.status(503).json({
       status: 'error',
       timestamp: new Date().toISOString(),
       services: {
-        database: 'unhealthy',
+        database: {
+          status: 'unhealthy',
+          connection: 'error',
+        },
         api: 'healthy',
       },
       error: {

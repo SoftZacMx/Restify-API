@@ -62,6 +62,7 @@ describe('ExpenseAnalysisReportGenerator', () => {
       const mockExpenses = [
         new Expense(
           'expense-1',
+          'Cleaning service',
           ExpenseType.SERVICE_BUSINESS,
           new Date('2024-01-10'),
           500,
@@ -75,6 +76,7 @@ describe('ExpenseAnalysisReportGenerator', () => {
         ),
         new Expense(
           'expense-2',
+          'Electricity',
           ExpenseType.UTILITY,
           new Date('2024-01-15'),
           300,
@@ -88,6 +90,7 @@ describe('ExpenseAnalysisReportGenerator', () => {
         ),
         new Expense(
           'expense-3',
+          'Food supplies',
           ExpenseType.MERCHANDISE,
           new Date('2024-01-20'),
           800,
@@ -121,7 +124,7 @@ describe('ExpenseAnalysisReportGenerator', () => {
 
     it('should calculate percentages correctly', async () => {
       const mockExpenses = [
-        new Expense('expense-1', ExpenseType.SERVICE_BUSINESS, new Date(), 1000, 900, 100, null, 1, 'user-1', new Date(), new Date()),
+        new Expense('expense-1', 'Expense 1', ExpenseType.SERVICE_BUSINESS, new Date(), 1000, 900, 100, null, 1, 'user-1', new Date(), new Date()),
       ];
 
       const mockEmployeeSalaries = [
@@ -140,9 +143,9 @@ describe('ExpenseAnalysisReportGenerator', () => {
 
     it('should group expenses by payment method', async () => {
       const mockExpenses = [
-        new Expense('expense-1', ExpenseType.SERVICE_BUSINESS, new Date(), 500, 450, 50, null, 1, 'user-1', new Date(), new Date()), // Cash
-        new Expense('expense-2', ExpenseType.UTILITY, new Date(), 300, 270, 30, null, 2, 'user-1', new Date(), new Date()), // Transfer
-        new Expense('expense-3', ExpenseType.MERCHANDISE, new Date(), 200, 180, 20, null, 3, 'user-1', new Date(), new Date()), // Card
+        new Expense('expense-1', 'Expense 1', ExpenseType.SERVICE_BUSINESS, new Date(), 500, 450, 50, null, 1, 'user-1', new Date(), new Date()), // Cash
+        new Expense('expense-2', 'Expense 2', ExpenseType.UTILITY, new Date(), 300, 270, 30, null, 2, 'user-1', new Date(), new Date()), // Transfer
+        new Expense('expense-3', 'Expense 3', ExpenseType.MERCHANDISE, new Date(), 200, 180, 20, null, 3, 'user-1', new Date(), new Date()), // Card
       ];
 
       const mockEmployeeSalaries = [
@@ -161,8 +164,8 @@ describe('ExpenseAnalysisReportGenerator', () => {
 
     it('should identify largest expense category', async () => {
       const mockExpenses = [
-        new Expense('expense-1', ExpenseType.SERVICE_BUSINESS, new Date(), 500, 450, 50, null, 1, 'user-1', new Date(), new Date()),
-        new Expense('expense-2', ExpenseType.MERCHANDISE, new Date(), 2000, 1800, 200, null, 1, 'user-1', new Date(), new Date()), // Largest
+        new Expense('expense-1', 'Expense 1', ExpenseType.SERVICE_BUSINESS, new Date(), 500, 450, 50, null, 1, 'user-1', new Date(), new Date()),
+        new Expense('expense-2', 'Expense 2', ExpenseType.MERCHANDISE, new Date(), 2000, 1800, 200, null, 1, 'user-1', new Date(), new Date()), // Largest
       ];
 
       const mockEmployeeSalaries = [
@@ -179,8 +182,8 @@ describe('ExpenseAnalysisReportGenerator', () => {
 
     it('should calculate average expense correctly', async () => {
       const mockExpenses = [
-        new Expense('expense-1', ExpenseType.SERVICE_BUSINESS, new Date(), 1000, 900, 100, null, 1, 'user-1', new Date(), new Date()),
-        new Expense('expense-2', ExpenseType.UTILITY, new Date(), 2000, 1800, 200, null, 1, 'user-1', new Date(), new Date()),
+        new Expense('expense-1', 'Expense 1', ExpenseType.SERVICE_BUSINESS, new Date(), 1000, 900, 100, null, 1, 'user-1', new Date(), new Date()),
+        new Expense('expense-2', 'Expense 2', ExpenseType.UTILITY, new Date(), 2000, 1800, 200, null, 1, 'user-1', new Date(), new Date()),
       ];
 
       const mockEmployeeSalaries = [

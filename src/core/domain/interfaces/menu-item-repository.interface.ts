@@ -2,6 +2,7 @@ import { MenuItem } from '../entities/menu-item.entity';
 
 export interface MenuItemFilters {
   status?: boolean;
+  isExtra?: boolean;
   categoryId?: string;
   userId?: string;
   search?: string; // For searching by name
@@ -14,13 +15,15 @@ export interface IMenuItemRepository {
     name: string;
     price: number;
     status: boolean;
-    categoryId: string;
+    isExtra: boolean;
+    categoryId: string | null;
     userId: string;
   }): Promise<MenuItem>;
   update(id: string, data: {
     name?: string;
     price?: number;
     status?: boolean;
+    isExtra?: boolean;
     categoryId?: string;
     userId?: string;
   }): Promise<MenuItem>;

@@ -10,7 +10,8 @@ export interface UpdateMenuItemResult {
   name: string;
   price: number;
   status: boolean;
-  categoryId: string;
+  isExtra: boolean;
+  categoryId: string | null;
   userId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -31,8 +32,8 @@ export class UpdateMenuItemUseCase {
       throw new AppError('MENU_ITEM_NOT_FOUND');
     }
 
-    // If categoryId is being updated, verify that category exists
-    if (input.categoryId !== undefined) {
+    // If categoryId is being updated, verify that category exists (only if not null)
+    if (input.categoryId !== undefined && input.categoryId !== null) {
       const category = await this.menuCategoryRepository.findById(input.categoryId);
       if (!category) {
         throw new AppError('MENU_CATEGORY_NOT_FOUND');
@@ -53,6 +54,7 @@ export class UpdateMenuItemUseCase {
     if (input.name !== undefined) updateData.name = input.name;
     if (input.price !== undefined) updateData.price = input.price;
     if (input.status !== undefined) updateData.status = input.status;
+    if (input.isExtra !== undefined) updateData.isExtra = input.isExtra;
     if (input.categoryId !== undefined) updateData.categoryId = input.categoryId;
     if (input.userId !== undefined) updateData.userId = input.userId;
 
@@ -64,6 +66,7 @@ export class UpdateMenuItemUseCase {
       name: menuItem.name,
       price: menuItem.price,
       status: menuItem.status,
+      isExtra: menuItem.isExtra,
       categoryId: menuItem.categoryId,
       userId: menuItem.userId,
       createdAt: menuItem.createdAt,

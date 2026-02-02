@@ -147,6 +147,7 @@ const exampleBodies: Record<string, any> = {
     reason: 'Customer request',
   },
   'POST /api/expenses': {
+    title: 'Compra de insumos',
     type: 'MERCHANDISE',
     date: new Date().toISOString(),
     total: 100.00,
@@ -161,7 +162,7 @@ const exampleBodies: Record<string, any> = {
         amount: 10.00,
         subtotal: 9.00,
         total: 10.00,
-        unitOfMeasure: 'kg',
+        unitOfMeasure: 'KG',
       },
     ],
   },
