@@ -7,6 +7,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 import express, { Express, Request, Response, NextFunction } from 'express';
 import http from 'http';
+import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { getServerConfig } from './config/server.config';
 import routes from './routes';
@@ -36,27 +37,15 @@ class LocalServer {
   }
 
   private setupMiddleware(): void {
-    // CORS: permitir cualquier origen; siempre enviar Access-Control-Allow-Origin para evitar bloqueos del navegador.
-    const { cors: corsConfig } = this.config;
-    this.app.use((req: Request, res: Response, next: NextFunction) => {
-      let origin = (req.headers.origin || '').trim();
-      if (!origin && corsConfig.allowedOrigins.length > 0) {
-        origin = corsConfig.allowedOrigins[0];
-      }
-      if (!origin) {
-        origin = '*';
-      }
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Vary', 'Origin');
-      // Con origin '*' el navegador no permite credentials; con origen concreto sí.
-      res.setHeader('Access-Control-Allow-Credentials', origin === '*' ? 'false' : 'true');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-      if (req.method === 'OPTIONS') {
-        return res.status(204).end();
-      }
-      next();
-    });
+    // CORS: paquete estándar; refleja el origen de la petición (cualquier origen permitido) y permite credentials.
+    this.app.use(
+      cors({
+        origin: true, // refleja req.headers.origin (cualquier origen)
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+      })
+    );
     // Cookie parser - must be before body parsing
     this.app.use(cookieParser());
 
