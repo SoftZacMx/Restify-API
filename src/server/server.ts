@@ -37,6 +37,9 @@ class LocalServer {
   }
 
   private setupMiddleware(): void {
+    // Trust proxy (Railway, etc.) para que express-rate-limit use X-Forwarded-For correctamente.
+    this.app.set('trust proxy', 1);
+
     const corsOptions: cors.CorsOptions = {
       origin: true,
       credentials: true,
