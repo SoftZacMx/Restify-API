@@ -36,22 +36,20 @@ class LocalServer {
   }
 
   private setupMiddleware(): void {
-    // CORS: cabeceras manuales para que funcione siempre (Railway, proxies, etc.)
+    // CORS: permitir cualquier origen; siempre enviar Access-Control-Allow-Origin para evitar bloqueos del navegador.
     const { cors: corsConfig } = this.config;
     this.app.use((req: Request, res: Response, next: NextFunction) => {
       let origin = (req.headers.origin || '').trim();
       if (!origin && corsConfig.allowedOrigins.length > 0) {
         origin = corsConfig.allowedOrigins[0];
       }
-      if (!origin && this.config.environment === 'production') {
-        // Fallback en producción: permitir el frontend típico de Railway
-        origin = 'https://restify-frontend-production-9ce6.up.railway.app';
+      if (!origin) {
+        origin = '*';
       }
-      if (origin) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-      }
+      res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      // Con origin '*' el navegador no permite credentials; con origen concreto sí.
+      res.setHeader('Access-Control-Allow-Credentials', origin === '*' ? 'false' : 'true');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       if (req.method === 'OPTIONS') {
