@@ -112,14 +112,18 @@ class LocalServer {
     const host = this.config.host;
 
     // Escuchar primero para que Railway/proxy reciba respuestas de inmediato (evita 502 en OPTIONS/health).
-    this.httpServer.listen(port, host);
+    this.httpServer.listen(port, host, () => {
+      console.log(`[Server] API escuchando en http://${host}:${port} (NODE_ENV=${this.config.environment})`);
+    });
 
     // Comprobar DB en segundo plano; no bloquear el arranque.
     try {
       const prismaService = container.resolve(PrismaService);
       await prismaService.connect();
       const isHealthy = await prismaService.healthCheck();
-      if (!isHealthy) {
+      if (isHealthy) {
+        console.log('[Server] Conectado a la base de datos correctamente. API lista.');
+      } else {
         console.warn('⚠️  [Server] Advertencia: La base de datos no responde correctamente');
       }
     } catch (error) {
