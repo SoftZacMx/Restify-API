@@ -18,35 +18,15 @@ export function stripEnvQuotes(s: string): string {
 }
 
 export const getServerConfig = (): ServerConfig => {
-  const isDevelopment = process.env.NODE_ENV !== 'production';
-  const corsOriginRaw = process.env.CORS_ORIGIN ? stripEnvQuotes(process.env.CORS_ORIGIN) : '';
-  const corsOrigin = corsOriginRaw
-    ? corsOriginRaw.split(',').map((o) => stripEnvQuotes(o.trim()))
-    : (isDevelopment ? ['http://localhost:5173', 'http://localhost:3000'] : '*');
-  const corsCredentials = process.env.CORS_CREDENTIALS !== 'false'; // Default to true unless explicitly disabled
-
-  // If credentials are enabled, origin cannot be '*'. In production with no CORS_ORIGIN, reflect request origin (allow any).
-  const finalOrigin =
-    corsCredentials && corsOrigin === '*'
-      ? isDevelopment
-        ? ['http://localhost:5173', 'http://localhost:3000']
-        : true // reflect request Origin so CORS works even if CORS_ORIGIN not set in Railway
-      : corsOrigin;
-
-  const allowedOrigins = Array.isArray(corsOrigin)
-    ? corsOrigin
-    : corsOrigin === '*'
-      ? []
-      : [corsOrigin as string];
-
+  // CORS: siempre cualquier origen, sin restricción (dev, qa, producción).
   return {
     port: parseInt(process.env.PORT || '3000', 10),
     host: process.env.HOST || '0.0.0.0',
     environment: process.env.NODE_ENV || 'development',
     cors: {
-      origin: finalOrigin,
-      credentials: corsCredentials,
-      allowedOrigins,
+      origin: true,
+      credentials: true,
+      allowedOrigins: [],
     },
   };
 };
