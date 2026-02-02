@@ -51,11 +51,13 @@ class LocalServer {
     this.app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.method !== 'OPTIONS') return next();
       const origin = req.headers.origin || '*';
-      res.setHeader('Access-Control-Allow-Origin', origin === '*' ? '*' : origin);
+      const allowOrigin = origin === '*' ? '*' : origin;
+      res.setHeader('Access-Control-Allow-Origin', allowOrigin);
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       res.setHeader('Access-Control-Allow-Credentials', origin === '*' ? 'false' : 'true');
       res.setHeader('Access-Control-Max-Age', '86400');
+      console.log(`[CORS] Preflight OPTIONS ${req.path} → Origin: ${origin} → Allow-Origin: ${allowOrigin}`);
       res.status(204).end();
     });
 
