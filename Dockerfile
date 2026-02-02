@@ -19,6 +19,7 @@ ENV NODE_ENV=production
 
 COPY --from=builder /app/package.json /app/package-lock.json ./
 RUN npm ci --omit=dev
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/core/infrastructure/database/prisma ./src/core/infrastructure/database/prisma
 
