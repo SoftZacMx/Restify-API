@@ -111,22 +111,21 @@ class LocalServer {
     const port = this.config.port;
     const host = this.config.host;
 
-    // Verify database connection before starting server
+    // Escuchar primero para que Railway/proxy reciba respuestas de inmediato (evita 502 en OPTIONS/health).
+    this.httpServer.listen(port, host);
+
+    // Comprobar DB en segundo plano; no bloquear el arranque.
     try {
       const prismaService = container.resolve(PrismaService);
       await prismaService.connect();
-      
       const isHealthy = await prismaService.healthCheck();
       if (!isHealthy) {
         console.warn('⚠️  [Server] Advertencia: La base de datos no responde correctamente');
       }
     } catch (error) {
       console.error('❌ [Server] Error al conectar con la base de datos:', error);
-      console.error('❌ [Server] El servidor se iniciará pero puede no funcionar correctamente');
-      // No bloqueamos el inicio del servidor, pero advertimos
+      console.error('❌ [Server] El servidor está en marcha pero la base de datos puede no estar disponible');
     }
-
-    this.httpServer.listen(port, host);
   }
 
   public getApp(): Express {
