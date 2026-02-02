@@ -1,6 +1,6 @@
 import middy from '@middy/core';
 import httpEventNormalizer from '@middy/http-event-normalizer';
-import { APIGatewayProxyWebsocketEvent, APIGatewayProxyWebsocketResult } from 'aws-lambda';
+import { APIGatewayProxyWebsocketEventV2, APIGatewayProxyResult } from 'aws-lambda';
 import { container } from 'tsyringe';
 import { RegisterWebSocketConnectionUseCase } from '../../core/application/use-cases/websocket/register-websocket-connection.use-case';
 import { customErrorHandler } from '../../shared/middleware/error-handler.middleware';
@@ -10,14 +10,15 @@ import { customErrorHandler } from '../../shared/middleware/error-handler.middle
  * This is called when a client connects to the WebSocket API
  */
 const connectHandlerBase = async (
-  event: APIGatewayProxyWebsocketEvent
-): Promise<APIGatewayProxyWebsocketResult> => {
+  event: APIGatewayProxyWebsocketEventV2
+): Promise<APIGatewayProxyResult> => {
   const connectionId = event.requestContext.connectionId;
   const domainName = event.requestContext.domainName;
   const stage = event.requestContext.stage;
 
-  // Extract query parameters (customConnectionId, paymentId, userId)
-  const queryParams = event.queryStringParameters || {};
+  // Extract query parameters (V2 type omits them; API Gateway still sends them at runtime)
+  const queryParams =
+    (event as APIGatewayProxyWebsocketEventV2 & { queryStringParameters?: Record<string, string> }).queryStringParameters || {};
   const customConnectionId = queryParams.connectionId; // Custom connection ID from PaymentSession
   const paymentId = queryParams.paymentId;
   const userId = queryParams.userId;

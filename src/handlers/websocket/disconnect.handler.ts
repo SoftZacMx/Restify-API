@@ -1,6 +1,6 @@
 import middy from '@middy/core';
 import httpEventNormalizer from '@middy/http-event-normalizer';
-import { APIGatewayProxyWebsocketEvent, APIGatewayProxyWebsocketResult } from 'aws-lambda';
+import { APIGatewayProxyWebsocketEventV2, APIGatewayProxyResult } from 'aws-lambda';
 import { container } from 'tsyringe';
 import { UnregisterWebSocketConnectionUseCase } from '../../core/application/use-cases/websocket/unregister-websocket-connection.use-case';
 import { customErrorHandler } from '../../shared/middleware/error-handler.middleware';
@@ -10,8 +10,8 @@ import { customErrorHandler } from '../../shared/middleware/error-handler.middle
  * This is called when a client disconnects from the WebSocket API
  */
 const disconnectHandlerBase = async (
-  event: APIGatewayProxyWebsocketEvent
-): Promise<APIGatewayProxyWebsocketResult> => {
+  event: APIGatewayProxyWebsocketEventV2
+): Promise<APIGatewayProxyResult> => {
   const connectionId = event.requestContext.connectionId;
 
   // Unregister connection
