@@ -5,7 +5,7 @@ import path from 'path';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-import express, { Express } from 'express';
+import express, { Express, Request, Response, NextFunction } from 'express';
 import http from 'http';
 import cookieParser from 'cookie-parser';
 import { getServerConfig } from './config/server.config';
@@ -36,6 +36,29 @@ class LocalServer {
   }
 
   private setupMiddleware(): void {
+    // CORS: cabeceras manuales para que funcione siempre (Railway, proxies, etc.)
+    const { cors: corsConfig } = this.config;
+    this.app.use((req: Request, res: Response, next: NextFunction) => {
+      let origin = (req.headers.origin || '').trim();
+      if (!origin && corsConfig.allowedOrigins.length > 0) {
+        origin = corsConfig.allowedOrigins[0];
+      }
+      if (!origin && this.config.environment === 'production') {
+        // Fallback en producción: permitir el frontend típico de Railway
+        origin = 'https://restify-frontend-production-9ce6.up.railway.app';
+      }
+      if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+      }
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      if (req.method === 'OPTIONS') {
+        return res.status(204).end();
+      }
+      next();
+    });
     // Cookie parser - must be before body parsing
     this.app.use(cookieParser());
 

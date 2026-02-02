@@ -8,16 +8,18 @@ import { IUserRepository } from '../../core/domain/interfaces/user-repository.in
 import { WebSocketEventType, WebSocketMessage } from '../../core/domain/interfaces/websocket-connection.interface';
 import { JwtUtil, JwtPayload } from '../../shared/utils/jwt.util';
 import { AppError } from '../../shared/errors';
+import { stripEnvQuotes } from '../config/server.config';
 
 export class WebSocketServer {
   private io: SocketIOServer;
   private connectionManager: IWebSocketConnectionManager;
 
   constructor(httpServer: HttpServer) {
+    const corsOrigin = process.env.CORS_ORIGIN ? stripEnvQuotes(process.env.CORS_ORIGIN) : '*';
     // Initialize Socket.IO server
     this.io = new SocketIOServer(httpServer, {
       cors: {
-        origin: process.env.CORS_ORIGIN || '*',
+        origin: corsOrigin,
         credentials: true,
         methods: ['GET', 'POST'],
       },
