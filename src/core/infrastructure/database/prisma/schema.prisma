@@ -241,6 +241,25 @@ model EmployeeSalaryPayment {
   @@map("employee_salaries_payments")
 }
 
+// Company Entity (singleton: one row per tenant/app - business info)
+model Company {
+  id               String   @id @default(uuid())
+  name             String
+  state            String
+  city             String
+  street           String
+  exteriorNumber   String
+  phone            String
+  rfc              String?
+  logoUrl          String?
+  startOperations  String?  // Hora inicio operaciones "HH:mm"
+  endOperations    String?  // Hora fin operaciones "HH:mm"
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("companies")
+}
+
 // Table Entity (Restaurant Tables)
 model Table {
   id                 String   @id @default(uuid())

@@ -4,10 +4,29 @@ import { IUserRepository } from '../../../domain/interfaces/user-repository.inte
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { IProductRepository } from '../../../domain/interfaces/product-repository.interface';
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
+import { ICompanyRepository } from '../../../domain/interfaces/company-repository.interface';
 import { CreateOrderInput } from '../../dto/order.dto';
 import { AppError } from '../../../../shared/errors';
 import { QueueOrderNotificationUseCase } from '../websocket/queue-order-notification.use-case';
 import { OrderNotificationType } from '../websocket/notify-order-status.use-case';
+
+/** Convierte "HH:mm" a minutos desde medianoche (0-1439) */
+function timeToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+/** Indica si la hora actual (HH:mm) está dentro del rango [start, end]. Soporta cruce de medianoche (ej. 22:00 a 02:00). */
+function isWithinOperatingHours(nowHhmm: string, start: string, end: string): boolean {
+  const now = timeToMinutes(nowHhmm);
+  const startMin = timeToMinutes(start);
+  const endMin = timeToMinutes(end);
+  if (startMin <= endMin) {
+    return now >= startMin && now <= endMin;
+  }
+  // Cruce de medianoche: válido si now >= start o now <= end
+  return now >= startMin || now <= endMin;
+}
 
 export interface CreateOrderResult {
   id: string;
@@ -55,10 +74,24 @@ export class CreateOrderUseCase {
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
     @inject('IProductRepository') private readonly productRepository: IProductRepository,
     @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
+    @inject('ICompanyRepository') private readonly companyRepository: ICompanyRepository,
     @inject(QueueOrderNotificationUseCase) private readonly queueOrderNotificationUseCase: QueueOrderNotificationUseCase
   ) {}
 
   async execute(input: CreateOrderInput): Promise<CreateOrderResult> {
+    // Validar horario de operación (si la compañía tiene inicio/fin configurados)
+    const company = await this.companyRepository.findFirst();
+    if (company?.startOperations && company?.endOperations) {
+      const now = new Date();
+      const nowHhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      if (!isWithinOperatingHours(nowHhmm, company.startOperations, company.endOperations)) {
+        throw new AppError(
+          'OUTSIDE_OPERATING_HOURS',
+          `Horario de operación: ${company.startOperations} - ${company.endOperations}. No se pueden crear órdenes fuera de este horario.`
+        );
+      }
+    }
+
     // Verify that user exists
     const user = await this.userRepository.findById(input.userId);
     if (!user) {
