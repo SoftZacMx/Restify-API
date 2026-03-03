@@ -2,7 +2,7 @@ import { inject, injectable } from 'tsyringe';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { ListOrdersInput } from '../../dto/order.dto';
 
-export interface ListOrdersResult {
+export interface ListOrdersItem {
   id: string;
   date: Date;
   status: boolean;
@@ -22,13 +22,23 @@ export interface ListOrdersResult {
   updatedAt: Date;
 }
 
+export interface ListOrdersResult {
+  data: ListOrdersItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 @injectable()
 export class ListOrdersUseCase {
   constructor(
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository
   ) {}
 
-  async execute(input?: ListOrdersInput): Promise<ListOrdersResult[]> {
+  async execute(input?: ListOrdersInput): Promise<ListOrdersResult> {
     const filters = input
       ? {
           status: input.status,
@@ -41,27 +51,44 @@ export class ListOrdersUseCase {
         }
       : undefined;
 
-    const orders = await this.orderRepository.findAll(filters);
+    const page = input?.page ?? 1;
+    const limit = Math.min(input?.limit ?? 20, 100);
+    const skip = (page - 1) * limit;
 
-    return orders.map((order) => ({
-      id: order.id,
-      date: order.date,
-      status: order.status,
-      paymentMethod: order.paymentMethod,
-      total: order.total,
-      subtotal: order.subtotal,
-      iva: order.iva,
-      delivered: order.delivered,
-      tableId: order.tableId,
-      tip: order.tip,
-      origin: order.origin,
-      client: order.client,
-      paymentDiffer: order.paymentDiffer,
-      note: order.note,
-      userId: order.userId,
-      createdAt: order.createdAt,
-      updatedAt: order.updatedAt,
-    }));
+    const [orders, total] = await Promise.all([
+      this.orderRepository.findAll(filters, { skip, take: limit }),
+      this.orderRepository.count(filters),
+    ]);
+
+    const totalPages = Math.ceil(total / limit) || 1;
+
+    return {
+      data: orders.map((order) => ({
+        id: order.id,
+        date: order.date,
+        status: order.status,
+        paymentMethod: order.paymentMethod,
+        total: order.total,
+        subtotal: order.subtotal,
+        iva: order.iva,
+        delivered: order.delivered,
+        tableId: order.tableId,
+        tip: order.tip,
+        origin: order.origin,
+        client: order.client,
+        paymentDiffer: order.paymentDiffer,
+        note: order.note,
+        userId: order.userId,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    };
   }
 }
 

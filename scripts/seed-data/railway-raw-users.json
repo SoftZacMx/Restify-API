@@ -1,0 +1,92 @@
+[
+  {
+    "name": "Karina",
+    "last_name": "Martinez",
+    "second_last_name": "Gonzales",
+    "email": "karinaorlaz@hotmail.com",
+    "rol": "Administrator",
+    "password": "$2a$08$M6xfeOEwLI9p8eTn31fkP.PRpMCc8JkQ47L6C8DUroCAt8Z121SLm",
+    "phone": "4921272309",
+    "status": true
+  },
+  {
+    "name": "Daniela",
+    "last_name": "Robles",
+    "second_last_name": "Robles",
+    "email": "danirio@gmail.com",
+    "rol": "Waiter",
+    "password": "$2a$08$brap9ep16LClJJN3F2djCe130GyVYohDKSXg5xWQ1rpkagrY8sYtK",
+    "phone": "8759764334",
+    "status": true
+  },
+  {
+    "name": "Goretti",
+    "last_name": "Rios",
+    "second_last_name": "Ferreiro",
+    "email": "alexander.goretti2316g@gmail.com",
+    "rol": "Waiter",
+    "password": "$2a$08$CtOeZMnOX8ZFkAB7qqI8OutfgU1XwIcIcgJIMs1O7jM3leuuE4BoG",
+    "phone": "4922551063",
+    "status": true
+  },
+  {
+    "name": "Alejandrina",
+    "last_name": "Cabral ",
+    "second_last_name": "Bañuelos",
+    "email": "alejandrina@gmail.com",
+    "rol": "Waiter",
+    "password": "$2a$08$JwN4rYySS3q76kTGCwZzqehcoqteO2s4z95IEIWCVBH.i6WBZuF.q",
+    "phone": "4922427817",
+    "status": true
+  },
+  {
+    "name": "Adan",
+    "last_name": "Del rio",
+    "second_last_name": "Chavarria",
+    "email": "fazea8791@outlook.com",
+    "rol": "Waiter",
+    "password": "$2a$08$jjGjVIbMtSb/joYNlSzkuOfM0lPTZ2xvFCFPlAkZziY2hu92DbGhq",
+    "phone": "4922027125",
+    "status": true
+  },
+  {
+    "name": "Eduardo",
+    "last_name": "Garcia",
+    "second_last_name": "Maldonado ",
+    "email": "eduardomaldonado77@icloud",
+    "rol": "Waiter",
+    "password": "$2a$08$Pturz5sDfTmPZiLmyZSaqOlt1AJ.JZTYXqSTYnfIu86D6s01YCV/m",
+    "phone": "4921234565",
+    "status": true
+  },
+  {
+    "name": "Verónica ",
+    "last_name": "Moreno",
+    "second_last_name": "Rivera",
+    "email": "veronicamorenorivera567@gmail.com",
+    "rol": "Waiter",
+    "password": "$2a$08$0PlecfkuDpSOSIleodkFq.MWaFJacCrNQ/IGrtQtHuAxdyWB0ciTq",
+    "phone": "4921467738",
+    "status": true
+  },
+  {
+    "name": "Jasmine",
+    "last_name": "Hernandez",
+    "second_last_name": "Torres",
+    "email": "jassylove0601@gmail.com",
+    "rol": "Waiter",
+    "password": "$2a$08$MPxkQgwIfoNuQAOrnoM8KOUxI8GMonQITgpQOBaMWebDe89iGlwFm",
+    "phone": "4922008003",
+    "status": true
+  },
+  {
+    "name": "Karina",
+    "last_name": "Martinez",
+    "second_last_name": "Gonzales",
+    "email": "karinamesera@gmail.com",
+    "rol": "Waiter",
+    "password": "$2a$08$yRfA2MGtFd0ARzMH6WES/.zU7m4brXd6qmPmEXwNl5ts4Xf0vTja.",
+    "phone": "1234567899",
+    "status": true
+  }
+]

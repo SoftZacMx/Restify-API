@@ -14,7 +14,8 @@ export interface OrderFilters {
 
 export interface IOrderRepository {
   findById(id: string): Promise<Order | null>;
-  findAll(filters?: OrderFilters): Promise<Order[]>;
+  findAll(filters?: OrderFilters, pagination?: { skip: number; take: number }): Promise<Order[]>;
+  count(filters?: OrderFilters): Promise<number>;
   create(data: {
     date?: Date;
     status: boolean;

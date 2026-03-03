@@ -1,0 +1,1241 @@
+[
+  {
+    "name": "Huevos con machaca",
+    "price": 95,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Huevos con jamon",
+    "price": 90,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Omellette de la casa",
+    "price": 110,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Omelette a la cantonesa",
+    "price": 120,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Enchiladas rojas",
+    "price": 90,
+    "status": true,
+    "category_id": 13,
+    "is_extra": false
+  },
+  {
+    "name": "Jugo Naranja",
+    "price": 35,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Malteada fresa",
+    "price": 48,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Molletes con guiso",
+    "price": 75,
+    "status": true,
+    "category_id": 14,
+    "is_extra": false
+  },
+  {
+    "name": "Molletes tradicionales",
+    "price": 60,
+    "status": true,
+    "category_id": 14,
+    "is_extra": false
+  },
+  {
+    "name": "Baguette Irlandes",
+    "price": 80,
+    "status": true,
+    "category_id": 15,
+    "is_extra": false
+  },
+  {
+    "name": "De temporada",
+    "price": 48,
+    "status": true,
+    "category_id": 9,
+    "is_extra": false
+  },
+  {
+    "name": "Frutos rojos",
+    "price": 65,
+    "status": true,
+    "category_id": 9,
+    "is_extra": false
+  },
+  {
+    "name": "Tazon deli",
+    "price": 70,
+    "status": true,
+    "category_id": 9,
+    "is_extra": false
+  },
+  {
+    "name": "Chilaquiles Deli",
+    "price": 90,
+    "status": true,
+    "category_id": 10,
+    "is_extra": false
+  },
+  {
+    "name": "Chilaquiles Verdes",
+    "price": 90,
+    "status": true,
+    "category_id": 10,
+    "is_extra": false
+  },
+  {
+    "name": "Chilaquiles Rojos",
+    "price": 90,
+    "status": true,
+    "category_id": 10,
+    "is_extra": false
+  },
+  {
+    "name": "Chila Birries",
+    "price": 140,
+    "status": true,
+    "category_id": 10,
+    "is_extra": false
+  },
+  {
+    "name": "Pollo Extra",
+    "price": 45,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Bisteck Extra",
+    "price": 45,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Huevo Extra",
+    "price": 30,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Arrachera Extra",
+    "price": 45,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Tocino Extra",
+    "price": 35,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Con Machaca",
+    "price": 95,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "A la Mexicana",
+    "price": 85,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Rancheros",
+    "price": 95,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Con Jamón",
+    "price": 90,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Revueltos",
+    "price": 80,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Huevos con Chorizo",
+    "price": 90,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": " Huevos estrellados",
+    "price": 80,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": " Huevos divorciados",
+    "price": 85,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Omelet de la Casa",
+    "price": 110,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Omelette a la Cantonesa",
+    "price": 120,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Omelette Fitnes",
+    "price": 98,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Omelette con Pollo",
+    "price": 115,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Omelette con Bistec",
+    "price": 120,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Omelette con Vegetales",
+    "price": 110,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Omelete Supremo",
+    "price": 115,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Al Gusto",
+    "price": 95,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Ingrediente Extra",
+    "price": 10,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": " Enchiladas Rojas Queso",
+    "price": 90,
+    "status": true,
+    "category_id": 13,
+    "is_extra": false
+  },
+  {
+    "name": "Enchiladas Verdes  pollo",
+    "price": 95,
+    "status": true,
+    "category_id": 13,
+    "is_extra": false
+  },
+  {
+    "name": "Quesadilla",
+    "price": 60,
+    "status": true,
+    "category_id": 13,
+    "is_extra": false
+  },
+  {
+    "name": "Sincronizada",
+    "price": 55,
+    "status": true,
+    "category_id": 13,
+    "is_extra": false
+  },
+  {
+    "name": "Mollete con Guiso ",
+    "price": 75,
+    "status": true,
+    "category_id": 14,
+    "is_extra": false
+  },
+  {
+    "name": "Mollete Tradicional",
+    "price": 60,
+    "status": true,
+    "category_id": 14,
+    "is_extra": false
+  },
+  {
+    "name": "Baguette Club",
+    "price": 85,
+    "status": true,
+    "category_id": 15,
+    "is_extra": false
+  },
+  {
+    "name": "Baguette Pollo",
+    "price": 80,
+    "status": true,
+    "category_id": 15,
+    "is_extra": false
+  },
+  {
+    "name": "Baguette Irlandes",
+    "price": 80,
+    "status": true,
+    "category_id": 15,
+    "is_extra": false
+  },
+  {
+    "name": "Baguette arrachera con guacamole",
+    "price": 85,
+    "status": true,
+    "category_id": 15,
+    "is_extra": false
+  },
+  {
+    "name": "Baguette Jamón",
+    "price": 70,
+    "status": true,
+    "category_id": 15,
+    "is_extra": false
+  },
+  {
+    "name": "Baguette Atún ",
+    "price": 80,
+    "status": true,
+    "category_id": 15,
+    "is_extra": false
+  },
+  {
+    "name": "Croissant",
+    "price": 60,
+    "status": true,
+    "category_id": 15,
+    "is_extra": false
+  },
+  {
+    "name": "Sándwich Jamón",
+    "price": 55,
+    "status": true,
+    "category_id": 16,
+    "is_extra": false
+  },
+  {
+    "name": "Sándwich Pollo",
+    "price": 60,
+    "status": true,
+    "category_id": 16,
+    "is_extra": false
+  },
+  {
+    "name": "Sándwich Club",
+    "price": 75,
+    "status": true,
+    "category_id": 16,
+    "is_extra": false
+  },
+  {
+    "name": "Sándwich Atún con aguacate",
+    "price": 70,
+    "status": true,
+    "category_id": 16,
+    "is_extra": false
+  },
+  {
+    "name": "Sándwich Huevo con aguacate",
+    "price": 55,
+    "status": true,
+    "category_id": 16,
+    "is_extra": false
+  },
+  {
+    "name": "Papas a la francesa",
+    "price": 45,
+    "status": true,
+    "category_id": 16,
+    "is_extra": false
+  },
+  {
+    "name": "Ensalada de la casa ",
+    "price": 95,
+    "status": true,
+    "category_id": 17,
+    "is_extra": false
+  },
+  {
+    "name": "Ensalada Deli",
+    "price": 90,
+    "status": true,
+    "category_id": 17,
+    "is_extra": false
+  },
+  {
+    "name": "Torta Milanesa",
+    "price": 65,
+    "status": true,
+    "category_id": 18,
+    "is_extra": false
+  },
+  {
+    "name": "Torta Jamon",
+    "price": 55,
+    "status": true,
+    "category_id": 18,
+    "is_extra": false
+  },
+  {
+    "name": "Torta Adobada",
+    "price": 65,
+    "status": true,
+    "category_id": 18,
+    "is_extra": false
+  },
+  {
+    "name": "Torta Chorizo",
+    "price": 60,
+    "status": true,
+    "category_id": 18,
+    "is_extra": false
+  },
+  {
+    "name": "Kardely",
+    "price": 115,
+    "status": true,
+    "category_id": 19,
+    "is_extra": false
+  },
+  {
+    "name": "Croissant con huevo",
+    "price": 65,
+    "status": true,
+    "category_id": 15,
+    "is_extra": false
+  },
+  {
+    "name": "Enchiladas rojas queso",
+    "price": 90,
+    "status": true,
+    "category_id": 13,
+    "is_extra": false
+  },
+  {
+    "name": "Sandwiches jamon",
+    "price": 55,
+    "status": true,
+    "category_id": 16,
+    "is_extra": false
+  },
+  {
+    "name": "Enchiladas verdes pollo",
+    "price": 95,
+    "status": true,
+    "category_id": 13,
+    "is_extra": false
+  },
+  {
+    "name": "Sandwiches pollo",
+    "price": 60,
+    "status": true,
+    "category_id": 16,
+    "is_extra": false
+  },
+  {
+    "name": "Sandwiches club",
+    "price": 75,
+    "status": true,
+    "category_id": 16,
+    "is_extra": false
+  },
+  {
+    "name": "Sandwiches atun con guacamole",
+    "price": 70,
+    "status": true,
+    "category_id": 16,
+    "is_extra": false
+  },
+  {
+    "name": "Sandwiches huevo con aguacate",
+    "price": 55,
+    "status": true,
+    "category_id": 16,
+    "is_extra": false
+  },
+  {
+    "name": "Cafe americano",
+    "price": 40,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Cafe olla",
+    "price": 40,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Cafe espresso",
+    "price": 45,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Cafe capuchino",
+    "price": 45,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Cafe colombiano",
+    "price": 35,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Te",
+    "price": 25,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Cafe con leche",
+    "price": 35,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Jugo naranja",
+    "price": 45,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Jugo verde",
+    "price": 45,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Licuado fresa",
+    "price": 35,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Licuado de platano",
+    "price": 30,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Licuado papaya",
+    "price": 35,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Licuado manzana",
+    "price": 35,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Cereales extras",
+    "price": 5,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Malteada fresa",
+    "price": 48,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Malteada chocolate ",
+    "price": 48,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Malteada vainilla",
+    "price": 48,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Malteada pistache",
+    "price": 48,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Refresco ",
+    "price": 30,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Agua embotellada",
+    "price": 15,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Agua fresca ",
+    "price": 25,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Bolillo extra",
+    "price": 10,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Porcion frijoles extra",
+    "price": 5,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Porcion de totpos ",
+    "price": 5,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Aguacate extra",
+    "price": 15,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Jarabe extra ",
+    "price": 5,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Aderezo  extra",
+    "price": 5,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Cafe extra",
+    "price": 20,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Huevito con jamon y frijoles ",
+    "price": 70,
+    "status": true,
+    "category_id": 21,
+    "is_extra": false
+  },
+  {
+    "name": "Mini molletes frijoles y queso",
+    "price": 55,
+    "status": true,
+    "category_id": 21,
+    "is_extra": false
+  },
+  {
+    "name": "Salchipulos con huevo",
+    "price": 85,
+    "status": true,
+    "category_id": 21,
+    "is_extra": false
+  },
+  {
+    "name": "Nuggets con salchicha",
+    "price": 90,
+    "status": true,
+    "category_id": 21,
+    "is_extra": false
+  },
+  {
+    "name": "Combo uno",
+    "price": 135,
+    "status": true,
+    "category_id": 23,
+    "is_extra": false
+  },
+  {
+    "name": "Combo dos",
+    "price": 165,
+    "status": true,
+    "category_id": 23,
+    "is_extra": false
+  },
+  {
+    "name": "Combo tres",
+    "price": 145,
+    "status": true,
+    "category_id": 23,
+    "is_extra": false
+  },
+  {
+    "name": "Desayuno americano",
+    "price": 110,
+    "status": true,
+    "category_id": 24,
+    "is_extra": false
+  },
+  {
+    "name": "Chuleta ahumada",
+    "price": 110,
+    "status": true,
+    "category_id": 24,
+    "is_extra": false
+  },
+  {
+    "name": "Pechuga de pollo a la plancha",
+    "price": 130,
+    "status": true,
+    "category_id": 24,
+    "is_extra": false
+  },
+  {
+    "name": "Arrachera con guacamole",
+    "price": 160,
+    "status": true,
+    "category_id": 24,
+    "is_extra": false
+  },
+  {
+    "name": "Platillo especial",
+    "price": 155,
+    "status": true,
+    "category_id": 24,
+    "is_extra": false
+  },
+  {
+    "name": "Yescada",
+    "price": 95,
+    "status": true,
+    "category_id": 24,
+    "is_extra": false
+  },
+  {
+    "name": "Burritos supremos ",
+    "price": 85,
+    "status": true,
+    "category_id": 24,
+    "is_extra": false
+  },
+  {
+    "name": "Burritos de arrachera con gucamole",
+    "price": 85,
+    "status": true,
+    "category_id": 24,
+    "is_extra": false
+  },
+  {
+    "name": "Chilaquiles entomatados",
+    "price": 95,
+    "status": true,
+    "category_id": 10,
+    "is_extra": false
+  },
+  {
+    "name": "Tazón de temporada",
+    "price": 48,
+    "status": true,
+    "category_id": 9,
+    "is_extra": false
+  },
+  {
+    "name": "Tazón frutos rojos",
+    "price": 65,
+    "status": true,
+    "category_id": 9,
+    "is_extra": false
+  },
+  {
+    "name": "Kardely",
+    "price": 115,
+    "status": true,
+    "category_id": 19,
+    "is_extra": false
+  },
+  {
+    "name": "Delarely",
+    "price": 95,
+    "status": true,
+    "category_id": 19,
+    "is_extra": false
+  },
+  {
+    "name": "Deliver",
+    "price": 110,
+    "status": true,
+    "category_id": 19,
+    "is_extra": false
+  },
+  {
+    "name": "Daydel",
+    "price": 110,
+    "status": true,
+    "category_id": 19,
+    "is_extra": false
+  },
+  {
+    "name": "Diandely",
+    "price": 120,
+    "status": true,
+    "category_id": 19,
+    "is_extra": false
+  },
+  {
+    "name": "Erikdely",
+    "price": 120,
+    "status": true,
+    "category_id": 19,
+    "is_extra": false
+  },
+  {
+    "name": "Al gusto dos ingredientes",
+    "price": 90,
+    "status": true,
+    "category_id": 19,
+    "is_extra": false
+  },
+  {
+    "name": "Ingredientes extra",
+    "price": 10,
+    "status": true,
+    "category_id": 19,
+    "is_extra": false
+  },
+  {
+    "name": "Pan francés ",
+    "price": 75,
+    "status": true,
+    "category_id": 19,
+    "is_extra": false
+  },
+  {
+    "name": "Rancheros",
+    "price": 95,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Baguettes arrachera con guacamole ",
+    "price": 85,
+    "status": true,
+    "category_id": 15,
+    "is_extra": false
+  },
+  {
+    "name": " Ensalada arrachera con arandanos",
+    "price": 130,
+    "status": true,
+    "category_id": 17,
+    "is_extra": false
+  },
+  {
+    "name": "Chilaquiles salsa martajada",
+    "price": 95,
+    "status": true,
+    "category_id": 10,
+    "is_extra": false
+  },
+  {
+    "name": "Huevos a la mexicana",
+    "price": 85,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Huevo con machaca",
+    "price": 95,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Huevos rancheros salsa guajillo ",
+    "price": 95,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Huevo con jamon",
+    "price": 90,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Huevos revueltos",
+    "price": 80,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Huevo con chorizo",
+    "price": 90,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Huevos estrellados ",
+    "price": 80,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Huevos divorciados ",
+    "price": 85,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Omelettes  casa ",
+    "price": 115,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Mollete de pollo",
+    "price": 85,
+    "status": true,
+    "category_id": 14,
+    "is_extra": false
+  },
+  {
+    "name": "Mollete de bisteck",
+    "price": 85,
+    "status": true,
+    "category_id": 14,
+    "is_extra": false
+  },
+  {
+    "name": "Sincronizada de arrachera",
+    "price": 85,
+    "status": true,
+    "category_id": 27,
+    "is_extra": false
+  },
+  {
+    "name": "Hotcakes",
+    "price": 55,
+    "status": true,
+    "category_id": 28,
+    "is_extra": false
+  },
+  {
+    "name": "Hotcakes con fruta",
+    "price": 70,
+    "status": true,
+    "category_id": 28,
+    "is_extra": false
+  },
+  {
+    "name": "Hotcakes Deli",
+    "price": 85,
+    "status": true,
+    "category_id": 28,
+    "is_extra": false
+  },
+  {
+    "name": "Malteada coco",
+    "price": 48,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Malteada pistache",
+    "price": 48,
+    "status": true,
+    "category_id": 20,
+    "is_extra": false
+  },
+  {
+    "name": "Huevos ahogados ",
+    "price": 90,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Chilaquiles salsa martajada",
+    "price": 95,
+    "status": true,
+    "category_id": 10,
+    "is_extra": false
+  },
+  {
+    "name": "Omelettes de la casa ",
+    "price": 115,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Omelettes supremo",
+    "price": 115,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Omelettes al gusto ",
+    "price": 95,
+    "status": true,
+    "category_id": 12,
+    "is_extra": false
+  },
+  {
+    "name": "Baguette atun ",
+    "price": 80,
+    "status": true,
+    "category_id": 15,
+    "is_extra": false
+  },
+  {
+    "name": "Baguette de pollo ",
+    "price": 80,
+    "status": true,
+    "category_id": 15,
+    "is_extra": false
+  },
+  {
+    "name": "Huevos ahogados ",
+    "price": 90,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Huevos con jamon ",
+    "price": 85,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  },
+  {
+    "name": "Sanwich de panela",
+    "price": 65,
+    "status": true,
+    "category_id": 16,
+    "is_extra": false
+  },
+  {
+    "name": "Postre manzana ",
+    "price": 35,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Birria extra ",
+    "price": 45,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Extra leche ",
+    "price": 5,
+    "status": true,
+    "category_id": 25,
+    "is_extra": false
+  },
+  {
+    "name": "Extra panela ",
+    "price": 15,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Galleta ",
+    "price": 5,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Pan dulce ch",
+    "price": 8,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Torta cubana ",
+    "price": 70,
+    "status": true,
+    "category_id": 18,
+    "is_extra": false
+  },
+  {
+    "name": "Yesca ",
+    "price": 45,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Bistek",
+    "price": 45,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Adobada ",
+    "price": 45,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Chilaquiles extra ",
+    "price": 45,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Chilaquiles extra ",
+    "price": 45,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Enchilada extra ",
+    "price": 20,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Chilabirries",
+    "price": 140,
+    "status": true,
+    "category_id": 10,
+    "is_extra": false
+  },
+  {
+    "name": "Pan Dulce g",
+    "price": 20,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Hojaldra Rellena ",
+    "price": 45,
+    "status": true,
+    "category_id": 25,
+    "is_extra": true
+  },
+  {
+    "name": "Bisquet",
+    "price": 25,
+    "status": true,
+    "category_id": 25,
+    "is_extra": false
+  },
+  {
+    "name": "Huevos con tocino",
+    "price": 115,
+    "status": true,
+    "category_id": 11,
+    "is_extra": false
+  }
+]

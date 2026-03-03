@@ -10,13 +10,20 @@ describe('ListOrdersUseCase', () => {
     mockOrderRepository = {
       findById: jest.fn(),
       findAll: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       createOrderItem: jest.fn(),
+      updateOrderItem: jest.fn(),
+      deleteOrderItem: jest.fn(),
+      deleteOrderItemsByOrderId: jest.fn(),
       findOrderItemsByOrderId: jest.fn(),
-      createOrderMenuItem: jest.fn(),
-      findOrderMenuItemsByOrderId: jest.fn(),
+      createOrderItemExtra: jest.fn(),
+      deleteOrderItemExtrasByOrderId: jest.fn(),
+      deleteOrderItemExtrasByOrderItemId: jest.fn(),
+      findOrderItemExtrasByOrderId: jest.fn(),
+      findOrderItemExtrasByOrderItemId: jest.fn(),
     };
 
     listOrdersUseCase = new ListOrdersUseCase(mockOrderRepository);
@@ -27,7 +34,7 @@ describe('ListOrdersUseCase', () => {
   });
 
   describe('execute', () => {
-    it('should return all orders when no filters provided', async () => {
+    it('should return paginated orders when no filters provided', async () => {
       const mockOrders = [
         new Order(
           'order-1',
@@ -70,13 +77,16 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
+      mockOrderRepository.count.mockResolvedValue(2);
 
       const result = await listOrdersUseCase.execute();
 
-      expect(result).toHaveLength(2);
-      expect(result[0].id).toBe('order-1');
-      expect(result[1].id).toBe('order-2');
-      expect(mockOrderRepository.findAll).toHaveBeenCalledWith(undefined);
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0].id).toBe('order-1');
+      expect(result.data[1].id).toBe('order-2');
+      expect(result.pagination).toEqual({ page: 1, limit: 20, total: 2, totalPages: 1 });
+      expect(mockOrderRepository.findAll).toHaveBeenCalledWith(undefined, { skip: 0, take: 20 });
+      expect(mockOrderRepository.count).toHaveBeenCalledWith(undefined);
     });
 
     it('should return filtered orders by status', async () => {
@@ -103,12 +113,25 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
+      mockOrderRepository.count.mockResolvedValue(1);
 
       const result = await listOrdersUseCase.execute({ status: true });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].status).toBe(true);
-      expect(mockOrderRepository.findAll).toHaveBeenCalledWith({
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].status).toBe(true);
+      expect(mockOrderRepository.findAll).toHaveBeenCalledWith(
+        {
+          status: true,
+          userId: undefined,
+          tableId: undefined,
+          paymentMethod: undefined,
+          origin: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
+        { skip: 0, take: 20 }
+      );
+      expect(mockOrderRepository.count).toHaveBeenCalledWith({
         status: true,
         userId: undefined,
         tableId: undefined,
@@ -143,20 +166,24 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
+      mockOrderRepository.count.mockResolvedValue(1);
 
       const result = await listOrdersUseCase.execute({ userId: 'user-123' });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].userId).toBe('user-123');
-      expect(mockOrderRepository.findAll).toHaveBeenCalledWith({
-        status: undefined,
-        userId: 'user-123',
-        tableId: undefined,
-        paymentMethod: undefined,
-        origin: undefined,
-        dateFrom: undefined,
-        dateTo: undefined,
-      });
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].userId).toBe('user-123');
+      expect(mockOrderRepository.findAll).toHaveBeenCalledWith(
+        {
+          status: undefined,
+          userId: 'user-123',
+          tableId: undefined,
+          paymentMethod: undefined,
+          origin: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
+        { skip: 0, take: 20 }
+      );
     });
 
     it('should return filtered orders by tableId', async () => {
@@ -183,20 +210,24 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
+      mockOrderRepository.count.mockResolvedValue(1);
 
       const result = await listOrdersUseCase.execute({ tableId: 'table-123' });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].tableId).toBe('table-123');
-      expect(mockOrderRepository.findAll).toHaveBeenCalledWith({
-        status: undefined,
-        userId: undefined,
-        tableId: 'table-123',
-        paymentMethod: undefined,
-        origin: undefined,
-        dateFrom: undefined,
-        dateTo: undefined,
-      });
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].tableId).toBe('table-123');
+      expect(mockOrderRepository.findAll).toHaveBeenCalledWith(
+        {
+          status: undefined,
+          userId: undefined,
+          tableId: 'table-123',
+          paymentMethod: undefined,
+          origin: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
+        { skip: 0, take: 20 }
+      );
     });
 
     it('should return filtered orders by paymentMethod', async () => {
@@ -223,20 +254,24 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
+      mockOrderRepository.count.mockResolvedValue(1);
 
       const result = await listOrdersUseCase.execute({ paymentMethod: 2 });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].paymentMethod).toBe(2);
-      expect(mockOrderRepository.findAll).toHaveBeenCalledWith({
-        status: undefined,
-        userId: undefined,
-        tableId: undefined,
-        paymentMethod: 2,
-        origin: undefined,
-        dateFrom: undefined,
-        dateTo: undefined,
-      });
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].paymentMethod).toBe(2);
+      expect(mockOrderRepository.findAll).toHaveBeenCalledWith(
+        {
+          status: undefined,
+          userId: undefined,
+          tableId: undefined,
+          paymentMethod: 2,
+          origin: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
+        { skip: 0, take: 20 }
+      );
     });
 
     it('should return filtered orders by origin', async () => {
@@ -263,20 +298,24 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
+      mockOrderRepository.count.mockResolvedValue(1);
 
       const result = await listOrdersUseCase.execute({ origin: 'Delivery' });
 
-      expect(result).toHaveLength(1);
-      expect(result[0].origin).toBe('Delivery');
-      expect(mockOrderRepository.findAll).toHaveBeenCalledWith({
-        status: undefined,
-        userId: undefined,
-        tableId: undefined,
-        paymentMethod: undefined,
-        origin: 'Delivery',
-        dateFrom: undefined,
-        dateTo: undefined,
-      });
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].origin).toBe('Delivery');
+      expect(mockOrderRepository.findAll).toHaveBeenCalledWith(
+        {
+          status: undefined,
+          userId: undefined,
+          tableId: undefined,
+          paymentMethod: undefined,
+          origin: 'Delivery',
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
+        { skip: 0, take: 20 }
+      );
     });
 
     it('should return filtered orders by date range', async () => {
@@ -305,30 +344,57 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
+      mockOrderRepository.count.mockResolvedValue(1);
 
       const result = await listOrdersUseCase.execute({
         dateFrom: dateFrom.toISOString(),
         dateTo: dateTo.toISOString(),
       });
 
-      expect(result).toHaveLength(1);
-      expect(mockOrderRepository.findAll).toHaveBeenCalledWith({
+      expect(result.data).toHaveLength(1);
+      expect(mockOrderRepository.findAll).toHaveBeenCalledWith(
+        {
+          status: undefined,
+          userId: undefined,
+          tableId: undefined,
+          paymentMethod: undefined,
+          origin: undefined,
+          dateFrom: dateFrom,
+          dateTo: dateTo,
+        },
+        { skip: 0, take: 20 }
+      );
+    });
+
+    it('should return empty data and pagination when no orders match filters', async () => {
+      mockOrderRepository.findAll.mockResolvedValue([]);
+      mockOrderRepository.count.mockResolvedValue(0);
+
+      const result = await listOrdersUseCase.execute({ status: true });
+
+      expect(result.data).toHaveLength(0);
+      expect(result.pagination.total).toBe(0);
+      expect(result.pagination.totalPages).toBe(1);
+    });
+
+    it('should use page and limit for skip/take in DB', async () => {
+      mockOrderRepository.findAll.mockResolvedValue([]);
+      mockOrderRepository.count.mockResolvedValue(50);
+
+      const result = await listOrdersUseCase.execute({ page: 3, limit: 10 });
+
+      const expectedFilters = {
         status: undefined,
         userId: undefined,
         tableId: undefined,
         paymentMethod: undefined,
         origin: undefined,
-        dateFrom: dateFrom,
-        dateTo: dateTo,
-      });
-    });
-
-    it('should return empty array when no orders match filters', async () => {
-      mockOrderRepository.findAll.mockResolvedValue([]);
-
-      const result = await listOrdersUseCase.execute({ status: true });
-
-      expect(result).toHaveLength(0);
+        dateFrom: undefined,
+        dateTo: undefined,
+      };
+      expect(mockOrderRepository.findAll).toHaveBeenCalledWith(expectedFilters, { skip: 20, take: 10 });
+      expect(mockOrderRepository.count).toHaveBeenCalledWith(expectedFilters);
+      expect(result.pagination).toEqual({ page: 3, limit: 10, total: 50, totalPages: 5 });
     });
   });
 });

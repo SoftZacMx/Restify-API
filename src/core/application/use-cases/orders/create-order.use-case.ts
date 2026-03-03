@@ -117,9 +117,9 @@ export class CreateOrderUseCase {
       }
     }
 
-    // Calculate totals
-    const iva = subtotal * 0.16; // 16% IVA (puede ser configurable)
-    const total = subtotal + iva + (input.tip || 0);
+    // Totals: no IVA aplicado automáticamente
+    const iva = 0;
+    const total = subtotal + (input.tip || 0);
 
     // Create order
     const order = await this.orderRepository.create({

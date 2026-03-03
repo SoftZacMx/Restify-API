@@ -1,0 +1,97 @@
+[
+  {
+    "old_id": 9,
+    "name": "Tazones de fruta",
+    "status": true
+  },
+  {
+    "old_id": 10,
+    "name": "Especialidades",
+    "status": true
+  },
+  {
+    "old_id": 11,
+    "name": "Huevos al gusto",
+    "status": true
+  },
+  {
+    "old_id": 12,
+    "name": "Omelettes",
+    "status": true
+  },
+  {
+    "old_id": 13,
+    "name": "Enchiladas",
+    "status": true
+  },
+  {
+    "old_id": 14,
+    "name": "Molletes",
+    "status": true
+  },
+  {
+    "old_id": 15,
+    "name": "Baguettes",
+    "status": true
+  },
+  {
+    "old_id": 16,
+    "name": "Sandwiches",
+    "status": true
+  },
+  {
+    "old_id": 17,
+    "name": "Ensaladas",
+    "status": true
+  },
+  {
+    "old_id": 18,
+    "name": "Tortas",
+    "status": true
+  },
+  {
+    "old_id": 19,
+    "name": "Waffles",
+    "status": true
+  },
+  {
+    "old_id": 20,
+    "name": "Bebidas",
+    "status": true
+  },
+  {
+    "old_id": 21,
+    "name": "Deliyuniors",
+    "status": true
+  },
+  {
+    "old_id": 23,
+    "name": "Combos",
+    "status": true
+  },
+  {
+    "old_id": 24,
+    "name": "Algo aun mas rico",
+    "status": true
+  },
+  {
+    "old_id": 25,
+    "name": "Extras",
+    "status": true
+  },
+  {
+    "old_id": 26,
+    "name": "Otros",
+    "status": true
+  },
+  {
+    "old_id": 27,
+    "name": "Sincronizadas",
+    "status": true
+  },
+  {
+    "old_id": 28,
+    "name": "Hotcakes",
+    "status": true
+  }
+]

@@ -97,6 +97,16 @@ export const listOrdersSchema = z.object({
   origin: z.string().optional(),
   dateFrom: z.string().optional(), // ISO date string
   dateTo: z.string().optional(), // ISO date string
+  // Pagination: frontend sends page & limit, query uses them for skip/take in DB
+  page: z.string().transform((val) => {
+    const num = parseInt(val, 10);
+    return isNaN(num) || num < 1 ? 1 : num;
+  }).optional(),
+  limit: z.string().transform((val) => {
+    const num = parseInt(val, 10);
+    if (isNaN(num) || num < 1) return 20;
+    return Math.min(num, 100); // max 100 per page
+  }).optional(),
 });
 
 // Delete Order Schema (path parameter)

@@ -677,8 +677,16 @@ describe('Orders E2E Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
-      expect(Array.isArray(body.data)).toBe(true);
-      expect(body.data.length).toBeGreaterThan(0);
+      expect(body.data).toHaveProperty('data');
+      expect(body.data).toHaveProperty('pagination');
+      expect(Array.isArray(body.data.data)).toBe(true);
+      expect(body.data.data.length).toBeGreaterThan(0);
+      expect(body.data.pagination).toMatchObject({
+        page: expect.any(Number),
+        limit: expect.any(Number),
+        total: expect.any(Number),
+        totalPages: expect.any(Number),
+      });
     });
 
     it('should filter orders by status', async () => {
@@ -700,8 +708,8 @@ describe('Orders E2E Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
-      expect(Array.isArray(body.data)).toBe(true);
-      body.data.forEach((order: any) => {
+      expect(Array.isArray(body.data.data)).toBe(true);
+      body.data.data.forEach((order: any) => {
         expect(order.status).toBe(false);
       });
     });
@@ -725,8 +733,8 @@ describe('Orders E2E Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
-      expect(Array.isArray(body.data)).toBe(true);
-      body.data.forEach((order: any) => {
+      expect(Array.isArray(body.data.data)).toBe(true);
+      body.data.data.forEach((order: any) => {
         expect(order.userId).toBe(userId);
       });
     });
@@ -750,8 +758,8 @@ describe('Orders E2E Tests', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
-      expect(Array.isArray(body.data)).toBe(true);
-      body.data.forEach((order: any) => {
+      expect(Array.isArray(body.data.data)).toBe(true);
+      body.data.data.forEach((order: any) => {
         expect(order.origin).toBe('Local');
       });
     });

@@ -37,44 +37,44 @@ export class OrderRepository implements IOrderRepository {
     );
   }
 
-  async findAll(filters?: OrderFilters): Promise<Order[]> {
-    const where: any = {};
-
+  private buildWhereFromFilters(filters?: OrderFilters): Record<string, unknown> {
+    const where: Record<string, unknown> = {};
     if (filters?.status !== undefined) {
       where.status = filters.status;
     }
-
     if (filters?.userId) {
       where.userId = filters.userId;
     }
-
     if (filters?.tableId) {
       where.tableId = filters.tableId;
     }
-
     if (filters?.paymentMethod !== undefined) {
       where.paymentMethod = filters.paymentMethod;
     }
-
     if (filters?.origin) {
       where.origin = filters.origin;
     }
-
     if (filters?.dateFrom || filters?.dateTo) {
       where.date = {};
       if (filters.dateFrom) {
-        where.date.gte = filters.dateFrom;
+        (where.date as Record<string, Date>).gte = filters.dateFrom;
       }
       if (filters.dateTo) {
-        where.date.lte = filters.dateTo;
+        (where.date as Record<string, Date>).lte = filters.dateTo;
       }
     }
+    return where;
+  }
+
+  async findAll(filters?: OrderFilters, pagination?: { skip: number; take: number }): Promise<Order[]> {
+    const where = this.buildWhereFromFilters(filters);
 
     const orders = await this.prisma.order.findMany({
       where,
       orderBy: {
         date: 'desc',
       },
+      ...(pagination && { skip: pagination.skip, take: pagination.take }),
     });
 
     return orders.map(
@@ -99,6 +99,11 @@ export class OrderRepository implements IOrderRepository {
           order.updatedAt
         )
     );
+  }
+
+  async count(filters?: OrderFilters): Promise<number> {
+    const where = this.buildWhereFromFilters(filters);
+    return this.prisma.order.count({ where });
   }
 
   async create(data: {

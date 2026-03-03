@@ -156,10 +156,10 @@ export class UpdateOrderUseCase {
         }
       }
 
-      // Calculate new totals
+      // Calculate new totals (no IVA aplicado automáticamente)
       const tip = input.tip !== undefined ? input.tip : existingOrder.tip;
-      const iva = subtotal * 0.16;
-      const total = subtotal + iva + tip;
+      const iva = 0;
+      const total = subtotal + tip;
 
       updateData.subtotal = subtotal;
       updateData.iva = iva;
