@@ -116,7 +116,7 @@ class LocalServer {
       });
     });
   }
-
+//I
   private setupErrorHandling(): void {
     // 404 handler
     this.app.use(NotFoundMiddleware.handle);
