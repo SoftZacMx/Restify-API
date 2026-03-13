@@ -44,6 +44,9 @@ import { RegisterWebSocketConnectionUseCase } from '../../application/use-cases/
 import { UnregisterWebSocketConnectionUseCase } from '../../application/use-cases/websocket/unregister-websocket-connection.use-case';
 import { PayOrderUseCase } from '../../application/use-cases/orders/pay-order.use-case';
 import { GetDashboardUseCase } from '../../application/use-cases/dashboard/get-dashboard.use-case';
+import { GetReportsSummaryUseCase } from '../../application/use-cases/reports/get-reports-summary.use-case';
+import { IReportsSummaryRepository } from '../../domain/interfaces/reports-summary-repository.interface';
+import { ReportsSummaryRepository } from '../database/repositories/reports-summary.repository';
 import { GetKitchenTicketUseCase } from '../../application/use-cases/tickets/get-kitchen-ticket.use-case';
 import { GetSaleTicketUseCase } from '../../application/use-cases/tickets/get-sale-ticket.use-case';
 import { GetCompanyUseCase } from '../../application/use-cases/company/get-company.use-case';
@@ -153,6 +156,12 @@ container.register(PayOrderUseCase, PayOrderUseCase);
 
 // Dashboard
 container.register(GetDashboardUseCase, GetDashboardUseCase);
+
+// Reports summary (dashboard charts)
+container.register<IReportsSummaryRepository>('IReportsSummaryRepository', {
+  useFactory: () => new ReportsSummaryRepository(prismaClient),
+});
+container.register(GetReportsSummaryUseCase, GetReportsSummaryUseCase);
 
 // Tickets (kitchen-ticket, sale-ticket)
 container.register(GetKitchenTicketUseCase, GetKitchenTicketUseCase);

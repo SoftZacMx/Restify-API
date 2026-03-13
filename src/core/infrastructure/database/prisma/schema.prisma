@@ -412,6 +412,7 @@ enum ExpenseType {
   UTILITY           // Servicios públicos (luz, agua, internet)
   RENT              // Renta
   MERCHANDISE       // Compra de mercancía (con items de productos)
+  SALARY            // Pago de salarios (empleado + monto)
   OTHER             // Otros gastos
 }
 
