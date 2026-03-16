@@ -7,6 +7,8 @@ import { ProductRepository } from '../database/repositories/product.repository';
 import { IProductRepository } from '../../domain/interfaces/product-repository.interface';
 import { TableRepository } from '../database/repositories/table.repository';
 import { ITableRepository } from '../../domain/interfaces/table-repository.interface';
+import { CompanyRepository } from '../database/repositories/company.repository';
+import { ICompanyRepository } from '../../domain/interfaces/company-repository.interface';
 import { MenuCategoryRepository } from '../database/repositories/menu-category.repository';
 import { IMenuCategoryRepository } from '../../domain/interfaces/menu-category-repository.interface';
 import { MenuItemRepository } from '../database/repositories/menu-item.repository';
@@ -42,8 +44,13 @@ import { RegisterWebSocketConnectionUseCase } from '../../application/use-cases/
 import { UnregisterWebSocketConnectionUseCase } from '../../application/use-cases/websocket/unregister-websocket-connection.use-case';
 import { PayOrderUseCase } from '../../application/use-cases/orders/pay-order.use-case';
 import { GetDashboardUseCase } from '../../application/use-cases/dashboard/get-dashboard.use-case';
+import { GetReportsSummaryUseCase } from '../../application/use-cases/reports/get-reports-summary.use-case';
+import { IReportsSummaryRepository } from '../../domain/interfaces/reports-summary-repository.interface';
+import { ReportsSummaryRepository } from '../database/repositories/reports-summary.repository';
 import { GetKitchenTicketUseCase } from '../../application/use-cases/tickets/get-kitchen-ticket.use-case';
 import { GetSaleTicketUseCase } from '../../application/use-cases/tickets/get-sale-ticket.use-case';
+import { GetCompanyUseCase } from '../../application/use-cases/company/get-company.use-case';
+import { UpsertCompanyUseCase } from '../../application/use-cases/company/upsert-company.use-case';
 
 // Register Prisma Service
 container.registerSingleton(PrismaService);
@@ -63,6 +70,10 @@ container.register<IProductRepository>('IProductRepository', {
 
 container.register<ITableRepository>('ITableRepository', {
   useFactory: () => new TableRepository(prismaClient),
+});
+
+container.register<ICompanyRepository>('ICompanyRepository', {
+  useFactory: () => new CompanyRepository(prismaClient),
 });
 
 container.register<IMenuCategoryRepository>('IMenuCategoryRepository', {
@@ -146,9 +157,19 @@ container.register(PayOrderUseCase, PayOrderUseCase);
 // Dashboard
 container.register(GetDashboardUseCase, GetDashboardUseCase);
 
+// Reports summary (dashboard charts)
+container.register<IReportsSummaryRepository>('IReportsSummaryRepository', {
+  useFactory: () => new ReportsSummaryRepository(prismaClient),
+});
+container.register(GetReportsSummaryUseCase, GetReportsSummaryUseCase);
+
 // Tickets (kitchen-ticket, sale-ticket)
 container.register(GetKitchenTicketUseCase, GetKitchenTicketUseCase);
 container.register(GetSaleTicketUseCase, GetSaleTicketUseCase);
+
+// Company (singleton business info)
+container.register(GetCompanyUseCase, GetCompanyUseCase);
+container.register(UpsertCompanyUseCase, UpsertCompanyUseCase);
 
 export { container };
 

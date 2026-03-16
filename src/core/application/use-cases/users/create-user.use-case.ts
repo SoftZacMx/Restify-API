@@ -1,8 +1,20 @@
 import { inject, injectable } from 'tsyringe';
+import { UserRole } from '@prisma/client';
 import { IUserRepository } from '../../../domain/interfaces/user-repository.interface';
-import { CreateUserInput } from '../../dto/user.dto';
 import { AppError } from '../../../../shared/errors';
 import { BcryptUtil } from '../../../../shared/utils/bcrypt.util';
+
+/** Input tipado explícitamente para evitar inferencia unknown con z.infer en ts-node */
+export interface CreateUserInput {
+  name: string;
+  last_name: string;
+  second_last_name?: string | null;
+  email: string;
+  password: string;
+  phone?: string | null;
+  status?: boolean;
+  rol: UserRole;
+}
 
 export interface CreateUserResult {
   id: string;

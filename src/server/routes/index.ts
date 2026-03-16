@@ -12,6 +12,7 @@ import expenseRoutes from './expense.routes';
 import employeeSalaryRoutes from './employee-salary.routes';
 import reportRoutes from './report.routes';
 import dashboardRoutes from './dashboard.routes';
+import companyRoutes from './company.routes';
 import healthRoutes from './health.routes';
 
 const router = Router();
@@ -19,7 +20,8 @@ const router = Router();
 // Health check route (no prefix)
 router.use('/health', healthRoutes);
 
-// API routes
+// API routes (company first so /api/company is matched before any generic middleware)
+router.use('/api/company', companyRoutes);
 router.use('/api/auth', authRoutes);
 router.use('/api/users', userRoutes);
 router.use('/api/products', productRoutes);

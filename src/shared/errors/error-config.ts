@@ -100,6 +100,16 @@ export const ERROR_CONFIG = {
     statusCode: 404,
     category: 'BUSINESS',
   },
+  COMPANY_NOT_FOUND: {
+    message: 'Company information not found',
+    statusCode: 404,
+    category: 'BUSINESS',
+  },
+  OUTSIDE_OPERATING_HOURS: {
+    message: 'No se pueden crear órdenes fuera del horario de operación',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
   MENU_CATEGORY_NOT_FOUND: {
     message: 'Menu category not found',
     statusCode: 404,

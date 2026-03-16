@@ -57,6 +57,16 @@ export interface ExpenseAnalysisReportData {
       total: number;
       percentage: number;
     };
+    salary: {
+      items: Array<{
+        id: string;
+        date: Date;
+        total: number;
+        description: string | null;
+      }>;
+      total: number;
+      percentage: number;
+    };
   };
   employeeSalaries: {
     items: Array<{
@@ -121,6 +131,7 @@ export class ExpenseAnalysisReportGenerator extends BaseReportGenerator {
       UTILITY: [] as any[],
       RENT: [] as any[],
       MERCHANDISE: [] as any[],
+      SALARY: [] as any[],
       OTHER: [] as any[],
     };
 
@@ -141,10 +152,11 @@ export class ExpenseAnalysisReportGenerator extends BaseReportGenerator {
     const utilitiesTotal = calculateTotal(expensesByType.UTILITY);
     const rentTotal = calculateTotal(expensesByType.RENT);
     const merchandiseTotal = calculateTotal(expensesByType.MERCHANDISE);
+    const salaryTotal = calculateTotal(expensesByType.SALARY);
     const otherTotal = calculateTotal(expensesByType.OTHER);
     const employeeSalariesTotal = employeeSalaries.reduce((sum: number, payment: any) => sum + payment.amount, 0);
 
-    const totalExpenses = businessServicesTotal + utilitiesTotal + rentTotal + merchandiseTotal + otherTotal + employeeSalariesTotal;
+    const totalExpenses = businessServicesTotal + utilitiesTotal + rentTotal + merchandiseTotal + salaryTotal + otherTotal + employeeSalariesTotal;
 
     // Calculate percentages
     const calculatePercentage = (total: number) => (totalExpenses > 0 ? (total / totalExpenses) * 100 : 0);
@@ -174,6 +186,7 @@ export class ExpenseAnalysisReportGenerator extends BaseReportGenerator {
       utilities: utilitiesTotal,
       rent: rentTotal,
       merchandise: merchandiseTotal,
+      salary: salaryTotal,
       other: otherTotal,
       employeeSalaries: employeeSalariesTotal,
     };
@@ -212,6 +225,11 @@ export class ExpenseAnalysisReportGenerator extends BaseReportGenerator {
           items: expensesByType.OTHER,
           total: otherTotal,
           percentage: calculatePercentage(otherTotal),
+        },
+        salary: {
+          items: expensesByType.SALARY,
+          total: salaryTotal,
+          percentage: calculatePercentage(salaryTotal),
         },
       },
       employeeSalaries: {

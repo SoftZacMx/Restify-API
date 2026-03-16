@@ -38,6 +38,7 @@ export interface SaleTicketOrderItem {
 }
 
 export interface SaleTicketResponse {
+  companyName: string;
   orderId: string;
   date: string;
   tableNumber: number | null;
