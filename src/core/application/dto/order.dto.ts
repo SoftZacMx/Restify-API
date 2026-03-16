@@ -13,7 +13,7 @@ export const orderItemSchema = z.object({
   menuItemId: z.string().uuid('Invalid menu item ID format').optional().nullable(),
   quantity: z.number().int().positive('Quantity must be positive'),
   price: z.number().positive('Price must be positive').multipleOf(0.01, 'Price must have at most 2 decimal places'),
-  note: z.string().max(500, 'Note is too long').optional().nullable(),
+  note: z.string().max(50, 'Note must be at most 50 characters').optional().nullable(),
   extras: z.array(orderItemExtraSchema).optional().default([]),
 }).refine(
   (data) => {
@@ -47,7 +47,7 @@ export const updateOrderItemSchema = z.object({
   menuItemId: z.string().uuid('Invalid menu item ID format').optional().nullable(),
   quantity: z.number().int().positive('Quantity must be positive'),
   price: z.number().positive('Price must be positive').multipleOf(0.01, 'Price must have at most 2 decimal places'),
-  note: z.string().max(500, 'Note is too long').optional().nullable(),
+  note: z.string().max(50, 'Note must be at most 50 characters').optional().nullable(),
   extras: z.array(orderItemExtraSchema).optional().default([]),
 }).refine(
   (data) => {
