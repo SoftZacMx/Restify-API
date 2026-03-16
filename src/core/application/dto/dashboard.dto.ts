@@ -30,10 +30,21 @@ export interface DashboardActiveOrders {
   items: DashboardOrderSummary[];
 }
 
+export interface DashboardOccupiedTable {
+  id: string;
+  numberTable: number;
+}
+
+export interface DashboardOccupiedTables {
+  count: number;
+  items: DashboardOccupiedTable[];
+}
+
 export interface DashboardResponse {
   salesToday: number;
   salesLast7Days: DashboardSalesLast7Days;
   activeOrders: DashboardActiveOrders;
+  occupiedTables: DashboardOccupiedTables;
   recentOrders: DashboardOrderSummary[];
   lastCompletedOrders: DashboardOrderSummary[];
 }

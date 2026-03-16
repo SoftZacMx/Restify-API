@@ -61,12 +61,14 @@ export class GetDashboardUseCase {
       activeOrdersList,
       recentOrdersList,
       paidOrdersForCompleted,
+      occupiedTablesList,
     ] = await Promise.all([
       this.orderRepository.findAll({ status: true, dateFrom: todayStart, dateTo: todayEnd }),
       this.orderRepository.findAll({ status: true, dateFrom: sevenDaysAgoStart, dateTo: todayEnd }),
       this.orderRepository.findAll({ status: false }),
       this.orderRepository.findAll({}), // all orders, already ordered by date desc
       this.orderRepository.findAll({ status: true, dateFrom: thirtyDaysAgo, dateTo: now }),
+      this.tableRepository.findAll({ availabilityStatus: false }),
     ]);
 
     const salesToday = paidOrdersToday.reduce((sum, o) => sum + o.total, 0);
@@ -103,10 +105,16 @@ export class GetDashboardUseCase {
       .slice(0, 5)
       .map((o) => orderToSummary(o, tableNumberByTableId));
 
+    const occupiedTablesItems = occupiedTablesList.map((t) => ({
+      id: t.id,
+      numberTable: t.numberTable,
+    }));
+
     return {
       salesToday,
       salesLast7Days: { total: salesLast7DaysTotal, byDay },
       activeOrders: { count: activeOrdersList.length, items: activeOrdersItems },
+      occupiedTables: { count: occupiedTablesList.length, items: occupiedTablesItems },
       recentOrders,
       lastCompletedOrders,
     };
