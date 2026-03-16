@@ -10,6 +10,7 @@ export interface MenuItemFilters {
 
 export interface IMenuItemRepository {
   findById(id: string): Promise<MenuItem | null>;
+  findByIds(ids: string[]): Promise<MenuItem[]>;
   findAll(filters?: MenuItemFilters): Promise<MenuItem[]>;
   create(data: {
     name: string;

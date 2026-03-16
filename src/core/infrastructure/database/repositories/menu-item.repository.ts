@@ -27,6 +27,28 @@ export class MenuItemRepository implements IMenuItemRepository {
     );
   }
 
+  async findByIds(ids: string[]): Promise<MenuItem[]> {
+    const uniqueIds = [...new Set(ids)].filter(Boolean);
+    if (uniqueIds.length === 0) return [];
+    const items = await this.prisma.menuItem.findMany({
+      where: { id: { in: uniqueIds } },
+    });
+    return items.map(
+      (menuItem) =>
+        new MenuItem(
+          menuItem.id,
+          menuItem.name,
+          Number(menuItem.price),
+          Boolean(menuItem.status),
+          Boolean(menuItem.isExtra),
+          menuItem.categoryId,
+          menuItem.userId,
+          menuItem.createdAt,
+          menuItem.updatedAt
+        )
+    );
+  }
+
   async findAll(filters?: MenuItemFilters): Promise<MenuItem[]> {
     const where: any = {};
 
