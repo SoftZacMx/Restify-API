@@ -20,6 +20,7 @@ export function stripEnvQuotes(s: string): string {
 /** Orígenes permitidos por CORS: restify-qa (y todas sus rutas) + localhost en dev. */
 const CORS_ALLOWED_ORIGINS = [
   'https://restify-qa.up.railway.app',
+  'https://restify-prod.up.railway.app',
   'http://localhost:5173',
   'http://localhost:3000',
   'https://restify-frontend-production-9ce6.up.railway.app'
