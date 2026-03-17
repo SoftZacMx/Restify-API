@@ -3,10 +3,8 @@ export interface ServerConfig {
   host: string;
   environment: string;
   cors: {
-    origin: string | string[] | boolean;
+    origin: string;
     credentials: boolean;
-    /** Lista de orígenes permitidos para usar como fallback si la petición no trae Origin (ej. proxy). */
-    allowedOrigins: string[];
   };
 }
 
@@ -17,24 +15,18 @@ export function stripEnvQuotes(s: string): string {
   return t;
 }
 
-/** Orígenes permitidos por CORS: restify-qa (y todas sus rutas) + localhost en dev. */
-const CORS_ALLOWED_ORIGINS = [
-  'https://restify-qa.up.railway.app',
-  'https://restify-prod.up.railway.app',
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'https://restify-frontend-production-9ce6.up.railway.app'
-];
-
 export const getServerConfig = (): ServerConfig => {
+  const corsOrigin = process.env.CORS_ORIGIN
+    ? stripEnvQuotes(process.env.CORS_ORIGIN)
+    : 'http://localhost:5173';
+
   return {
     port: parseInt(process.env.PORT || '3000', 10),
     host: process.env.HOST || '0.0.0.0',
     environment: process.env.NODE_ENV || 'development',
     cors: {
-      origin: CORS_ALLOWED_ORIGINS,
+      origin: corsOrigin,
       credentials: true,
-      allowedOrigins: CORS_ALLOWED_ORIGINS,
     },
   };
 };

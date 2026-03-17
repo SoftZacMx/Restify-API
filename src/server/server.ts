@@ -41,46 +41,14 @@ class LocalServer {
     this.app.set('trust proxy', 1);
 
     const { cors: corsConfig } = this.config;
-    const normalizeOrigin = (o: string) => o.trim().replace(/\/$/, '');
-    const allowedNormalized = (corsConfig.allowedOrigins || []).map(normalizeOrigin);
 
     const corsOptions: cors.CorsOptions = {
-      origin: (origin, callback) => {
-        const normalized = normalizeOrigin(origin || '');
-        if (!origin || allowedNormalized.length === 0 || allowedNormalized.includes(normalized)) {
-          callback(null, true); // refleja el origen de la petición (nunca otro)
-        } else {
-          callback(null, false);
-        }
-      },
+      origin: corsConfig.origin,
       credentials: corsConfig.credentials,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
     };
 
-    // 1) OPTIONS explícito PRIMERO: Railway y Express — el preflight debe recibir CORS siempre.
-    this.app.use((req: Request, res: Response, next: NextFunction) => {
-      if (req.method !== 'OPTIONS') return next();
-      const rawOrigin = (req.headers.origin || '').trim();
-      const origin = normalizeOrigin(rawOrigin);
-      const isAllowed = origin && (allowedNormalized.length === 0 || allowedNormalized.includes(origin));
-      // Siempre devolver el origen de la petición si está permitido (nunca otro de la lista).
-      const allowOrigin = isAllowed ? (rawOrigin.replace(/\/$/, '') || origin) : null;
-      if (allowOrigin) {
-        res.setHeader('Access-Control-Allow-Origin', allowOrigin);
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-      }
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-      res.setHeader('Access-Control-Max-Age', '86400');
-      console.log(
-        `[CORS] Preflight OPTIONS ${req.path} → Origin: ${rawOrigin || '(none)'} → Allow-Origin: ${allowOrigin || '(rejected)'}`
-      );
-      res.status(204).end();
-    });
-
-    // 2) CORS para el resto de peticiones (GET, POST, etc.)
-    this.app.options('*', cors(corsOptions));
     this.app.use(cors(corsOptions));
     // Cookie parser - must be before body parsing
     this.app.use(cookieParser());
