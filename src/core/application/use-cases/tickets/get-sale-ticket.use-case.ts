@@ -94,7 +94,7 @@ export class GetSaleTicketUseCase {
       };
     });
 
-    const tableNumber = table ? table.numberTable : null;
+    const tableName = table ? table.name : null;
     const paymentMethod = paymentMethodLabel(order.paymentMethod);
     const dateFormatted = new Date(order.date).toLocaleString('es-MX', {
       day: '2-digit',
@@ -107,7 +107,7 @@ export class GetSaleTicketUseCase {
     const lines: string[] = [];
     lines.push('--- TICKET ---');
     lines.push(`Fecha: ${dateFormatted}`);
-    lines.push(tableNumber !== null ? `Mesa: ${tableNumber}` : 'Para llevar');
+    lines.push(tableName !== null ? `Mesa: ${tableName}` : 'Para llevar');
     if (order.client?.trim()) lines.push(`Cliente: ${order.client.trim()}`);
     if (order.note?.trim()) lines.push(`Nota: ${order.note.trim()}`);
     lines.push('');
@@ -131,7 +131,7 @@ export class GetSaleTicketUseCase {
       companyName: company?.name ?? 'Restify',
       orderId: order.id,
       date: order.date.toISOString(),
-      tableNumber,
+      tableName,
       client: order.client,
       note: order.note,
       items,

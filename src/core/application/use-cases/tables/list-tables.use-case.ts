@@ -4,7 +4,7 @@ import { ListTablesInput } from '../../dto/table.dto';
 
 export interface ListTablesResult {
   id: string;
-  numberTable: number;
+  name: string;
   userId: string;
   status: boolean;
   availabilityStatus: boolean;
@@ -24,7 +24,7 @@ export class ListTablesUseCase {
           status: input.status,
           availabilityStatus: input.availabilityStatus,
           userId: input.userId,
-          numberTable: input.numberTable,
+          name: input.name,
         }
       : undefined;
 
@@ -32,7 +32,7 @@ export class ListTablesUseCase {
 
     return tables.map((table) => ({
       id: table.id,
-      numberTable: table.numberTable,
+      name: table.name,
       userId: table.userId,
       status: table.status,
       availabilityStatus: table.availabilityStatus,
@@ -41,4 +41,3 @@ export class ListTablesUseCase {
     }));
   }
 }
-

@@ -10,7 +10,7 @@ describe('GetTableUseCase', () => {
   beforeEach(() => {
     mockTableRepository = {
       findById: jest.fn(),
-      findByNumberTable: jest.fn(),
+      findByName: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -32,7 +32,7 @@ describe('GetTableUseCase', () => {
     it('should return table data when table exists', async () => {
       const mockTable = new Table(
         '123',
-        1,
+        '1',
         '456',
         true,
         true,
@@ -46,7 +46,7 @@ describe('GetTableUseCase', () => {
 
       expect(result).toHaveProperty('id');
       expect(result.id).toBe('123');
-      expect(result.numberTable).toBe(1);
+      expect(result.name).toBe('1');
       expect(mockTableRepository.findById).toHaveBeenCalledWith('123');
     });
 
@@ -63,4 +63,3 @@ describe('GetTableUseCase', () => {
     });
   });
 });
-

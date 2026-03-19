@@ -14,7 +14,7 @@ describe('CreateTableUseCase', () => {
   beforeEach(() => {
     mockTableRepository = {
       findById: jest.fn(),
-      findByNumberTable: jest.fn(),
+      findByName: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -28,6 +28,7 @@ describe('CreateTableUseCase', () => {
       update: jest.fn(),
       delete: jest.fn(),
       findAll: jest.fn(),
+      reactivate: jest.fn(),
     };
 
     createTableUseCase = new CreateTableUseCase(
@@ -42,7 +43,7 @@ describe('CreateTableUseCase', () => {
 
   describe('execute', () => {
     const validInput = {
-      numberTable: 1,
+      name: '1',
       status: true,
       availabilityStatus: true,
       userId: '123',
@@ -64,11 +65,11 @@ describe('CreateTableUseCase', () => {
       );
 
       mockUserRepository.findById.mockResolvedValue(mockUser);
-      mockTableRepository.findByNumberTable.mockResolvedValue(null);
+      mockTableRepository.findByName.mockResolvedValue(null);
 
       const mockCreatedTable = new Table(
         '456',
-        1,
+        '1',
         '123',
         true,
         true,
@@ -81,11 +82,11 @@ describe('CreateTableUseCase', () => {
       const result = await createTableUseCase.execute(validInput);
 
       expect(result).toHaveProperty('id');
-      expect(result.numberTable).toBe(1);
+      expect(result.name).toBe('1');
       expect(result.status).toBe(true);
       expect(result.availabilityStatus).toBe(true);
       expect(mockUserRepository.findById).toHaveBeenCalledWith('123');
-      expect(mockTableRepository.findByNumberTable).toHaveBeenCalledWith(1);
+      expect(mockTableRepository.findByName).toHaveBeenCalledWith('1');
       expect(mockTableRepository.create).toHaveBeenCalled();
     });
 
@@ -101,7 +102,7 @@ describe('CreateTableUseCase', () => {
       }
     });
 
-    it('should throw error when table number already exists', async () => {
+    it('should throw error when table name already exists', async () => {
       const mockUser = new User(
         '123',
         'John',
@@ -118,7 +119,7 @@ describe('CreateTableUseCase', () => {
 
       const existingTable = new Table(
         '456',
-        1,
+        '1',
         '123',
         true,
         true,
@@ -127,7 +128,7 @@ describe('CreateTableUseCase', () => {
       );
 
       mockUserRepository.findById.mockResolvedValue(mockUser);
-      mockTableRepository.findByNumberTable.mockResolvedValue(existingTable);
+      mockTableRepository.findByName.mockResolvedValue(existingTable);
 
       try {
         await createTableUseCase.execute(validInput);
@@ -139,4 +140,3 @@ describe('CreateTableUseCase', () => {
     });
   });
 });
-

@@ -21,7 +21,7 @@ export interface GetOrderResult {
   /** Mesa asociada (incluida cuando la orden tiene tableId). Para mostrar "Mesa N" en la vista. */
   table?: {
     id: string;
-    numberTable: number;
+    name: string;
     status: boolean;
     availabilityStatus: boolean;
   };
@@ -110,7 +110,7 @@ export class GetOrderUseCase {
       if (tableEntity) {
         table = {
           id: tableEntity.id,
-          numberTable: tableEntity.numberTable,
+          name: tableEntity.name,
           status: tableEntity.status,
           availabilityStatus: tableEntity.availabilityStatus,
         };

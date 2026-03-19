@@ -27,7 +27,7 @@ function toDateKey(date: Date): string {
 
 function orderToSummary(
   order: { id: string; total: number; date: Date; origin: string; tableId: string | null; status: boolean; delivered: boolean },
-  tableNumberByTableId: Map<string, number>
+  tableNameByTableId: Map<string, string>
 ): DashboardOrderSummary {
   return {
     id: order.id,
@@ -35,7 +35,7 @@ function orderToSummary(
     date: order.date.toISOString(),
     origin: order.origin,
     tableId: order.tableId,
-    tableNumber: order.tableId ? tableNumberByTableId.get(order.tableId) ?? null : null,
+    tableName: order.tableId ? tableNameByTableId.get(order.tableId) ?? null : null,
     status: order.status,
     delivered: order.delivered,
   };
@@ -88,26 +88,22 @@ export class GetDashboardUseCase {
       byDay.push({ date: key, day: dayName, total });
     }
 
-    const tableNumberByTableId = new Map<string, number>();
-    const allTableIds = new Set<string>();
-    for (const order of [...activeOrdersList, ...recentOrdersList, ...paidOrdersForCompleted]) {
-      if (order.tableId) allTableIds.add(order.tableId);
-    }
+    const tableNameByTableId = new Map<string, string>();
     const tablesToResolve = await this.tableRepository.findAll({});
     for (const t of tablesToResolve) {
-      tableNumberByTableId.set(t.id, t.numberTable);
+      tableNameByTableId.set(t.id, t.name);
     }
 
-    const activeOrdersItems = activeOrdersList.slice(0, 20).map((o) => orderToSummary(o, tableNumberByTableId));
-    const recentOrders = recentOrdersList.slice(0, 10).map((o) => orderToSummary(o, tableNumberByTableId));
+    const activeOrdersItems = activeOrdersList.slice(0, 20).map((o) => orderToSummary(o, tableNameByTableId));
+    const recentOrders = recentOrdersList.slice(0, 10).map((o) => orderToSummary(o, tableNameByTableId));
     const lastCompletedOrders = paidOrdersForCompleted
       .filter((o) => o.delivered)
       .slice(0, 5)
-      .map((o) => orderToSummary(o, tableNumberByTableId));
+      .map((o) => orderToSummary(o, tableNameByTableId));
 
     const occupiedTablesItems = occupiedTablesList.map((t) => ({
       id: t.id,
-      numberTable: t.numberTable,
+      name: t.name,
     }));
 
     return {

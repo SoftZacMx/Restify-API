@@ -1,18 +1,8 @@
 import { inject, injectable } from 'tsyringe';
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { IUserRepository } from '../../../domain/interfaces/user-repository.interface';
-import { CreateTableInput } from '../../dto/table.dto';
 import { AppError } from '../../../../shared/errors';
-
-export interface CreateTableResult {
-  id: string;
-  numberTable: number;
-  userId: string;
-  status: boolean;
-  availabilityStatus: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import type { CreateTableInput } from '../../dto/table.dto';
 
 @injectable()
 export class CreateTableUseCase {
@@ -21,22 +11,27 @@ export class CreateTableUseCase {
     @inject('IUserRepository') private readonly userRepository: IUserRepository
   ) {}
 
-  async execute(input: CreateTableInput): Promise<CreateTableResult> {
-    // Verify that user exists
+  async execute(input: CreateTableInput): Promise<{
+    id: string;
+    name: string;
+    userId: string;
+    status: boolean;
+    availabilityStatus: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }> {
     const user = await this.userRepository.findById(input.userId);
     if (!user) {
       throw new AppError('USER_NOT_FOUND');
     }
 
-    // Check if table number already exists
-    const existingTable = await this.tableRepository.findByNumberTable(input.numberTable);
+    const existingTable = await this.tableRepository.findByName(input.name);
     if (existingTable) {
-      throw new AppError('VALIDATION_ERROR', 'Table number already exists');
+      throw new AppError('VALIDATION_ERROR', 'Ya existe una mesa con ese nombre');
     }
 
-    // Create table
     const table = await this.tableRepository.create({
-      numberTable: input.numberTable,
+      name: input.name,
       status: input.status ?? true,
       availabilityStatus: input.availabilityStatus ?? true,
       userId: input.userId,
@@ -44,7 +39,7 @@ export class CreateTableUseCase {
 
     return {
       id: table.id,
-      numberTable: table.numberTable,
+      name: table.name,
       userId: table.userId,
       status: table.status,
       availabilityStatus: table.availabilityStatus,
@@ -53,4 +48,3 @@ export class CreateTableUseCase {
     };
   }
 }
-

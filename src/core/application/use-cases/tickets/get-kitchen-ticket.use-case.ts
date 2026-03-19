@@ -71,11 +71,11 @@ export class GetKitchenTicketUseCase {
       };
     });
 
-    const tableNumber = table ? table.numberTable : null;
+    const tableName = table ? table.name : null;
 
     const lines: string[] = [];
     lines.push('--- COCINA ---');
-    lines.push(tableNumber !== null ? `Mesa: ${tableNumber}` : 'Sin mesa');
+    lines.push(tableName !== null ? `Mesa: ${tableName}` : 'Sin mesa');
     lines.push(`Orden: ${order.id.slice(0, 8)}`);
     lines.push('');
     for (const it of items) {
@@ -90,7 +90,7 @@ export class GetKitchenTicketUseCase {
 
     return {
       orderId: order.id,
-      tableNumber,
+      tableName,
       items,
       lines,
     };

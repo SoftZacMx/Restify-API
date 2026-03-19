@@ -126,7 +126,7 @@ describe('Refunds E2E Tests', () => {
     // Create test table
     const table = await prisma.table.create({
       data: {
-        numberTable: Math.floor(Math.random() * 1000),
+        name: `e2e-refund-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
         userId: testUserId,
         status: true,
         availabilityStatus: true,

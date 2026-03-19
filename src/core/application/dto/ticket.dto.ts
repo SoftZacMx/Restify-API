@@ -17,7 +17,8 @@ export interface KitchenTicketOrderItem {
 
 export interface KitchenTicketResponse {
   orderId: string;
-  tableNumber: number | null;
+  /** Nombre de la mesa (ej. "1", "1A") o null si no aplica */
+  tableName: string | null;
   items: KitchenTicketOrderItem[];
   lines: string[];
 }
@@ -41,7 +42,7 @@ export interface SaleTicketResponse {
   companyName: string;
   orderId: string;
   date: string;
-  tableNumber: number | null;
+  tableName: string | null;
   client: string | null;
   note: string | null;
   items: SaleTicketOrderItem[];

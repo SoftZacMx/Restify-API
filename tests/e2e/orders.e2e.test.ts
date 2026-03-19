@@ -292,12 +292,12 @@ describe('Orders E2E Tests', () => {
     
     // Create a table for testing - use timestamp to avoid conflicts
     const { createTableHandler } = require('../../src/handlers/tables/create-table.handler');
-    const tableNumber = 90000 + (testTimestamp % 10000); // Use timestamp to generate unique table number
+    const tableName = `e2e-order-${testTimestamp}`;
     const createTableEvent: Partial<APIGatewayProxyEvent> = {
       httpMethod: 'POST',
       path: '/api/tables',
       body: JSON.stringify({
-        numberTable: tableNumber,
+        name: tableName,
         status: true,
         availabilityStatus: true,
         userId: userId,

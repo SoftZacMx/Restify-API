@@ -73,12 +73,12 @@ const exampleBodies: Record<string, any> = {
     status: true,
   },
   'POST /api/tables': {
-    numberTable: 1,
+    name: '1',
     status: true,
     availabilityStatus: true,
   },
   'PUT /api/tables/:table_id': {
-    numberTable: 1,
+    name: '1',
     status: true,
     availabilityStatus: false,
   },

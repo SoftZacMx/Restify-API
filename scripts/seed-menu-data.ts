@@ -26,7 +26,7 @@ interface SeedMenuItem {
 }
 
 interface SeedTable {
-  numberTable: number;
+  name: string;
   status: boolean;
   availabilityStatus: boolean;
 }
@@ -70,16 +70,16 @@ const seedExtras: SeedMenuItem[] = [
 
 // 10 Mesas
 const seedTables: SeedTable[] = [
-  { numberTable: 1, status: true, availabilityStatus: true },
-  { numberTable: 2, status: true, availabilityStatus: true },
-  { numberTable: 3, status: true, availabilityStatus: true },
-  { numberTable: 4, status: true, availabilityStatus: true },
-  { numberTable: 5, status: true, availabilityStatus: true },
-  { numberTable: 6, status: true, availabilityStatus: true },
-  { numberTable: 7, status: true, availabilityStatus: true },
-  { numberTable: 8, status: true, availabilityStatus: true },
-  { numberTable: 9, status: true, availabilityStatus: true },
-  { numberTable: 10, status: true, availabilityStatus: true },
+  { name: '1', status: true, availabilityStatus: true },
+  { name: '2', status: true, availabilityStatus: true },
+  { name: '3', status: true, availabilityStatus: true },
+  { name: '4', status: true, availabilityStatus: true },
+  { name: '5', status: true, availabilityStatus: true },
+  { name: '6', status: true, availabilityStatus: true },
+  { name: '7', status: true, availabilityStatus: true },
+  { name: '8', status: true, availabilityStatus: true },
+  { name: '9', status: true, availabilityStatus: true },
+  { name: '10', status: true, availabilityStatus: true },
 ];
 
 async function seedMenuData(): Promise<void> {
@@ -222,21 +222,21 @@ async function seedMenuData(): Promise<void> {
     console.log('🪑 Creating tables...');
     for (const tableData of seedTables) {
       const existing = await prisma.table.findFirst({
-        where: { numberTable: tableData.numberTable },
+        where: { name: tableData.name },
       });
 
       if (existing) {
-        console.log(`   ⏭️  Table ${tableData.numberTable} already exists, skipping...`);
+        console.log(`   ⏭️  Table "${tableData.name}" already exists, skipping...`);
       } else {
         const table = await prisma.table.create({
           data: {
-            numberTable: tableData.numberTable,
+            name: tableData.name,
             status: tableData.status,
             availabilityStatus: tableData.availabilityStatus,
             userId,
           },
         });
-        console.log(`   ✅ Created table: ${table.numberTable}`);
+        console.log(`   ✅ Created table: ${table.name}`);
       }
     }
 

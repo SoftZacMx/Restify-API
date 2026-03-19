@@ -5,7 +5,7 @@ import { AppError } from '../../../../shared/errors';
 
 export interface UpdateTableResult {
   id: string;
-  numberTable: number;
+  name: string;
   userId: string;
   status: boolean;
   availabilityStatus: boolean;
@@ -20,33 +20,33 @@ export class UpdateTableUseCase {
   ) {}
 
   async execute(tableId: string, input: UpdateTableInput): Promise<UpdateTableResult> {
-    // Check if table exists
     const existingTable = await this.tableRepository.findById(tableId);
     if (!existingTable) {
       throw new AppError('TABLE_NOT_FOUND');
     }
 
-    // If numberTable is being updated, check if new number already exists
-    if (input.numberTable !== undefined && input.numberTable !== existingTable.numberTable) {
-      const tableWithNumber = await this.tableRepository.findByNumberTable(input.numberTable);
-      if (tableWithNumber) {
-        throw new AppError('VALIDATION_ERROR', 'Table number already exists');
+    if (input.name !== undefined && input.name !== existingTable.name) {
+      const tableWithName = await this.tableRepository.findByName(input.name);
+      if (tableWithName) {
+        throw new AppError('VALIDATION_ERROR', 'Ya existe una mesa con ese nombre');
       }
     }
 
-    // Prepare update data
-    const updateData: any = {};
+    const updateData: {
+      name?: string;
+      status?: boolean;
+      availabilityStatus?: boolean;
+    } = {};
 
-    if (input.numberTable !== undefined) updateData.numberTable = input.numberTable;
+    if (input.name !== undefined) updateData.name = input.name;
     if (input.status !== undefined) updateData.status = input.status;
     if (input.availabilityStatus !== undefined) updateData.availabilityStatus = input.availabilityStatus;
 
-    // Update table
     const table = await this.tableRepository.update(tableId, updateData);
 
     return {
       id: table.id,
-      numberTable: table.numberTable,
+      name: table.name,
       userId: table.userId,
       status: table.status,
       availabilityStatus: table.availabilityStatus,
@@ -55,4 +55,3 @@ export class UpdateTableUseCase {
     };
   }
 }
-

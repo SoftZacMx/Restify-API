@@ -10,7 +10,7 @@ describe('UpdateTableUseCase', () => {
   beforeEach(() => {
     mockTableRepository = {
       findById: jest.fn(),
-      findByNumberTable: jest.fn(),
+      findByName: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -28,7 +28,7 @@ describe('UpdateTableUseCase', () => {
     const tableId = '123';
     const existingTable = new Table(
       '123',
-      1,
+      '1',
       '456',
       true,
       true,
@@ -62,10 +62,10 @@ describe('UpdateTableUseCase', () => {
       }
     });
 
-    it('should throw error when new table number already exists', async () => {
+    it('should throw error when new table name already exists', async () => {
       const otherTable = new Table(
         '789',
-        5,
+        '5',
         '456',
         true,
         true,
@@ -74,10 +74,10 @@ describe('UpdateTableUseCase', () => {
       );
 
       mockTableRepository.findById.mockResolvedValue(existingTable);
-      mockTableRepository.findByNumberTable.mockResolvedValue(otherTable);
+      mockTableRepository.findByName.mockResolvedValue(otherTable);
 
       try {
-        await updateTableUseCase.execute(tableId, { numberTable: 5 });
+        await updateTableUseCase.execute(tableId, { name: '5' });
         fail('Should have thrown an error');
       } catch (error) {
         expect(error).toBeInstanceOf(AppError);
@@ -85,15 +85,14 @@ describe('UpdateTableUseCase', () => {
       }
     });
 
-    it('should allow updating to same numberTable', async () => {
+    it('should allow updating to same name', async () => {
       mockTableRepository.findById.mockResolvedValue(existingTable);
       mockTableRepository.update.mockResolvedValue(existingTable);
 
-      await updateTableUseCase.execute(tableId, { numberTable: 1 });
+      await updateTableUseCase.execute(tableId, { name: '1' });
 
-      expect(mockTableRepository.findByNumberTable).not.toHaveBeenCalled();
+      expect(mockTableRepository.findByName).not.toHaveBeenCalled();
       expect(mockTableRepository.update).toHaveBeenCalled();
     });
   });
 });
-
