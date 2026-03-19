@@ -141,14 +141,13 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       }),
     ]);
 
-    // Split / Stripe: order.paymentMethod may be null — allocate amounts from Payment rows
-    const nullMethodOrderIds = orders
-      .filter((o) => o.status && o.paymentMethod == null)
-      .map((o) => o.id);
+    // Income by method: use Payment rows when present (split = several lines; single = one line).
+    // Fallback to order.paymentMethod only if there are no payment rows (legacy).
+    const paidOrderIds = orders.filter((o) => o.status).map((o) => o.id);
     const splitPaymentLines: Payment[] =
-      nullMethodOrderIds.length > 0
+      paidOrderIds.length > 0
         ? await this.paymentRepository.findAll({
-            orderIds: nullMethodOrderIds,
+            orderIds: paidOrderIds,
             status: PaymentStatus.SUCCEEDED,
           })
         : [];
@@ -188,13 +187,14 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
 
     orders.forEach((order: any) => {
       totalIncomes += order.total;
-      if (order.paymentMethod != null) {
-        addIncomeToPaymentBuckets(incomesByPaymentMethod, order.paymentMethod, order.total);
-      } else {
-        const lines = paymentLinesByOrder.get(order.id) ?? [];
-        for (const p of lines) {
+      const paymentLines = paymentLinesByOrder.get(order.id) ?? [];
+      if (paymentLines.length > 0) {
+        // e.g. split: $40 cash + $40 transfer → each line adds to its method bucket
+        for (const p of paymentLines) {
           addIncomeToPaymentBuckets(incomesByPaymentMethod, p.paymentMethod, p.amount);
         }
+      } else if (order.paymentMethod != null) {
+        addIncomeToPaymentBuckets(incomesByPaymentMethod, order.paymentMethod, order.total);
       }
     });
 
