@@ -47,8 +47,8 @@ describe('GenerateReportUseCase', () => {
       expect(result.data).toBeDefined();
       expect(mockReportFactory.create).toHaveBeenCalledWith(ReportType.CASH_FLOW);
       expect(mockGenerator.generate).toHaveBeenCalledWith({
-        dateFrom: new Date('2024-01-01'),
-        dateTo: new Date('2024-01-31'),
+        dateFrom: new Date(Date.UTC(2024, 0, 1, 0, 0, 0, 0)),
+        dateTo: new Date(Date.UTC(2024, 0, 31, 23, 59, 59, 999)),
       });
     });
 

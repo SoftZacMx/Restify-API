@@ -4,7 +4,36 @@ import { ReportType, BaseReportFilters, BaseReportResult } from '../../../domain
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { IExpenseRepository } from '../../../domain/interfaces/expense-repository.interface';
 import { IEmployeeSalaryPaymentRepository } from '../../../domain/interfaces/employee-salary-payment-repository.interface';
-import { ExpenseType } from '@prisma/client';
+import { IPaymentRepository } from '../../../domain/interfaces/payment-repository.interface';
+import { Payment } from '../../../domain/entities/payment.entity';
+import { ExpenseType, PaymentMethod, PaymentStatus } from '@prisma/client';
+
+function addIncomeToPaymentBuckets(
+  buckets: { cash: number; transfer: number; card: number },
+  method: PaymentMethod | number,
+  amount: number
+): void {
+  if (typeof method === 'number') {
+    if (method === 1) buckets.cash += amount;
+    else if (method === 2) buckets.transfer += amount;
+    else if (method === 3) buckets.card += amount;
+    return;
+  }
+  switch (method) {
+    case PaymentMethod.CASH:
+      buckets.cash += amount;
+      break;
+    case PaymentMethod.TRANSFER:
+      buckets.transfer += amount;
+      break;
+    case PaymentMethod.CARD_PHYSICAL:
+    case PaymentMethod.CARD_STRIPE:
+      buckets.card += amount;
+      break;
+    default:
+      break;
+  }
+}
 
 export interface CashFlowReportData {
   incomes: {
@@ -71,7 +100,8 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('IExpenseRepository') private readonly expenseRepository: IExpenseRepository,
     @inject('IEmployeeSalaryPaymentRepository')
-    private readonly employeeSalaryPaymentRepository: IEmployeeSalaryPaymentRepository
+    private readonly employeeSalaryPaymentRepository: IEmployeeSalaryPaymentRepository,
+    @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository
   ) {
     super();
   }
@@ -111,6 +141,25 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       }),
     ]);
 
+    // Split / Stripe: order.paymentMethod may be null — allocate amounts from Payment rows
+    const nullMethodOrderIds = orders
+      .filter((o) => o.status && o.paymentMethod == null)
+      .map((o) => o.id);
+    const splitPaymentLines: Payment[] =
+      nullMethodOrderIds.length > 0
+        ? await this.paymentRepository.findAll({
+            orderIds: nullMethodOrderIds,
+            status: PaymentStatus.SUCCEEDED,
+          })
+        : [];
+    const paymentsByOrderId = new Map<string, Payment[]>();
+    for (const p of splitPaymentLines) {
+      if (!p.orderId) continue;
+      const list = paymentsByOrderId.get(p.orderId) ?? [];
+      list.push(p);
+      paymentsByOrderId.set(p.orderId, list);
+    }
+
     // Fetch orders with tips separately
     const ordersWithTips = orders.filter((order) => order.tip > 0);
 
@@ -120,11 +169,14 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       merchandise,
       employeeSalaries,
       ordersWithTips,
+      paymentsByOrderId,
     };
   }
 
   protected transformData(rawData: any, filters: BaseReportFilters): CashFlowReportData {
-    const { orders, businessServices, merchandise, employeeSalaries, ordersWithTips } = rawData;
+    const { orders, businessServices, merchandise, employeeSalaries, ordersWithTips, paymentsByOrderId } = rawData;
+    const paymentLinesByOrder: Map<string, Payment[]> =
+      paymentsByOrderId instanceof Map ? paymentsByOrderId : new Map<string, Payment[]>();
 
     // Calculate total incomes
     let totalIncomes = 0;
@@ -136,9 +188,14 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
 
     orders.forEach((order: any) => {
       totalIncomes += order.total;
-      if (order.paymentMethod === 1) incomesByPaymentMethod.cash += order.total;
-      else if (order.paymentMethod === 2) incomesByPaymentMethod.transfer += order.total;
-      else if (order.paymentMethod === 3) incomesByPaymentMethod.card += order.total;
+      if (order.paymentMethod != null) {
+        addIncomeToPaymentBuckets(incomesByPaymentMethod, order.paymentMethod, order.total);
+      } else {
+        const lines = paymentLinesByOrder.get(order.id) ?? [];
+        for (const p of lines) {
+          addIncomeToPaymentBuckets(incomesByPaymentMethod, p.paymentMethod, p.amount);
+        }
+      }
     });
 
     // Calculate expenses

@@ -3,6 +3,8 @@ import { PaymentStatus, PaymentMethod } from '@prisma/client';
 
 export interface PaymentFilters {
   orderId?: string;
+  /** Filter by multiple order IDs (e.g. cash-flow report for split payments) */
+  orderIds?: string[];
   userId?: string;
   status?: PaymentStatus;
   paymentMethod?: PaymentMethod;
