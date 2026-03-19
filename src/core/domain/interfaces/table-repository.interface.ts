@@ -4,24 +4,26 @@ export interface TableFilters {
   status?: boolean;
   availabilityStatus?: boolean;
   userId?: string;
-  numberTable?: number;
+  name?: string;
 }
 
 export interface ITableRepository {
   findById(id: string): Promise<Table | null>;
-  findByNumberTable(numberTable: number): Promise<Table | null>;
+  findByName(name: string): Promise<Table | null>;
   findAll(filters?: TableFilters): Promise<Table[]>;
   create(data: {
-    numberTable: number;
+    name: string;
     status: boolean;
     availabilityStatus: boolean;
     userId: string;
   }): Promise<Table>;
-  update(id: string, data: {
-    numberTable?: number;
-    status?: boolean;
-    availabilityStatus?: boolean;
-  }): Promise<Table>;
+  update(
+    id: string,
+    data: {
+      name?: string;
+      status?: boolean;
+      availabilityStatus?: boolean;
+    }
+  ): Promise<Table>;
   delete(id: string): Promise<void>;
 }
-

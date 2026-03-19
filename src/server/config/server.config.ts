@@ -15,6 +15,11 @@ export function stripEnvQuotes(s: string): string {
   return t;
 }
 
+/** Orígenes permitidos por CORS: se lee de la variable de entorno CORS_ORIGIN. */
+const CORS_ALLOWED_ORIGINS = process.env.CORS_ORIGIN
+  ? [stripEnvQuotes(process.env.CORS_ORIGIN)]
+  : ['http://localhost:5173'];
+
 export const getServerConfig = (): ServerConfig => {
   const corsOrigin = process.env.CORS_ORIGIN
     ? stripEnvQuotes(process.env.CORS_ORIGIN)

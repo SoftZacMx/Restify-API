@@ -58,7 +58,9 @@ export class PaymentRepository implements IPaymentRepository {
   async findAll(filters?: PaymentFilters): Promise<Payment[]> {
     const where: any = {};
 
-    if (filters?.orderId) {
+    if (filters?.orderIds !== undefined && filters.orderIds.length > 0) {
+      where.orderId = { in: filters.orderIds };
+    } else if (filters?.orderId) {
       where.orderId = filters.orderId;
     }
 

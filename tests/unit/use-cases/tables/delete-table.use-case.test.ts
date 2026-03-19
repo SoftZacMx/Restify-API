@@ -10,7 +10,7 @@ describe('DeleteTableUseCase', () => {
   beforeEach(() => {
     mockTableRepository = {
       findById: jest.fn(),
-      findByNumberTable: jest.fn(),
+      findByName: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -32,7 +32,7 @@ describe('DeleteTableUseCase', () => {
     it('should delete table successfully', async () => {
       const mockTable = new Table(
         '123',
-        1,
+        '1',
         '456',
         true,
         true,
@@ -62,4 +62,3 @@ describe('DeleteTableUseCase', () => {
     });
   });
 });
-

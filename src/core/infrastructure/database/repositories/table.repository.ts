@@ -16,7 +16,7 @@ export class TableRepository implements ITableRepository {
 
     return new Table(
       table.id,
-      table.numberTable,
+      table.name,
       table.userId,
       table.status,
       table.availabilityStatus,
@@ -25,9 +25,9 @@ export class TableRepository implements ITableRepository {
     );
   }
 
-  async findByNumberTable(numberTable: number): Promise<Table | null> {
+  async findByName(name: string): Promise<Table | null> {
     const table = await this.prisma.table.findUnique({
-      where: { numberTable },
+      where: { name },
     });
 
     if (!table) {
@@ -36,7 +36,7 @@ export class TableRepository implements ITableRepository {
 
     return new Table(
       table.id,
-      table.numberTable,
+      table.name,
       table.userId,
       table.status,
       table.availabilityStatus,
@@ -60,14 +60,14 @@ export class TableRepository implements ITableRepository {
       where.userId = filters.userId;
     }
 
-    if (filters?.numberTable !== undefined) {
-      where.numberTable = filters.numberTable;
+    if (filters?.name !== undefined) {
+      where.name = filters.name;
     }
 
     const tables = await this.prisma.table.findMany({
       where,
       orderBy: {
-        numberTable: 'asc',
+        name: 'asc',
       },
     });
 
@@ -75,7 +75,7 @@ export class TableRepository implements ITableRepository {
       (table) =>
         new Table(
           table.id,
-          table.numberTable,
+          table.name,
           table.userId,
           table.status,
           table.availabilityStatus,
@@ -86,14 +86,14 @@ export class TableRepository implements ITableRepository {
   }
 
   async create(data: {
-    numberTable: number;
+    name: string;
     status: boolean;
     availabilityStatus: boolean;
     userId: string;
   }): Promise<Table> {
     const table = await this.prisma.table.create({
       data: {
-        numberTable: data.numberTable,
+        name: data.name,
         status: data.status,
         availabilityStatus: data.availabilityStatus,
         userId: data.userId,
@@ -102,7 +102,7 @@ export class TableRepository implements ITableRepository {
 
     return new Table(
       table.id,
-      table.numberTable,
+      table.name,
       table.userId,
       table.status,
       table.availabilityStatus,
@@ -114,14 +114,14 @@ export class TableRepository implements ITableRepository {
   async update(
     id: string,
     data: {
-      numberTable?: number;
+      name?: string;
       status?: boolean;
       availabilityStatus?: boolean;
     }
   ): Promise<Table> {
     const updateData: any = {};
 
-    if (data.numberTable !== undefined) updateData.numberTable = data.numberTable;
+    if (data.name !== undefined) updateData.name = data.name;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.availabilityStatus !== undefined) updateData.availabilityStatus = data.availabilityStatus;
 
@@ -132,7 +132,7 @@ export class TableRepository implements ITableRepository {
 
     return new Table(
       table.id,
-      table.numberTable,
+      table.name,
       table.userId,
       table.status,
       table.availabilityStatus,
@@ -147,4 +147,3 @@ export class TableRepository implements ITableRepository {
     });
   }
 }
-

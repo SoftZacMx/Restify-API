@@ -68,7 +68,8 @@ const seedExtras: { name: string; price: number }[] = [
 ];
 
 // --- Mesas ---
-const tableNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+/** Nombres de mesa (texto único, ej. "1", "1A", "Terraza") */
+const tableNames = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
 // --- Productos (para inventario/gastos) ---
 const seedProducts = [
@@ -179,13 +180,13 @@ async function seedMenuItemsSection(userId: string, categoryIds: string[]): Prom
 
 async function seedTablesSection(userId: string): Promise<void> {
   console.log('🪑 Mesas...');
-  for (const num of tableNumbers) {
-    const existing = await prisma.table.findFirst({ where: { numberTable: num } });
+  for (const name of tableNames) {
+    const existing = await prisma.table.findFirst({ where: { name } });
     if (!existing) {
       await prisma.table.create({
-        data: { numberTable: num, userId, status: true, availabilityStatus: true },
+        data: { name, userId, status: true, availabilityStatus: true },
       });
-      console.log(`   Mesa ${num}`);
+      console.log(`   Mesa ${name}`);
     }
   }
   console.log('');

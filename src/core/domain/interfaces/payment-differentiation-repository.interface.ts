@@ -4,6 +4,8 @@ import { PaymentMethod } from '@prisma/client';
 export interface IPaymentDifferentiationRepository {
   findById(id: string): Promise<PaymentDifferentiation | null>;
   findByOrderId(orderId: string): Promise<PaymentDifferentiation | null>;
+  /** Carga todas las diferenciaciones para un conjunto de órdenes (p. ej. reportes). */
+  findByOrderIds(orderIds: string[]): Promise<PaymentDifferentiation[]>;
   create(data: {
     orderId: string;
     firstPaymentAmount: number;

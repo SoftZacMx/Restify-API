@@ -204,6 +204,7 @@ afterAll(() => {
 
 describe('Tables E2E Tests', () => {
   let createdTableId: string;
+  let createdTableName: string;
   let duplicateTestTableId: string;
   let userId: string;
   const testTimestamp = Date.now();
@@ -227,12 +228,12 @@ describe('Tables E2E Tests', () => {
         return;
       }
       
-      const tableNumber = 80000 + (testTimestamp % 10000); // Use timestamp to generate unique table number
+      const tableName = `e2e-${testTimestamp}`;
       const event: Partial<APIGatewayProxyEvent> = {
         httpMethod: 'POST',
         path: '/api/tables',
         body: JSON.stringify({
-          numberTable: tableNumber,
+          name: tableName,
           status: true,
           availabilityStatus: true,
           userId: userId,
@@ -248,26 +249,27 @@ describe('Tables E2E Tests', () => {
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
       expect(body.data).toHaveProperty('id');
-      expect(body.data.numberTable).toBe(tableNumber);
+      expect(body.data.name).toBe(tableName);
       expect(body.data.status).toBe(true);
       expect(body.data.availabilityStatus).toBe(true);
 
       createdTableId = body.data.id;
+      createdTableName = tableName;
     });
 
-    it('should return validation error for duplicate table number', async () => {
+    it('should return validation error for duplicate table name', async () => {
       if (shouldSkip) {
         console.log('⚠️  Skipping E2E test: DATABASE_URL not configured');
         return;
       }
       
       // First create a table
-      const duplicateTableNumber = 80001 + (testTimestamp % 10000);
+      const duplicateTableName = `e2e-dup-${testTimestamp}`;
       const createEvent: Partial<APIGatewayProxyEvent> = {
         httpMethod: 'POST',
         path: '/api/tables',
         body: JSON.stringify({
-          numberTable: duplicateTableNumber,
+          name: duplicateTableName,
           status: true,
           availabilityStatus: true,
           userId: userId,
@@ -280,12 +282,12 @@ describe('Tables E2E Tests', () => {
       const createBody = JSON.parse(createResponse.body);
       duplicateTestTableId = createBody.data.id;
       
-      // Now try to create another with the same number
+      // Now try to create another with the same name
       const event: Partial<APIGatewayProxyEvent> = {
         httpMethod: 'POST',
         path: '/api/tables',
         body: JSON.stringify({
-          numberTable: duplicateTableNumber,
+          name: duplicateTableName,
           status: true,
           availabilityStatus: true,
           userId: userId,
@@ -313,7 +315,7 @@ describe('Tables E2E Tests', () => {
         httpMethod: 'POST',
         path: '/api/tables',
         body: JSON.stringify({
-          numberTable: 101,
+          name: 'e2e-101',
           status: true,
           availabilityStatus: true,
           userId: 'invalid-uuid',
@@ -341,7 +343,7 @@ describe('Tables E2E Tests', () => {
         httpMethod: 'POST',
         path: '/api/tables',
         body: JSON.stringify({
-          numberTable: 102,
+          name: 'e2e-102',
           status: true,
           availabilityStatus: true,
           userId: '550e8400-e29b-41d4-a716-446655440000',
@@ -381,7 +383,7 @@ describe('Tables E2E Tests', () => {
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
       expect(body.data.id).toBe(createdTableId);
-      expect(body.data.numberTable).toBeGreaterThan(80000);
+      expect(body.data.name).toBe(createdTableName);
     });
 
     it('should return error for non-existent table', async () => {
@@ -574,7 +576,7 @@ describe('Tables E2E Tests', () => {
         httpMethod: 'POST',
         path: '/api/tables',
         body: JSON.stringify({
-          numberTable: 200,
+          name: `e2e-del-${testTimestamp}`,
           status: true,
           availabilityStatus: true,
           userId: userId,

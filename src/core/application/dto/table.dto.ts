@@ -1,8 +1,14 @@
 import { z } from 'zod';
 
+const tableNameSchema = z
+  .string()
+  .trim()
+  .min(1, 'El nombre de la mesa es requerido')
+  .max(64, 'El nombre no puede exceder 64 caracteres');
+
 // Create Table Schema
 export const createTableSchema = z.object({
-  numberTable: z.number().int().positive('Table number must be positive'),
+  name: tableNameSchema,
   status: z.boolean().default(true),
   availabilityStatus: z.boolean().default(true),
   userId: z.string().uuid('Invalid user ID format'),
@@ -10,7 +16,7 @@ export const createTableSchema = z.object({
 
 // Update Table Schema (all fields optional except those that shouldn't change)
 export const updateTableSchema = z.object({
-  numberTable: z.number().int().positive('Table number must be positive').optional(),
+  name: tableNameSchema.optional(),
   status: z.boolean().optional(),
   availabilityStatus: z.boolean().optional(),
 });
@@ -33,10 +39,7 @@ export const listTablesSchema = z.object({
     return undefined;
   }).optional(),
   userId: z.string().uuid('Invalid user ID format').optional(),
-  numberTable: z.string().transform((val) => {
-    const num = parseInt(val, 10);
-    return isNaN(num) ? undefined : num;
-  }).optional(),
+  name: z.string().trim().min(1).optional(),
 });
 
 // Delete Table Schema (path parameter)
@@ -50,4 +53,3 @@ export type UpdateTableInput = z.infer<typeof updateTableSchema>;
 export type GetTableInput = z.infer<typeof getTableSchema>;
 export type ListTablesInput = z.infer<typeof listTablesSchema>;
 export type DeleteTableInput = z.infer<typeof deleteTableSchema>;
-

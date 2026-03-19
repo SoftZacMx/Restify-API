@@ -9,7 +9,8 @@ export interface DashboardOrderSummary {
   date: string; // ISO 8601
   origin: string;
   tableId: string | null;
-  tableNumber?: number | null; // numberTable when order has tableId
+  /** Nombre de la mesa cuando la orden tiene tableId */
+  tableName?: string | null;
   status: boolean;
   delivered: boolean;
 }
@@ -32,7 +33,7 @@ export interface DashboardActiveOrders {
 
 export interface DashboardOccupiedTable {
   id: string;
-  numberTable: number;
+  name: string;
 }
 
 export interface DashboardOccupiedTables {

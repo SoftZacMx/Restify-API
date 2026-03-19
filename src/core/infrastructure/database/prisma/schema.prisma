@@ -263,7 +263,7 @@ model Company {
 // Table Entity (Restaurant Tables)
 model Table {
   id                 String   @id @default(uuid())
-  numberTable        Int      @unique
+  name               String   @unique @db.VarChar(64)
   userId             String
   status             Boolean  @default(true)
   availabilityStatus Boolean  @default(true)
@@ -275,7 +275,6 @@ model Table {
   orders Order[]
 
   @@index([userId])
-  @@index([numberTable])
   @@index([status])
   @@index([availabilityStatus])
   @@map("tables")

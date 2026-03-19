@@ -1,6 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import { ReportFactory } from '../../reports/report-factory';
 import { ReportType, BaseReportFilters, BaseReportResult } from '../../../domain/interfaces/report-generator.interface';
+import { parseReportRangeDateFrom, parseReportRangeDateTo } from '../../../../shared/utils/report-date-range.util';
 
 export interface GenerateReportInput {
   type: ReportType;
@@ -21,8 +22,8 @@ export class GenerateReportUseCase {
   async execute(input: GenerateReportInput): Promise<GenerateReportResult> {
     // Convert date strings to Date objects
     const filters: BaseReportFilters = {
-      dateFrom: input.dateFrom ? new Date(input.dateFrom) : undefined,
-      dateTo: input.dateTo ? new Date(input.dateTo) : undefined,
+      dateFrom: input.dateFrom ? parseReportRangeDateFrom(input.dateFrom) : undefined,
+      dateTo: input.dateTo ? parseReportRangeDateTo(input.dateTo) : undefined,
       page: input.page,
       pageSize: input.pageSize,
     };

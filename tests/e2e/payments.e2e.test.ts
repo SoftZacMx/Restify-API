@@ -267,7 +267,7 @@ describe('Payments E2E Tests', () => {
         httpMethod: 'POST',
         path: '/api/tables',
         body: JSON.stringify({
-          numberTable: Math.floor(Math.random() * 1000),
+          name: `e2e-pay-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
           userId: userId,
         }),
         headers: {

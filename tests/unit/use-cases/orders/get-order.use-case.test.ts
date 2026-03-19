@@ -38,7 +38,7 @@ describe('GetOrderUseCase', () => {
     };
     mockTableRepository = {
       findById: jest.fn(),
-      findByNumberTable: jest.fn(),
+      findByName: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),

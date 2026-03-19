@@ -35,6 +35,29 @@ export class PaymentDifferentiationRepository implements IPaymentDifferentiation
       return null;
     }
 
+    return this.mapToEntity(paymentDiff);
+  }
+
+  async findByOrderIds(orderIds: string[]): Promise<PaymentDifferentiation[]> {
+    if (orderIds.length === 0) {
+      return [];
+    }
+    const rows = await this.prisma.paymentDifferentiation.findMany({
+      where: { orderId: { in: orderIds } },
+    });
+    return rows.map((paymentDiff) => this.mapToEntity(paymentDiff));
+  }
+
+  private mapToEntity(paymentDiff: {
+    id: string;
+    orderId: string;
+    firstPaymentAmount: unknown;
+    firstPaymentMethod: PaymentMethod;
+    secondPaymentAmount: unknown;
+    secondPaymentMethod: PaymentMethod;
+    createdAt: Date;
+    updatedAt: Date;
+  }): PaymentDifferentiation {
     return new PaymentDifferentiation(
       paymentDiff.id,
       paymentDiff.orderId,

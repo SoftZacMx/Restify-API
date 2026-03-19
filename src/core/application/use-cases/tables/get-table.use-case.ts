@@ -5,7 +5,7 @@ import { AppError } from '../../../../shared/errors';
 
 export interface GetTableResult {
   id: string;
-  numberTable: number;
+  name: string;
   userId: string;
   status: boolean;
   availabilityStatus: boolean;
@@ -28,7 +28,7 @@ export class GetTableUseCase {
 
     return {
       id: table.id,
-      numberTable: table.numberTable,
+      name: table.name,
       userId: table.userId,
       status: table.status,
       availabilityStatus: table.availabilityStatus,
@@ -37,4 +37,3 @@ export class GetTableUseCase {
     };
   }
 }
-
