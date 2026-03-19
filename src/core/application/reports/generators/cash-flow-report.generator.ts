@@ -145,10 +145,12 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       }),
     ]);
 
-    // Income by method: use Payment rows when present (split = several lines; single = one line).
-    // Fallback to order.paymentMethod only if there are no payment rows (legacy).
+    // 1) Todos los pagos SUCCEEDED de las órdenes del período.
+    // 2) Todas las PaymentDifferentiation de esas órdenes.
+    // En transform: sumar por método desde payments; sumar por método desde diferenciaciones.
+    // Si una orden tiene diferenciación, no se duplican sus filas en `payments` (el desglose va por diff).
     const paidOrderIds = orders.filter((o) => o.status).map((o) => o.id);
-    const splitPaymentLines: Payment[] =
+    const succeededPayments: Payment[] =
       paidOrderIds.length > 0
         ? await this.paymentRepository.findAll({
             orderIds: paidOrderIds,
@@ -156,19 +158,16 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
           })
         : [];
     const paymentsByOrderId = new Map<string, Payment[]>();
-    for (const p of splitPaymentLines) {
+    for (const p of succeededPayments) {
       if (!p.orderId) continue;
       const list = paymentsByOrderId.get(p.orderId) ?? [];
       list.push(p);
       paymentsByOrderId.set(p.orderId, list);
     }
 
-    // Pago dividido / diferido: la fuente de verdad del desglose por método es PaymentDifferentiation
-    // (las filas en `payments` pueden estar incompletas si solo se registró un cobro parcial).
-    const splitOrderIds = orders.filter((o) => o.status && o.paymentDiffer).map((o) => o.id);
     const paymentDiffByOrderId = new Map<string, PaymentDifferentiation>();
-    if (splitOrderIds.length > 0) {
-      const diffs = await this.paymentDifferentiationRepository.findByOrderIds(splitOrderIds);
+    if (paidOrderIds.length > 0) {
+      const diffs = await this.paymentDifferentiationRepository.findByOrderIds(paidOrderIds);
       for (const d of diffs) {
         paymentDiffByOrderId.set(d.orderId, d);
       }
@@ -183,6 +182,8 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       merchandise,
       employeeSalaries,
       ordersWithTips,
+      paidOrderIds,
+      succeededPayments,
       paymentsByOrderId,
       paymentDiffByOrderId,
     };
@@ -195,6 +196,8 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       merchandise,
       employeeSalaries,
       ordersWithTips,
+      paidOrderIds: rawPaidOrderIds,
+      succeededPayments,
       paymentsByOrderId,
       paymentDiffByOrderId,
     } = rawData;
@@ -202,6 +205,10 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       paymentsByOrderId instanceof Map ? paymentsByOrderId : new Map<string, Payment[]>();
     const diffByOrder: Map<string, PaymentDifferentiation> =
       paymentDiffByOrderId instanceof Map ? paymentDiffByOrderId : new Map<string, PaymentDifferentiation>();
+
+    const paidOrderIdSet = new Set<string>(rawPaidOrderIds ?? []);
+    const diffOrderIds = new Set<string>(diffByOrder.keys());
+    const paymentsList: Payment[] = Array.isArray(succeededPayments) ? succeededPayments : [];
 
     // Calculate total incomes
     let totalIncomes = 0;
@@ -213,20 +220,28 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
 
     orders.forEach((order: any) => {
       totalIncomes += order.total;
-      const paymentLines = paymentLinesByOrder.get(order.id) ?? [];
-      const diff = diffByOrder.get(order.id);
+    });
 
-      if (order.paymentDiffer && diff) {
-        addIncomeToPaymentBuckets(incomesByPaymentMethod, diff.firstPaymentMethod, diff.firstPaymentAmount);
-        addIncomeToPaymentBuckets(incomesByPaymentMethod, diff.secondPaymentMethod, diff.secondPaymentAmount);
-      } else if (paymentLines.length > 0) {
-        for (const p of paymentLines) {
-          addIncomeToPaymentBuckets(incomesByPaymentMethod, p.paymentMethod, p.amount);
-        }
-      } else if (diff) {
-        addIncomeToPaymentBuckets(incomesByPaymentMethod, diff.firstPaymentMethod, diff.firstPaymentAmount);
-        addIncomeToPaymentBuckets(incomesByPaymentMethod, diff.secondPaymentMethod, diff.secondPaymentAmount);
-      } else if (order.paymentMethod != null) {
+    // A) payments: todos los SUCCEEDED; si la orden tiene PaymentDifferentiation, esas filas no se suman aquí.
+    for (const p of paymentsList) {
+      if (!p.orderId || !paidOrderIdSet.has(p.orderId)) continue;
+      if (diffOrderIds.has(p.orderId)) continue;
+      addIncomeToPaymentBuckets(incomesByPaymentMethod, p.paymentMethod, p.amount);
+    }
+
+    // B) PaymentDifferentiation: todos los primeros y segundos pagos por método.
+    for (const d of diffByOrder.values()) {
+      addIncomeToPaymentBuckets(incomesByPaymentMethod, d.firstPaymentMethod, d.firstPaymentAmount);
+      addIncomeToPaymentBuckets(incomesByPaymentMethod, d.secondPaymentMethod, d.secondPaymentAmount);
+    }
+
+    // C) Legacy: orden pagada sin filas en `payments` ni diferenciación → un solo método en la orden.
+    orders.forEach((order: any) => {
+      if (!order.status) return;
+      const lines = paymentLinesByOrder.get(order.id) ?? [];
+      if (diffOrderIds.has(order.id)) return;
+      if (lines.length > 0) return;
+      if (order.paymentMethod != null) {
         addIncomeToPaymentBuckets(incomesByPaymentMethod, order.paymentMethod, order.total);
       }
     });

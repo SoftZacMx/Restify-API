@@ -394,7 +394,7 @@ describe('CashFlowReportGenerator', () => {
       expect(result.data.incomes.byPaymentMethod.card).toBe(0);
     });
 
-    it('should prefer PaymentDifferentiation over partial Payment rows for split orders', async () => {
+    it('should use only PaymentDifferentiation for deferred orders when diff exists (ignore Payment rows)', async () => {
       const mockOrders = [
         new Order(
           'order-partial',
@@ -426,15 +426,30 @@ describe('CashFlowReportGenerator', () => {
         new Date(),
         new Date()
       );
+      // Si se usaran estas filas sería 100 efectivo + 200 tarjeta; con diff debe ignorarse.
       const mockPayments: Payment[] = [
         new Payment(
-          'pay-partial',
+          'pay-1',
           'order-partial',
           'user-1',
-          42.5,
+          100,
           'USD',
           PaymentStatus.SUCCEEDED,
-          PaymentMethod.TRANSFER,
+          PaymentMethod.CASH,
+          null,
+          null,
+          null,
+          new Date(),
+          new Date()
+        ),
+        new Payment(
+          'pay-2',
+          'order-partial',
+          'user-1',
+          200,
+          'USD',
+          PaymentStatus.SUCCEEDED,
+          PaymentMethod.CARD_PHYSICAL,
           null,
           null,
           null,
