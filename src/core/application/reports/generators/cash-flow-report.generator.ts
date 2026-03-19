@@ -5,7 +5,9 @@ import { IOrderRepository } from '../../../domain/interfaces/order-repository.in
 import { IExpenseRepository } from '../../../domain/interfaces/expense-repository.interface';
 import { IEmployeeSalaryPaymentRepository } from '../../../domain/interfaces/employee-salary-payment-repository.interface';
 import { IPaymentRepository } from '../../../domain/interfaces/payment-repository.interface';
+import { IPaymentDifferentiationRepository } from '../../../domain/interfaces/payment-differentiation-repository.interface';
 import { Payment } from '../../../domain/entities/payment.entity';
+import { PaymentDifferentiation } from '../../../domain/entities/payment-differentiation.entity';
 import { ExpenseType, PaymentMethod, PaymentStatus } from '@prisma/client';
 
 function addIncomeToPaymentBuckets(
@@ -101,7 +103,9 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
     @inject('IExpenseRepository') private readonly expenseRepository: IExpenseRepository,
     @inject('IEmployeeSalaryPaymentRepository')
     private readonly employeeSalaryPaymentRepository: IEmployeeSalaryPaymentRepository,
-    @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository
+    @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository,
+    @inject('IPaymentDifferentiationRepository')
+    private readonly paymentDifferentiationRepository: IPaymentDifferentiationRepository
   ) {
     super();
   }
@@ -159,6 +163,21 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       paymentsByOrderId.set(p.orderId, list);
     }
 
+    // Split sin filas en `payments` (datos viejos o inconsistencia): usar PaymentDifferentiation
+    const paymentDiffByOrderId = new Map<string, PaymentDifferentiation>();
+    const ordersNeedingDiff = orders.filter(
+      (o) =>
+        o.status &&
+        o.paymentDiffer &&
+        (paymentsByOrderId.get(o.id)?.length ?? 0) === 0
+    );
+    await Promise.all(
+      ordersNeedingDiff.map(async (o) => {
+        const diff = await this.paymentDifferentiationRepository.findByOrderId(o.id);
+        if (diff) paymentDiffByOrderId.set(o.id, diff);
+      })
+    );
+
     // Fetch orders with tips separately
     const ordersWithTips = orders.filter((order) => order.tip > 0);
 
@@ -169,13 +188,24 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       employeeSalaries,
       ordersWithTips,
       paymentsByOrderId,
+      paymentDiffByOrderId,
     };
   }
 
   protected transformData(rawData: any, filters: BaseReportFilters): CashFlowReportData {
-    const { orders, businessServices, merchandise, employeeSalaries, ordersWithTips, paymentsByOrderId } = rawData;
+    const {
+      orders,
+      businessServices,
+      merchandise,
+      employeeSalaries,
+      ordersWithTips,
+      paymentsByOrderId,
+      paymentDiffByOrderId,
+    } = rawData;
     const paymentLinesByOrder: Map<string, Payment[]> =
       paymentsByOrderId instanceof Map ? paymentsByOrderId : new Map<string, Payment[]>();
+    const diffByOrder: Map<string, PaymentDifferentiation> =
+      paymentDiffByOrderId instanceof Map ? paymentDiffByOrderId : new Map<string, PaymentDifferentiation>();
 
     // Calculate total incomes
     let totalIncomes = 0;
@@ -189,12 +219,17 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       totalIncomes += order.total;
       const paymentLines = paymentLinesByOrder.get(order.id) ?? [];
       if (paymentLines.length > 0) {
-        // e.g. split: $40 cash + $40 transfer → each line adds to its method bucket
         for (const p of paymentLines) {
           addIncomeToPaymentBuckets(incomesByPaymentMethod, p.paymentMethod, p.amount);
         }
-      } else if (order.paymentMethod != null) {
-        addIncomeToPaymentBuckets(incomesByPaymentMethod, order.paymentMethod, order.total);
+      } else {
+        const diff = diffByOrder.get(order.id);
+        if (diff) {
+          addIncomeToPaymentBuckets(incomesByPaymentMethod, diff.firstPaymentMethod, diff.firstPaymentAmount);
+          addIncomeToPaymentBuckets(incomesByPaymentMethod, diff.secondPaymentMethod, diff.secondPaymentAmount);
+        } else if (order.paymentMethod != null) {
+          addIncomeToPaymentBuckets(incomesByPaymentMethod, order.paymentMethod, order.total);
+        }
       }
     });
 

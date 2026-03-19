@@ -3,7 +3,9 @@ import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-r
 import { IExpenseRepository } from '../../../../src/core/domain/interfaces/expense-repository.interface';
 import { IEmployeeSalaryPaymentRepository } from '../../../../src/core/domain/interfaces/employee-salary-payment-repository.interface';
 import { IPaymentRepository } from '../../../../src/core/domain/interfaces/payment-repository.interface';
+import { IPaymentDifferentiationRepository } from '../../../../src/core/domain/interfaces/payment-differentiation-repository.interface';
 import { ReportType } from '../../../../src/core/domain/interfaces/report-generator.interface';
+import { PaymentDifferentiation } from '../../../../src/core/domain/entities/payment-differentiation.entity';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { Expense } from '../../../../src/core/domain/entities/expense.entity';
 import { EmployeeSalaryPayment } from '../../../../src/core/domain/entities/employee-salary-payment.entity';
@@ -16,6 +18,7 @@ describe('CashFlowReportGenerator', () => {
   let mockExpenseRepository: jest.Mocked<IExpenseRepository>;
   let mockEmployeeSalaryPaymentRepository: jest.Mocked<IEmployeeSalaryPaymentRepository>;
   let mockPaymentRepository: jest.Mocked<IPaymentRepository>;
+  let mockPaymentDifferentiationRepository: jest.Mocked<IPaymentDifferentiationRepository>;
 
   beforeEach(() => {
     mockOrderRepository = {
@@ -71,11 +74,21 @@ describe('CashFlowReportGenerator', () => {
       delete: jest.fn(),
     };
 
+    mockPaymentDifferentiationRepository = {
+      findById: jest.fn(),
+      findByOrderId: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      deleteByOrderId: jest.fn(),
+    };
+
     generator = new CashFlowReportGenerator(
       mockOrderRepository,
       mockExpenseRepository,
       mockEmployeeSalaryPaymentRepository,
-      mockPaymentRepository
+      mockPaymentRepository,
+      mockPaymentDifferentiationRepository
     );
   });
 
@@ -328,6 +341,54 @@ describe('CashFlowReportGenerator', () => {
       expect(result.data.incomes.byPaymentMethod.cash).toBe(100);
       expect(result.data.incomes.byPaymentMethod.card).toBe(200);
       expect(result.data.incomes.byPaymentMethod.transfer).toBe(0);
+    });
+
+    it('should group split from PaymentDifferentiation when there are no Payment rows', async () => {
+      const mockOrders = [
+        new Order(
+          'order-diff',
+          new Date(),
+          true,
+          null,
+          80,
+          72,
+          8,
+          true,
+          null,
+          0,
+          'Local',
+          null,
+          true,
+          null,
+          'user-1',
+          new Date(),
+          new Date()
+        ),
+      ];
+      const mockDiff = new PaymentDifferentiation(
+        'diff-1',
+        'order-diff',
+        40,
+        PaymentMethod.CASH,
+        40,
+        PaymentMethod.TRANSFER,
+        new Date(),
+        new Date()
+      );
+
+      mockOrderRepository.findAll.mockResolvedValue(mockOrders);
+      mockPaymentRepository.findAll.mockResolvedValue([]);
+      mockPaymentDifferentiationRepository.findByOrderId.mockResolvedValue(mockDiff);
+      mockExpenseRepository.findAll.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
+
+      const result = await generator.generate(baseFilters);
+
+      expect(mockPaymentDifferentiationRepository.findByOrderId).toHaveBeenCalledWith('order-diff');
+      expect(result.data.incomes.totalIncomes).toBe(80);
+      expect(result.data.incomes.byPaymentMethod.cash).toBe(40);
+      expect(result.data.incomes.byPaymentMethod.transfer).toBe(40);
+      expect(result.data.incomes.byPaymentMethod.card).toBe(0);
     });
 
     it('should include tips in expenses', async () => {
