@@ -39,6 +39,7 @@ describe('PayOrderWithSplitPaymentUseCase', () => {
     mockPaymentDiffRepository = {
       findById: jest.fn(),
       findByOrderId: jest.fn(),
+      findByOrderIds: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),

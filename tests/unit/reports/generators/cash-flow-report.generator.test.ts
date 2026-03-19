@@ -77,6 +77,7 @@ describe('CashFlowReportGenerator', () => {
     mockPaymentDifferentiationRepository = {
       findById: jest.fn(),
       findByOrderId: jest.fn().mockResolvedValue(null),
+      findByOrderIds: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -328,11 +329,13 @@ describe('CashFlowReportGenerator', () => {
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
       mockPaymentRepository.findAll.mockResolvedValue(mockPayments);
+      mockPaymentDifferentiationRepository.findByOrderIds.mockResolvedValue([]);
       mockExpenseRepository.findAll.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
       mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
 
       const result = await generator.generate(baseFilters);
 
+      expect(mockPaymentDifferentiationRepository.findByOrderIds).toHaveBeenCalledWith(['order-split']);
       expect(mockPaymentRepository.findAll).toHaveBeenCalledWith({
         orderIds: ['order-split'],
         status: PaymentStatus.SUCCEEDED,
@@ -378,16 +381,79 @@ describe('CashFlowReportGenerator', () => {
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
       mockPaymentRepository.findAll.mockResolvedValue([]);
-      mockPaymentDifferentiationRepository.findByOrderId.mockResolvedValue(mockDiff);
+      mockPaymentDifferentiationRepository.findByOrderIds.mockResolvedValue([mockDiff]);
       mockExpenseRepository.findAll.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
       mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
 
       const result = await generator.generate(baseFilters);
 
-      expect(mockPaymentDifferentiationRepository.findByOrderId).toHaveBeenCalledWith('order-diff');
+      expect(mockPaymentDifferentiationRepository.findByOrderIds).toHaveBeenCalledWith(['order-diff']);
       expect(result.data.incomes.totalIncomes).toBe(80);
       expect(result.data.incomes.byPaymentMethod.cash).toBe(40);
       expect(result.data.incomes.byPaymentMethod.transfer).toBe(40);
+      expect(result.data.incomes.byPaymentMethod.card).toBe(0);
+    });
+
+    it('should prefer PaymentDifferentiation over partial Payment rows for split orders', async () => {
+      const mockOrders = [
+        new Order(
+          'order-partial',
+          new Date(),
+          true,
+          null,
+          300,
+          270,
+          30,
+          true,
+          null,
+          0,
+          'Local',
+          null,
+          true,
+          null,
+          'user-1',
+          new Date(),
+          new Date()
+        ),
+      ];
+      const mockDiff = new PaymentDifferentiation(
+        'diff-p',
+        'order-partial',
+        150,
+        PaymentMethod.CASH,
+        150,
+        PaymentMethod.TRANSFER,
+        new Date(),
+        new Date()
+      );
+      const mockPayments: Payment[] = [
+        new Payment(
+          'pay-partial',
+          'order-partial',
+          'user-1',
+          42.5,
+          'USD',
+          PaymentStatus.SUCCEEDED,
+          PaymentMethod.TRANSFER,
+          null,
+          null,
+          null,
+          new Date(),
+          new Date()
+        ),
+      ];
+
+      mockOrderRepository.findAll.mockResolvedValue(mockOrders);
+      mockPaymentRepository.findAll.mockResolvedValue(mockPayments);
+      mockPaymentDifferentiationRepository.findByOrderIds.mockResolvedValue([mockDiff]);
+      mockExpenseRepository.findAll.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
+
+      const result = await generator.generate(baseFilters);
+
+      expect(result.data.incomes.totalIncomes).toBe(300);
+      expect(result.data.incomes.byPaymentMethod.cash).toBe(150);
+      expect(result.data.incomes.byPaymentMethod.transfer).toBe(150);
       expect(result.data.incomes.byPaymentMethod.card).toBe(0);
     });
 

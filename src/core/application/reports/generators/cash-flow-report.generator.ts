@@ -163,20 +163,16 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       paymentsByOrderId.set(p.orderId, list);
     }
 
-    // Split sin filas en `payments` (datos viejos o inconsistencia): usar PaymentDifferentiation
+    // Pago dividido / diferido: la fuente de verdad del desglose por método es PaymentDifferentiation
+    // (las filas en `payments` pueden estar incompletas si solo se registró un cobro parcial).
+    const splitOrderIds = orders.filter((o) => o.status && o.paymentDiffer).map((o) => o.id);
     const paymentDiffByOrderId = new Map<string, PaymentDifferentiation>();
-    const ordersNeedingDiff = orders.filter(
-      (o) =>
-        o.status &&
-        o.paymentDiffer &&
-        (paymentsByOrderId.get(o.id)?.length ?? 0) === 0
-    );
-    await Promise.all(
-      ordersNeedingDiff.map(async (o) => {
-        const diff = await this.paymentDifferentiationRepository.findByOrderId(o.id);
-        if (diff) paymentDiffByOrderId.set(o.id, diff);
-      })
-    );
+    if (splitOrderIds.length > 0) {
+      const diffs = await this.paymentDifferentiationRepository.findByOrderIds(splitOrderIds);
+      for (const d of diffs) {
+        paymentDiffByOrderId.set(d.orderId, d);
+      }
+    }
 
     // Fetch orders with tips separately
     const ordersWithTips = orders.filter((order) => order.tip > 0);
@@ -218,18 +214,20 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
     orders.forEach((order: any) => {
       totalIncomes += order.total;
       const paymentLines = paymentLinesByOrder.get(order.id) ?? [];
-      if (paymentLines.length > 0) {
+      const diff = diffByOrder.get(order.id);
+
+      if (order.paymentDiffer && diff) {
+        addIncomeToPaymentBuckets(incomesByPaymentMethod, diff.firstPaymentMethod, diff.firstPaymentAmount);
+        addIncomeToPaymentBuckets(incomesByPaymentMethod, diff.secondPaymentMethod, diff.secondPaymentAmount);
+      } else if (paymentLines.length > 0) {
         for (const p of paymentLines) {
           addIncomeToPaymentBuckets(incomesByPaymentMethod, p.paymentMethod, p.amount);
         }
-      } else {
-        const diff = diffByOrder.get(order.id);
-        if (diff) {
-          addIncomeToPaymentBuckets(incomesByPaymentMethod, diff.firstPaymentMethod, diff.firstPaymentAmount);
-          addIncomeToPaymentBuckets(incomesByPaymentMethod, diff.secondPaymentMethod, diff.secondPaymentAmount);
-        } else if (order.paymentMethod != null) {
-          addIncomeToPaymentBuckets(incomesByPaymentMethod, order.paymentMethod, order.total);
-        }
+      } else if (diff) {
+        addIncomeToPaymentBuckets(incomesByPaymentMethod, diff.firstPaymentMethod, diff.firstPaymentAmount);
+        addIncomeToPaymentBuckets(incomesByPaymentMethod, diff.secondPaymentMethod, diff.secondPaymentAmount);
+      } else if (order.paymentMethod != null) {
+        addIncomeToPaymentBuckets(incomesByPaymentMethod, order.paymentMethod, order.total);
       }
     });
 
