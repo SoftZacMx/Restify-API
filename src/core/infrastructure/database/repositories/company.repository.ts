@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ICompanyRepository } from '../../../domain/interfaces/company-repository.interface';
 import { Company } from '../../../domain/entities/company.entity';
 
@@ -24,6 +24,7 @@ export class CompanyRepository implements ICompanyRepository {
     logoUrl?: string | null;
     startOperations?: string | null;
     endOperations?: string | null;
+    ticketConfig?: unknown | null;
   }): Promise<Company> {
     const company = await this.prisma.company.create({
       data: {
@@ -37,6 +38,12 @@ export class CompanyRepository implements ICompanyRepository {
         logoUrl: data.logoUrl ?? null,
         startOperations: data.startOperations ?? null,
         endOperations: data.endOperations ?? null,
+        ...(data.ticketConfig !== undefined && {
+          ticketConfig:
+            data.ticketConfig === null
+              ? Prisma.JsonNull
+              : (data.ticketConfig as Prisma.InputJsonValue),
+        }),
       },
     });
     return this.toEntity(company);
@@ -55,6 +62,7 @@ export class CompanyRepository implements ICompanyRepository {
       logoUrl?: string | null;
       startOperations?: string | null;
       endOperations?: string | null;
+      ticketConfig?: unknown | null;
     }
   ): Promise<Company> {
     const company = await this.prisma.company.update({
@@ -70,6 +78,12 @@ export class CompanyRepository implements ICompanyRepository {
         ...(data.logoUrl !== undefined && { logoUrl: data.logoUrl }),
         ...(data.startOperations !== undefined && { startOperations: data.startOperations }),
         ...(data.endOperations !== undefined && { endOperations: data.endOperations }),
+        ...(data.ticketConfig !== undefined && {
+          ticketConfig:
+            data.ticketConfig === null
+              ? Prisma.JsonNull
+              : (data.ticketConfig as Prisma.InputJsonValue),
+        }),
       },
     });
     return this.toEntity(company);
@@ -87,6 +101,7 @@ export class CompanyRepository implements ICompanyRepository {
     logoUrl: string | null;
     startOperations: string | null;
     endOperations: string | null;
+    ticketConfig: Prisma.JsonValue | null;
     createdAt: Date;
     updatedAt: Date;
   }): Company {
@@ -102,6 +117,7 @@ export class CompanyRepository implements ICompanyRepository {
       row.logoUrl,
       row.startOperations,
       row.endOperations,
+      row.ticketConfig,
       row.createdAt,
       row.updatedAt
     );

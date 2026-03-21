@@ -19,3 +19,16 @@ npm run seed:railway
 ```
 
 Requisitos: `DATABASE_URL` en `.env` y migraciones aplicadas (`npx prisma migrate deploy`).
+
+---
+
+## Solo actualizar precios desde un dump (`backups_bdd/dump.sql`)
+
+Para **no re-seedear** todo: copia el SQL a `backups_bdd/dump.sql` y ejecuta:
+
+```bash
+DRY_RUN=1 npm run sync:prices:dump   # ver qué cambiaría
+npm run sync:prices:dump             # aplicar en la BDD de DATABASE_URL
+```
+
+Detalle: `scripts/sync-menu-prices-from-dump.ts` — lee precios desde `INSERT INTO \`saources\`` y actualiza `menu_items` por nombre. Ver `backups_bdd/README.md`.

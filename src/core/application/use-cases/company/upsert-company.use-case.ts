@@ -1,6 +1,10 @@
 import { inject, injectable } from 'tsyringe';
 import { ICompanyRepository } from '../../../domain/interfaces/company-repository.interface';
 import { UpsertCompanyInput } from '../../dto/company.dto';
+import {
+  mergeTicketPrintConfig,
+  type ResolvedTicketPrintConfig,
+} from '../../dto/ticket-print-config';
 
 export interface UpsertCompanyResult {
   id: string;
@@ -14,6 +18,7 @@ export interface UpsertCompanyResult {
   logoUrl: string | null;
   startOperations: string | null;
   endOperations: string | null;
+  ticketConfig: ResolvedTicketPrintConfig;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +44,7 @@ export class UpsertCompanyUseCase {
         logoUrl: input.logoUrl ?? null,
         startOperations: input.startOperations ?? null,
         endOperations: input.endOperations ?? null,
+        ...(input.ticketConfig !== undefined && { ticketConfig: input.ticketConfig }),
       });
       return {
         id: company.id,
@@ -52,6 +58,7 @@ export class UpsertCompanyUseCase {
         logoUrl: company.logoUrl,
         startOperations: company.startOperations,
         endOperations: company.endOperations,
+        ticketConfig: mergeTicketPrintConfig(company.ticketConfig),
         createdAt: company.createdAt,
         updatedAt: company.updatedAt,
       };
@@ -68,6 +75,7 @@ export class UpsertCompanyUseCase {
       logoUrl: input.logoUrl ?? null,
       startOperations: input.startOperations ?? null,
       endOperations: input.endOperations ?? null,
+      ...(input.ticketConfig !== undefined && { ticketConfig: input.ticketConfig }),
     });
 
     return {
@@ -82,6 +90,7 @@ export class UpsertCompanyUseCase {
       logoUrl: company.logoUrl,
       startOperations: company.startOperations,
       endOperations: company.endOperations,
+      ticketConfig: mergeTicketPrintConfig(company.ticketConfig),
       createdAt: company.createdAt,
       updatedAt: company.updatedAt,
     };

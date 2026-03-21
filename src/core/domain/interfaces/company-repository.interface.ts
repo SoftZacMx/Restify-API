@@ -13,6 +13,7 @@ export interface ICompanyRepository {
     logoUrl?: string | null;
     startOperations?: string | null;
     endOperations?: string | null;
+    ticketConfig?: unknown | null;
   }): Promise<Company>;
   update(
     id: string,
@@ -27,6 +28,7 @@ export interface ICompanyRepository {
       logoUrl?: string | null;
       startOperations?: string | null;
       endOperations?: string | null;
+      ticketConfig?: unknown | null;
     }
   ): Promise<Company>;
 }

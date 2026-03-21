@@ -3,6 +3,8 @@
  * Estructurado (items) + líneas listas para imprimir (lines).
  */
 
+import type { ResolvedTicketPrintConfig } from './ticket-print-config';
+
 export interface KitchenTicketExtraItem {
   name: string;
   quantity: number;
@@ -23,6 +25,8 @@ export interface KitchenTicketResponse {
   tableName: string | null;
   items: KitchenTicketOrderItem[];
   lines: string[];
+  /** Config resuelta (empresa + defaults) para render del ticket en cliente */
+  printConfig: ResolvedTicketPrintConfig;
 }
 
 export interface SaleTicketExtraItem {
@@ -57,4 +61,5 @@ export interface SaleTicketResponse {
   paymentMethod: string;
   delivered: boolean;
   lines: string[];
+  printConfig: ResolvedTicketPrintConfig;
 }

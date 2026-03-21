@@ -1,6 +1,10 @@
 import { inject, injectable } from 'tsyringe';
 import { ICompanyRepository } from '../../../domain/interfaces/company-repository.interface';
 import { AppError } from '../../../../shared/errors';
+import {
+  mergeTicketPrintConfig,
+  type ResolvedTicketPrintConfig,
+} from '../../dto/ticket-print-config';
 
 export interface GetCompanyResult {
   id: string;
@@ -14,6 +18,7 @@ export interface GetCompanyResult {
   logoUrl: string | null;
   startOperations: string | null;
   endOperations: string | null;
+  ticketConfig: ResolvedTicketPrintConfig;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,6 +48,7 @@ export class GetCompanyUseCase {
       logoUrl: company.logoUrl,
       startOperations: company.startOperations,
       endOperations: company.endOperations,
+      ticketConfig: mergeTicketPrintConfig(company.ticketConfig),
       createdAt: company.createdAt,
       updatedAt: company.updatedAt,
     };

@@ -26,6 +26,7 @@
     "seed:menu": "ts-node scripts/seed-menu-data.ts",
     "seed:general": "ts-node scripts/seed-general.ts",
     "seed:railway": "ts-node scripts/seed-railway-data.ts",
+    "sync:prices:dump": "ts-node scripts/sync-menu-prices-from-dump.ts",
     "delete:orders": "ts-node scripts/delete-orders.ts",
     "release:tables": "ts-node scripts/release-tables.ts",
     "lint": "eslint src --ext .ts",

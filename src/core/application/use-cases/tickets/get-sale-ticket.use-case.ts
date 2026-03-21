@@ -9,6 +9,7 @@ import {
   SaleTicketOrderItem,
   SaleTicketExtraItem,
 } from '../../dto/ticket.dto';
+import { mergeTicketPrintConfig } from '../../dto/ticket-print-config';
 import { AppError } from '../../../../shared/errors';
 
 const PAYMENT_METHOD_LABELS: Record<number, string> = {
@@ -143,6 +144,7 @@ export class GetSaleTicketUseCase {
       paymentMethod,
       delivered: order.delivered,
       lines,
+      printConfig: mergeTicketPrintConfig(company?.ticketConfig),
     };
   }
 }

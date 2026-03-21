@@ -45,3 +45,5 @@ localstack/tmp/
 # Docker
 docker-compose.override.yml
 
+backups_bdd
+

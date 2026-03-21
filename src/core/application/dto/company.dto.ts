@@ -25,6 +25,8 @@ export const upsertCompanySchema = z.object({
     .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato inválido. Use HH:mm (ej. 22:00)')
     .optional()
     .nullable(),
+  /** Config tickets térmicos (JSON parcial; se fusiona con valores por defecto en servidor) */
+  ticketConfig: z.any().optional().nullable(),
 });
 
 export type UpsertCompanyInput = z.infer<typeof upsertCompanySchema>;

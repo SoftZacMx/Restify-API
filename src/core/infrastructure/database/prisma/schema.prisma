@@ -254,6 +254,7 @@ model Company {
   logoUrl          String?
   startOperations  String?  // Hora inicio operaciones "HH:mm"
   endOperations    String?  // Hora fin operaciones "HH:mm"
+  ticketConfig     Json?    // Config tickets térmicos (JSON)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
