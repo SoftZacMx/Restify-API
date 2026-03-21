@@ -131,6 +131,7 @@ export class GetSaleTicketUseCase {
       companyName: company?.name ?? 'Restify',
       orderId: order.id,
       date: order.date.toISOString(),
+      origin: order.origin,
       tableName,
       client: order.client,
       note: order.note,

@@ -90,6 +90,7 @@ export class GetKitchenTicketUseCase {
 
     return {
       orderId: order.id,
+      origin: order.origin,
       tableName,
       items,
       lines,

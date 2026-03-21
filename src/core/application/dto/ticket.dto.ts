@@ -17,6 +17,8 @@ export interface KitchenTicketOrderItem {
 
 export interface KitchenTicketResponse {
   orderId: string;
+  /** Origen de la orden (ej. "local", "takeaway") — para mostrar mesa solo en local */
+  origin: string;
   /** Nombre de la mesa (ej. "1", "1A") o null si no aplica */
   tableName: string | null;
   items: KitchenTicketOrderItem[];
@@ -42,6 +44,8 @@ export interface SaleTicketResponse {
   companyName: string;
   orderId: string;
   date: string;
+  /** Origen de la orden (ej. "local", "takeaway") — para mostrar mesa solo en local */
+  origin: string;
   tableName: string | null;
   client: string | null;
   note: string | null;
