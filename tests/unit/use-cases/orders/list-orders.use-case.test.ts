@@ -1,6 +1,23 @@
 import { ListOrdersUseCase } from '../../../../src/core/application/use-cases/orders/list-orders.use-case';
-import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
+import {
+  IOrderRepository,
+  OrderFilters,
+} from '../../../../src/core/domain/interfaces/order-repository.interface';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
+
+/** Simula total de listado + resumen pendientes/pagadas (mismos filtros que el caso de uso). */
+function stubOrderCounts(
+  mock: Pick<IOrderRepository, 'count'>,
+  listTotal: number,
+  pending: number,
+  paid: number
+): void {
+  (mock.count as jest.Mock).mockImplementation(async (f?: OrderFilters) => {
+    if (f?.status === false) return pending;
+    if (f?.status === true) return paid;
+    return listTotal;
+  });
+}
 
 describe('ListOrdersUseCase', () => {
   let listOrdersUseCase: ListOrdersUseCase;
@@ -77,7 +94,7 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
-      mockOrderRepository.count.mockResolvedValue(2);
+      stubOrderCounts(mockOrderRepository, 2, 1, 1);
 
       const result = await listOrdersUseCase.execute();
 
@@ -85,6 +102,7 @@ describe('ListOrdersUseCase', () => {
       expect(result.data[0].id).toBe('order-1');
       expect(result.data[1].id).toBe('order-2');
       expect(result.pagination).toEqual({ page: 1, limit: 20, total: 2, totalPages: 1 });
+      expect(result.summary).toEqual({ totalOrdersPending: 1, totalOrdersPaid: 1 });
       expect(mockOrderRepository.findAll).toHaveBeenCalledWith(undefined, { skip: 0, take: 20 });
       expect(mockOrderRepository.count).toHaveBeenCalledWith(undefined);
     });
@@ -113,12 +131,13 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
-      mockOrderRepository.count.mockResolvedValue(1);
+      stubOrderCounts(mockOrderRepository, 1, 0, 1);
 
       const result = await listOrdersUseCase.execute({ status: true });
 
       expect(result.data).toHaveLength(1);
       expect(result.data[0].status).toBe(true);
+      expect(result.summary).toEqual({ totalOrdersPending: 0, totalOrdersPaid: 1 });
       expect(mockOrderRepository.findAll).toHaveBeenCalledWith(
         {
           status: true,
@@ -166,7 +185,7 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
-      mockOrderRepository.count.mockResolvedValue(1);
+      stubOrderCounts(mockOrderRepository, 1, 0, 1);
 
       const result = await listOrdersUseCase.execute({ userId: 'user-123' });
 
@@ -210,7 +229,7 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
-      mockOrderRepository.count.mockResolvedValue(1);
+      stubOrderCounts(mockOrderRepository, 1, 1, 0);
 
       const result = await listOrdersUseCase.execute({ tableId: 'table-123' });
 
@@ -254,7 +273,7 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
-      mockOrderRepository.count.mockResolvedValue(1);
+      stubOrderCounts(mockOrderRepository, 1, 1, 0);
 
       const result = await listOrdersUseCase.execute({ paymentMethod: 2 });
 
@@ -298,7 +317,7 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
-      mockOrderRepository.count.mockResolvedValue(1);
+      stubOrderCounts(mockOrderRepository, 1, 0, 1);
 
       const result = await listOrdersUseCase.execute({ origin: 'Delivery' });
 
@@ -344,7 +363,7 @@ describe('ListOrdersUseCase', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
-      mockOrderRepository.count.mockResolvedValue(1);
+      stubOrderCounts(mockOrderRepository, 1, 1, 0);
 
       const result = await listOrdersUseCase.execute({
         dateFrom: dateFrom.toISOString(),
@@ -368,18 +387,20 @@ describe('ListOrdersUseCase', () => {
 
     it('should return empty data and pagination when no orders match filters', async () => {
       mockOrderRepository.findAll.mockResolvedValue([]);
-      mockOrderRepository.count.mockResolvedValue(0);
+      // Listado filtrado a pagadas: 0 coincidencias; resumen global en rango: 5 pendientes, 0 pagadas.
+      stubOrderCounts(mockOrderRepository, 0, 5, 0);
 
       const result = await listOrdersUseCase.execute({ status: true });
 
       expect(result.data).toHaveLength(0);
       expect(result.pagination.total).toBe(0);
       expect(result.pagination.totalPages).toBe(1);
+      expect(result.summary).toEqual({ totalOrdersPending: 5, totalOrdersPaid: 0 });
     });
 
     it('should use page and limit for skip/take in DB', async () => {
       mockOrderRepository.findAll.mockResolvedValue([]);
-      mockOrderRepository.count.mockResolvedValue(50);
+      stubOrderCounts(mockOrderRepository, 50, 20, 30);
 
       const result = await listOrdersUseCase.execute({ page: 3, limit: 10 });
 
@@ -395,6 +416,7 @@ describe('ListOrdersUseCase', () => {
       expect(mockOrderRepository.findAll).toHaveBeenCalledWith(expectedFilters, { skip: 20, take: 10 });
       expect(mockOrderRepository.count).toHaveBeenCalledWith(expectedFilters);
       expect(result.pagination).toEqual({ page: 3, limit: 10, total: 50, totalPages: 5 });
+      expect(result.summary).toEqual({ totalOrdersPending: 20, totalOrdersPaid: 30 });
     });
   });
 });

@@ -1,5 +1,8 @@
 import { inject, injectable } from 'tsyringe';
-import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
+import {
+  IOrderRepository,
+  OrderFilters,
+} from '../../../domain/interfaces/order-repository.interface';
 import { ListOrdersInput } from '../../dto/order.dto';
 
 export interface ListOrdersItem {
@@ -30,6 +33,11 @@ export interface ListOrdersResult {
     total: number;
     totalPages: number;
   };
+  /** Totales globales (sin paginación): pendientes vs pagadas, mismo rango/fecha y filtros que `summaryBase` (sin filtro de estado del listado). */
+  summary: {
+    totalOrdersPending: number;
+    totalOrdersPaid: number;
+  };
 }
 
 @injectable()
@@ -55,9 +63,22 @@ export class ListOrdersUseCase {
     const limit = Math.min(input?.limit ?? 20, 100);
     const skip = (page - 1) * limit;
 
-    const [orders, total] = await Promise.all([
+    const summaryBase: OrderFilters | undefined = filters
+      ? {
+          userId: filters.userId,
+          tableId: filters.tableId,
+          paymentMethod: filters.paymentMethod,
+          origin: filters.origin,
+          dateFrom: filters.dateFrom,
+          dateTo: filters.dateTo,
+        }
+      : undefined;
+
+    const [orders, total, totalOrdersPending, totalOrdersPaid] = await Promise.all([
       this.orderRepository.findAll(filters, { skip, take: limit }),
       this.orderRepository.count(filters),
+      this.orderRepository.count({ ...summaryBase, status: false }),
+      this.orderRepository.count({ ...summaryBase, status: true }),
     ]);
 
     const totalPages = Math.ceil(total / limit) || 1;
@@ -87,6 +108,10 @@ export class ListOrdersUseCase {
         limit,
         total,
         totalPages,
+      },
+      summary: {
+        totalOrdersPending,
+        totalOrdersPaid,
       },
     };
   }
