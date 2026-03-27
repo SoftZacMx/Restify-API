@@ -29,7 +29,7 @@ export const orderItemSchema = z.object({
 
 // Create Order Schema
 export const createOrderSchema = z.object({
-  paymentMethod: z.number().int().min(1).max(3).default(1), // 1: Cash, 2: Transfer, 3: Card
+  paymentMethod: z.number().int().min(1).max(4).default(1), // 1: Cash, 2: Transfer, 3: Card, 4: QR Mercado Pago
   tableId: z.string().uuid('Invalid table ID format').optional().nullable(),
   tip: z.number().nonnegative('Tip must be non-negative').multipleOf(0.01).default(0),
   origin: z.string().min(1, 'Origin is required').max(50, 'Origin is too long'),
@@ -64,7 +64,7 @@ export const updateOrderItemSchema = z.object({
 // Update Order Schema
 export const updateOrderSchema = z.object({
   status: z.boolean().optional(),
-  paymentMethod: z.number().int().min(1).max(3).optional().nullable(), // Can be null for split payments
+  paymentMethod: z.number().int().min(1).max(4).optional().nullable(), // Can be null for split payments
   delivered: z.boolean().optional(),
   tip: z.number().nonnegative('Tip must be non-negative').multipleOf(0.01).optional(),
   origin: z.string().min(1, 'Origin is required').max(50, 'Origin is too long').optional(),

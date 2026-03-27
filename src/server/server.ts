@@ -53,6 +53,9 @@ class LocalServer {
     // Cookie parser - must be before body parsing
     this.app.use(cookieParser());
 
+    // Raw body para webhook de Stripe (ANTES del JSON parser global)
+    this.app.use('/api/subscription/webhooks/stripe', express.raw({ type: 'application/json' }));
+
     // Body parsing
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));

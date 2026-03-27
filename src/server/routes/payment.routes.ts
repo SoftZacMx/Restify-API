@@ -8,13 +8,36 @@ import {
   getPaymentHandler,
   listPaymentsHandler,
   getPaymentSessionHandler,
+  payOrderWithQRMercadoPagoHandler,
+  getQRPaymentStatusHandler,
+  mercadoPagoWebhookHandler,
 } from '../../handlers/payments';
 import { HttpToLambdaAdapter } from '../../shared/utils/http-to-lambda.adapter';
 import { AuthMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// Apply authentication to all routes (except webhook endpoints if needed)
+// Webhook de Mercado Pago — sin autenticación (MP envía directamente)
+router.post('/webhooks/mercado-pago', async (req: Request, res: Response) => {
+  try {
+    const event = HttpToLambdaAdapter.convertRequest(req);
+    const context = HttpToLambdaAdapter.createContext();
+    const response = await mercadoPagoWebhookHandler(event as any, context);
+    HttpToLambdaAdapter.convertResponse(response, res);
+  } catch (error) {
+    console.error('Mercado Pago webhook route error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'ROUTE_ERROR',
+        message: 'An error occurred processing the webhook',
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+// Apply authentication to all routes below
 router.use(AuthMiddleware.authenticate);
 
 // Payment routes
@@ -88,6 +111,44 @@ router.post('/card-stripe', async (req: Request, res: Response) => {
       error: {
         code: 'ROUTE_ERROR',
         message: 'An error occurred processing the payment request',
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+router.post('/qr-mercado-pago', async (req: Request, res: Response) => {
+  try {
+    const event = HttpToLambdaAdapter.convertRequest(req);
+    const context = HttpToLambdaAdapter.createContext();
+    const response = await payOrderWithQRMercadoPagoHandler(event as any, context);
+    HttpToLambdaAdapter.convertResponse(response, res);
+  } catch (error) {
+    console.error('Pay order with QR Mercado Pago route error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'ROUTE_ERROR',
+        message: 'An error occurred processing the QR payment request',
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+router.get('/qr-mercado-pago/:orderId', async (req: Request, res: Response) => {
+  try {
+    const event = HttpToLambdaAdapter.convertRequest(req, { orderId: req.params.orderId });
+    const context = HttpToLambdaAdapter.createContext();
+    const response = await getQRPaymentStatusHandler(event as any, context);
+    HttpToLambdaAdapter.convertResponse(response, res);
+  } catch (error) {
+    console.error('Get QR payment status route error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'ROUTE_ERROR',
+        message: 'An error occurred processing the QR payment status request',
       },
       timestamp: new Date().toISOString(),
     });

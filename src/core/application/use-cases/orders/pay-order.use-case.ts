@@ -8,6 +8,7 @@ const PAYMENT_METHOD_TO_ORDER_INT: Record<string, number> = {
   CASH: 1,
   TRANSFER: 2,
   CARD_PHYSICAL: 3,
+  QR_MERCADO_PAGO: 4,
 };
 
 function toPaymentMethodEnum(m: string): PaymentMethod {

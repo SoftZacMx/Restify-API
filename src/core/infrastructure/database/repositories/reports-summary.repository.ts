@@ -15,6 +15,7 @@ const PAYMENT_LABELS: Record<number, string> = {
   1: 'Efectivo',
   2: 'Transferencia',
   3: 'Tarjeta',
+  4: 'QR Mercado Pago',
 };
 
 const EXPENSE_TYPE_LABELS: Record<ExpenseType, string> = {
@@ -143,10 +144,10 @@ export class ReportsSummaryRepository implements IReportsSummaryRepository {
       paymentMap.set(method, current);
     }
     const paymentTotal = orders.reduce((s, o) => s + Number(o.total), 0);
-    const paymentDistribution: PaymentDistributionItem[] = [1, 2, 3].map((method) => {
+    const paymentDistribution: PaymentDistributionItem[] = [1, 2, 3, 4].map((method) => {
       const data = paymentMap.get(method) ?? { total: 0, count: 0 };
       return {
-        method: method === 1 ? 'CASH' : method === 2 ? 'TRANSFER' : 'CARD',
+        method: method === 1 ? 'CASH' : method === 2 ? 'TRANSFER' : method === 3 ? 'CARD' : 'QR_MERCADO_PAGO',
         label: PAYMENT_LABELS[method] ?? 'Otro',
         total: data.total,
         count: data.count,

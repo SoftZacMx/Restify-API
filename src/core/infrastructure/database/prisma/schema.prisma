@@ -66,7 +66,7 @@ model Order {
   id            String   @id @default(uuid())
   date          DateTime @default(now())
   status        Boolean  @default(false)
-  paymentMethod Int?     // NULL for split payments, 1: Cash, 2: Transfer, 3: Card
+  paymentMethod Int?     // NULL for split payments, 1: Cash, 2: Transfer, 3: Card, 4: QR Mercado Pago
   total         Decimal  @db.Decimal(10, 2)
   subtotal      Decimal  @db.Decimal(10, 2)
   iva           Decimal  @default(0) @db.Decimal(10, 2)
@@ -391,12 +391,14 @@ enum PaymentMethod {
   TRANSFER          // Transferencia bancaria
   CARD_PHYSICAL     // Tarjeta física (POS local)
   CARD_STRIPE       // Tarjeta vía Stripe (online)
+  QR_MERCADO_PAGO   // QR vía Mercado Pago
 }
 
 enum PaymentGateway {
   STRIPE
   PAYPAL
   CASH
+  MERCADO_PAGO
 }
 
 enum RefundStatus {
@@ -414,6 +416,29 @@ enum ExpenseType {
   MERCHANDISE       // Compra de mercancía (con items de productos)
   SALARY            // Pago de salarios (empleado + monto)
   OTHER             // Otros gastos
+}
+
+enum SubscriptionStatus {
+  ACTIVE          // Suscripción activa, pago al día
+  PAST_DUE        // Pago falló, en período de gracia
+  CANCELED        // Cancelada por el usuario
+  EXPIRED         // Venció sin renovación
+  TRIALING        // En período de prueba (opcional)
+}
+
+// Subscription Entity (una por base de datos = un negocio = una suscripción)
+model Subscription {
+  id                     String             @id @default(uuid())
+  stripeCustomerId       String             @unique
+  stripeSubscriptionId   String?            @unique
+  status                 SubscriptionStatus @default(EXPIRED)
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  @@map("subscriptions")
 }
 
 // Unidades de medida para ítems de gastos (mercancía): Kilogramos, Gramos, Piezas, Otros

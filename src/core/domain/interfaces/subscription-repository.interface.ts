@@ -1,0 +1,25 @@
+import { Subscription } from '../entities/subscription.entity';
+import { SubscriptionStatus } from '@prisma/client';
+
+export interface CreateSubscriptionData {
+  stripeCustomerId: string;
+  stripeSubscriptionId?: string | null;
+  status?: SubscriptionStatus;
+  currentPeriodStart?: Date | null;
+  currentPeriodEnd?: Date | null;
+  cancelAtPeriodEnd?: boolean;
+}
+
+export interface UpdateSubscriptionData {
+  stripeSubscriptionId?: string | null;
+  status?: SubscriptionStatus;
+  currentPeriodStart?: Date | null;
+  currentPeriodEnd?: Date | null;
+  cancelAtPeriodEnd?: boolean;
+}
+
+export interface ISubscriptionRepository {
+  find(): Promise<Subscription | null>;
+  create(data: CreateSubscriptionData): Promise<Subscription>;
+  update(id: string, data: UpdateSubscriptionData): Promise<Subscription>;
+}

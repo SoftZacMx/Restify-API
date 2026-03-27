@@ -235,6 +235,16 @@ export const ERROR_CONFIG = {
     statusCode: 502,
     category: 'SYSTEM',
   },
+  PENDING_MP_PAYMENT_EXISTS: {
+    message: 'A pending Mercado Pago payment already exists for this order',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
+  INVALID_WEBHOOK_SIGNATURE: {
+    message: 'Invalid webhook signature',
+    statusCode: 401,
+    category: 'AUTH',
+  },
   EXPENSE_NOT_FOUND: {
     message: 'Expense not found',
     statusCode: 404,
@@ -269,6 +279,45 @@ export const ERROR_CONFIG = {
     message: 'Items total does not match purchase total',
     statusCode: 400,
     category: 'VALIDATION',
+  },
+
+  // ============================================
+  // Subscription Errors
+  // ============================================
+  SUBSCRIPTION_ALREADY_ACTIVE: {
+    message: 'Ya existe una suscripción activa',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
+  SUBSCRIPTION_NOT_FOUND: {
+    message: 'No se encontró una suscripción',
+    statusCode: 404,
+    category: 'BUSINESS',
+  },
+  SUBSCRIPTION_NOT_ACTIVE: {
+    message: 'La suscripción no está activa',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
+  SUBSCRIPTION_NOT_CANCELABLE: {
+    message: 'La suscripción no se puede cancelar en su estado actual',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
+  SUBSCRIPTION_NOT_REACTIVATABLE: {
+    message: 'La suscripción no se puede reactivar',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
+  STRIPE_SUBSCRIPTION_ERROR: {
+    message: 'Error al procesar la suscripción en Stripe',
+    statusCode: 502,
+    category: 'SYSTEM',
+  },
+  SUBSCRIPTION_PRICE_NOT_CONFIGURED: {
+    message: 'El precio de suscripción no está configurado',
+    statusCode: 500,
+    category: 'SYSTEM',
   },
 
   // ============================================

@@ -11,7 +11,7 @@ import { PaymentDifferentiation } from '../../../domain/entities/payment-differe
 import { ExpenseType, PaymentMethod, PaymentStatus } from '@prisma/client';
 
 function addIncomeToPaymentBuckets(
-  buckets: { cash: number; transfer: number; card: number },
+  buckets: { cash: number; transfer: number; card: number; qrMercadoPago: number },
   method: PaymentMethod | number,
   amount: number
 ): void {
@@ -19,6 +19,7 @@ function addIncomeToPaymentBuckets(
     if (method === 1) buckets.cash += amount;
     else if (method === 2) buckets.transfer += amount;
     else if (method === 3) buckets.card += amount;
+    else if (method === 4) buckets.qrMercadoPago += amount;
     return;
   }
   switch (method) {
@@ -31,6 +32,9 @@ function addIncomeToPaymentBuckets(
     case PaymentMethod.CARD_PHYSICAL:
     case PaymentMethod.CARD_STRIPE:
       buckets.card += amount;
+      break;
+    case PaymentMethod.QR_MERCADO_PAGO:
+      buckets.qrMercadoPago += amount;
       break;
     default:
       break;
@@ -50,6 +54,7 @@ export interface CashFlowReportData {
       cash: number;
       transfer: number;
       card: number;
+      qrMercadoPago: number;
     };
   };
   expenses: {
@@ -216,6 +221,7 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       cash: 0,
       transfer: 0,
       card: 0,
+      qrMercadoPago: 0,
     };
 
     orders.forEach((order: any) => {

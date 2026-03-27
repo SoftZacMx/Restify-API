@@ -14,15 +14,23 @@ import reportRoutes from './report.routes';
 import dashboardRoutes from './dashboard.routes';
 import companyRoutes from './company.routes';
 import healthRoutes from './health.routes';
+import subscriptionRoutes from './subscription.routes';
+import { SubscriptionMiddleware } from '../middleware/subscription.middleware';
 
 const router = Router();
 
 // Health check route (no prefix)
 router.use('/health', healthRoutes);
 
-// API routes (company first so /api/company is matched before any generic middleware)
-router.use('/api/company', companyRoutes);
+// Rutas SIN validación de suscripción (siempre accesibles)
 router.use('/api/auth', authRoutes);
+router.use('/api/subscription', subscriptionRoutes);
+
+// TODO: Reactivar cuando se configure la suscripción en Stripe
+// router.use(SubscriptionMiddleware.validateSubscription);
+
+// Rutas CON validación de suscripción
+router.use('/api/company', companyRoutes);
 router.use('/api/users', userRoutes);
 router.use('/api/products', productRoutes);
 router.use('/api/tables', tableRoutes);

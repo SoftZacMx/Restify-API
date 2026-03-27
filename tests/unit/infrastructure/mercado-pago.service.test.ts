@@ -1,0 +1,205 @@
+import { MercadoPagoService } from '../../../src/core/infrastructure/payment-gateways/mercado-pago.service';
+
+// Mock mercadopago SDK
+const mockPreferenceCreate = jest.fn();
+const mockPreferenceGet = jest.fn();
+const mockPaymentGet = jest.fn();
+
+jest.mock('mercadopago', () => ({
+  MercadoPagoConfig: jest.fn().mockImplementation(() => ({})),
+  Preference: jest.fn().mockImplementation(() => ({
+    create: mockPreferenceCreate,
+    get: mockPreferenceGet,
+  })),
+  Payment: jest.fn().mockImplementation(() => ({
+    get: mockPaymentGet,
+  })),
+}));
+
+describe('MercadoPagoService', () => {
+  let service: MercadoPagoService;
+
+  beforeEach(() => {
+    process.env.MP_ACCESS_TOKEN = 'TEST-token-123';
+    process.env.MP_WEBHOOK_SECRET = 'webhook-secret-123';
+    jest.clearAllMocks();
+    service = new MercadoPagoService();
+  });
+
+  afterEach(() => {
+    delete process.env.MP_ACCESS_TOKEN;
+    delete process.env.MP_WEBHOOK_SECRET;
+  });
+
+  describe('constructor', () => {
+    it('should throw error if MP_ACCESS_TOKEN is not set', () => {
+      delete process.env.MP_ACCESS_TOKEN;
+      expect(() => new MercadoPagoService()).toThrow('MP_ACCESS_TOKEN environment variable is required');
+    });
+  });
+
+  describe('createPreference', () => {
+    it('should create a preference and return mapped result', async () => {
+      mockPreferenceCreate.mockResolvedValue({
+        id: 'pref-123',
+        init_point: 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref-123',
+        sandbox_init_point: 'https://sandbox.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref-123',
+        expiration_date_to: '2026-03-27T12:00:00.000Z',
+      });
+
+      const result = await service.createPreference({
+        orderId: 'order-123',
+        title: 'Orden #order-12 - Restify',
+        description: 'Pago de orden',
+        amount: 150.50,
+        currency: 'MXN',
+        metadata: { orderId: 'order-123', paymentId: 'pay-123' },
+        notificationUrl: 'https://api.restify.com/webhooks/mercado-pago',
+        expirationDate: '2026-03-27T12:00:00.000Z',
+      });
+
+      expect(result).toEqual({
+        id: 'pref-123',
+        initPoint: 'https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref-123',
+        sandboxInitPoint: 'https://sandbox.mercadopago.com.mx/checkout/v1/redirect?pref_id=pref-123',
+        expirationDate: '2026-03-27T12:00:00.000Z',
+      });
+
+      expect(mockPreferenceCreate).toHaveBeenCalledWith({
+        body: expect.objectContaining({
+          items: [expect.objectContaining({
+            id: 'order-123',
+            title: 'Orden #order-12 - Restify',
+            unit_price: 150.50,
+            currency_id: 'MXN',
+            quantity: 1,
+          })],
+          external_reference: 'order-123',
+          notification_url: 'https://api.restify.com/webhooks/mercado-pago',
+          expires: true,
+          payment_methods: expect.objectContaining({
+            excluded_payment_types: [{ id: 'ticket' }],
+            installments: 1,
+          }),
+        }),
+      });
+    });
+  });
+
+  describe('getPreference', () => {
+    it('should get a preference by ID', async () => {
+      mockPreferenceGet.mockResolvedValue({
+        id: 'pref-123',
+        init_point: 'https://mp.com/checkout',
+        sandbox_init_point: 'https://sandbox.mp.com/checkout',
+        expiration_date_to: null,
+      });
+
+      const result = await service.getPreference('pref-123');
+
+      expect(result.id).toBe('pref-123');
+      expect(result.initPoint).toBe('https://mp.com/checkout');
+      expect(result.expirationDate).toBeNull();
+      expect(mockPreferenceGet).toHaveBeenCalledWith({ preferenceId: 'pref-123' });
+    });
+  });
+
+  describe('getPayment', () => {
+    it('should get a payment by ID and return mapped result', async () => {
+      mockPaymentGet.mockResolvedValue({
+        id: 12345,
+        status: 'approved',
+        status_detail: 'accredited',
+        external_reference: 'order-123',
+        transaction_amount: 150.50,
+        currency_id: 'MXN',
+        payment_method_id: 'visa',
+        payment_type_id: 'credit_card',
+        date_approved: '2026-03-27T12:00:00.000Z',
+      });
+
+      const result = await service.getPayment('12345');
+
+      expect(result).toEqual({
+        id: 12345,
+        status: 'approved',
+        statusDetail: 'accredited',
+        externalReference: 'order-123',
+        transactionAmount: 150.50,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: '2026-03-27T12:00:00.000Z',
+      });
+      expect(mockPaymentGet).toHaveBeenCalledWith({ id: '12345' });
+    });
+
+    it('should return null dateApproved when payment is not approved', async () => {
+      mockPaymentGet.mockResolvedValue({
+        id: 12345,
+        status: 'pending',
+        status_detail: 'pending_waiting_transfer',
+        external_reference: 'order-123',
+        transaction_amount: 100,
+        currency_id: 'MXN',
+        payment_method_id: 'bank_transfer',
+        payment_type_id: 'bank_transfer',
+        date_approved: null,
+      });
+
+      const result = await service.getPayment('12345');
+      expect(result.dateApproved).toBeNull();
+    });
+  });
+
+  describe('validateWebhookSignature', () => {
+    it('should return true for a valid signature', () => {
+      const crypto = require('crypto');
+      const secret = 'webhook-secret-123';
+      const dataId = '12345';
+      const xRequestId = 'req-abc';
+      const ts = '1234567890';
+
+      const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+      const expectedHmac = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
+
+      const result = service.validateWebhookSignature({
+        xSignature: `ts=${ts},v1=${expectedHmac}`,
+        xRequestId,
+        dataId,
+      });
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false for an invalid signature', () => {
+      const result = service.validateWebhookSignature({
+        xSignature: 'ts=123,v1=invalidsignature',
+        xRequestId: 'req-abc',
+        dataId: '12345',
+      });
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false when x-signature format is invalid', () => {
+      const result = service.validateWebhookSignature({
+        xSignature: 'malformed-header',
+        xRequestId: 'req-abc',
+        dataId: '12345',
+      });
+
+      expect(result).toBe(false);
+    });
+
+    it('should throw error if MP_WEBHOOK_SECRET is not set', () => {
+      delete process.env.MP_WEBHOOK_SECRET;
+
+      expect(() => service.validateWebhookSignature({
+        xSignature: 'ts=123,v1=abc',
+        xRequestId: 'req-abc',
+        dataId: '12345',
+      })).toThrow('MP_WEBHOOK_SECRET environment variable is required');
+    });
+  });
+});

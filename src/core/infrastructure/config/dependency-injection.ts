@@ -29,6 +29,13 @@ import { EmployeeSalaryPaymentRepository } from '../database/repositories/employ
 import { IEmployeeSalaryPaymentRepository } from '../../domain/interfaces/employee-salary-payment-repository.interface';
 import { ReportFactory } from '../../application/reports/report-factory';
 import { StripeService } from '../payment-gateways/stripe.service';
+import { StripeSubscriptionService } from '../payment-gateways/stripe-subscription.service';
+import { MercadoPagoService } from '../payment-gateways/mercado-pago.service';
+import { SubscriptionRepository } from '../database/repositories/subscription.repository';
+import { ISubscriptionRepository } from '../../domain/interfaces/subscription-repository.interface';
+import { PayOrderWithQRMercadoPagoUseCase } from '../../application/use-cases/payments/pay-order-with-qr-mercado-pago.use-case';
+import { ConfirmMercadoPagoPaymentUseCase } from '../../application/use-cases/payments/confirm-mercado-pago-payment.use-case';
+import { GetQRPaymentStatusUseCase } from '../../application/use-cases/payments/get-qr-payment-status.use-case';
 import { WebSocketConnectionManager } from '../websocket/websocket-connection-manager';
 import { IWebSocketConnectionManager } from '../../domain/interfaces/websocket-connection.interface';
 import { NotifyPaymentStatusUseCase } from '../../application/use-cases/websocket/notify-payment-status.use-case';
@@ -51,6 +58,11 @@ import { GetKitchenTicketUseCase } from '../../application/use-cases/tickets/get
 import { GetSaleTicketUseCase } from '../../application/use-cases/tickets/get-sale-ticket.use-case';
 import { GetCompanyUseCase } from '../../application/use-cases/company/get-company.use-case';
 import { UpsertCompanyUseCase } from '../../application/use-cases/company/upsert-company.use-case';
+import { CreateSubscriptionCheckoutUseCase } from '../../application/use-cases/subscription/create-subscription-checkout.use-case';
+import { HandleSubscriptionWebhookUseCase } from '../../application/use-cases/subscription/handle-subscription-webhook.use-case';
+import { GetSubscriptionStatusUseCase } from '../../application/use-cases/subscription/get-subscription-status.use-case';
+import { CancelSubscriptionUseCase } from '../../application/use-cases/subscription/cancel-subscription.use-case';
+import { ReactivateSubscriptionUseCase } from '../../application/use-cases/subscription/reactivate-subscription.use-case';
 
 // Register Prisma Service
 container.registerSingleton(PrismaService);
@@ -121,6 +133,13 @@ container.registerSingleton('ReportFactory', ReportFactory);
 
 // Register Payment Services
 container.registerSingleton(StripeService);
+container.registerSingleton(StripeSubscriptionService);
+container.registerSingleton(MercadoPagoService);
+
+// Register Subscription Repository
+container.register<ISubscriptionRepository>('ISubscriptionRepository', {
+  useFactory: () => new SubscriptionRepository(prismaClient),
+});
 
 // Register WebSocket Services
 container.registerSingleton<IWebSocketConnectionManager>(
@@ -154,6 +173,11 @@ container.register(UnregisterWebSocketConnectionUseCase, UnregisterWebSocketConn
 // Pay order (unified endpoint, transaction)
 container.register(PayOrderUseCase, PayOrderUseCase);
 
+// Mercado Pago Use Cases
+container.register(PayOrderWithQRMercadoPagoUseCase, PayOrderWithQRMercadoPagoUseCase);
+container.register(ConfirmMercadoPagoPaymentUseCase, ConfirmMercadoPagoPaymentUseCase);
+container.register(GetQRPaymentStatusUseCase, GetQRPaymentStatusUseCase);
+
 // Dashboard
 container.register(GetDashboardUseCase, GetDashboardUseCase);
 
@@ -170,6 +194,13 @@ container.register(GetSaleTicketUseCase, GetSaleTicketUseCase);
 // Company (singleton business info)
 container.register(GetCompanyUseCase, GetCompanyUseCase);
 container.register(UpsertCompanyUseCase, UpsertCompanyUseCase);
+
+// Subscription Use Cases
+container.register(CreateSubscriptionCheckoutUseCase, CreateSubscriptionCheckoutUseCase);
+container.register(HandleSubscriptionWebhookUseCase, HandleSubscriptionWebhookUseCase);
+container.register(GetSubscriptionStatusUseCase, GetSubscriptionStatusUseCase);
+container.register(CancelSubscriptionUseCase, CancelSubscriptionUseCase);
+container.register(ReactivateSubscriptionUseCase, ReactivateSubscriptionUseCase);
 
 export { container };
 

@@ -7,4 +7,7 @@ export { confirmStripePaymentHandler } from './confirm-stripe-payment.handler';
 export { getPaymentHandler } from './get-payment.handler';
 export { listPaymentsHandler } from './list-payments.handler';
 export { getPaymentSessionHandler } from './get-payment-session.handler';
+export { payOrderWithQRMercadoPagoHandler } from './pay-order-with-qr-mercado-pago.handler';
+export { getQRPaymentStatusHandler } from './get-qr-payment-status.handler';
+export { mercadoPagoWebhookHandler } from './mercado-pago-webhook.handler';
 

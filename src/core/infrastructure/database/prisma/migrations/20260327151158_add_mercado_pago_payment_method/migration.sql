@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE `payments` MODIFY `paymentMethod` ENUM('CASH', 'TRANSFER', 'CARD_PHYSICAL', 'CARD_STRIPE', 'QR_MERCADO_PAGO') NOT NULL,
+    MODIFY `gateway` ENUM('STRIPE', 'PAYPAL', 'CASH', 'MERCADO_PAGO') NULL;
+
+-- AlterTable
+ALTER TABLE `payments_differentiations` MODIFY `firstPaymentMethod` ENUM('CASH', 'TRANSFER', 'CARD_PHYSICAL', 'CARD_STRIPE', 'QR_MERCADO_PAGO') NOT NULL,
+    MODIFY `secondPaymentMethod` ENUM('CASH', 'TRANSFER', 'CARD_PHYSICAL', 'CARD_STRIPE', 'QR_MERCADO_PAGO') NOT NULL;

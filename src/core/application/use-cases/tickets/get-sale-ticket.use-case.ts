@@ -16,6 +16,7 @@ const PAYMENT_METHOD_LABELS: Record<number, string> = {
   1: 'Efectivo',
   2: 'Transferencia',
   3: 'Tarjeta',
+  4: 'QR Mercado Pago',
 };
 
 function paymentMethodLabel(paymentMethod: number | null): string {
