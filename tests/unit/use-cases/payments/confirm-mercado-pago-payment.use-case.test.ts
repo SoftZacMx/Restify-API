@@ -143,6 +143,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       expect(mockOrderRepository.update).toHaveBeenCalledWith(orderId, {
         status: true,
         paymentMethod: 4,
+        delivered: true,
       });
       expect(mockTableRepository.update).toHaveBeenCalledWith('table-1', {
         availabilityStatus: true,
@@ -313,6 +314,30 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('status mapping: unknown status → null', () => {
+    it('should return null when MP returns an unknown status', async () => {
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'some_unknown_status',
+        statusDetail: 'unknown',
+        externalReference: orderId,
+        transactionAmount: 150.50,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: null,
+      });
+
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
+
+      expect(result).toBeNull();
+      expect(mockPaymentRepository.update).not.toHaveBeenCalled();
+      expect(mockOrderRepository.update).not.toHaveBeenCalled();
     });
   });
 

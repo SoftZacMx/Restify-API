@@ -71,7 +71,7 @@ export class PayOrderWithQRMercadoPagoUseCase {
     });
 
     // 4. Crear Preference en Mercado Pago
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutos
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
     const notificationUrl = process.env.MP_NOTIFICATION_URL || '';
 
     const preference = await this.mercadoPagoService.createPreference({
