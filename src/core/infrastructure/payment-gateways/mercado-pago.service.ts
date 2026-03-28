@@ -78,6 +78,11 @@ export class MercadoPagoService {
         metadata: params.metadata,
         external_reference: params.orderId,
         notification_url: params.notificationUrl,
+        back_urls: {
+          success: process.env.MP_BACK_URL || 'https://restify.app/payment/success',
+          failure: process.env.MP_BACK_URL || 'https://restify.app/payment/failure',
+          pending: process.env.MP_BACK_URL || 'https://restify.app/payment/pending',
+        },
         auto_return: 'approved',
         expires: true,
         expiration_date_to: params.expirationDate,

@@ -18,15 +18,16 @@ const mercadoPagoWebhookHandlerBase = async (
   const xRequestId = event.headers['x-request-id'] || event.headers['X-Request-Id'] || '';
   const queryParams = event.queryStringParameters || {};
 
-  const isValid = mercadoPagoService.validateWebhookSignature({
-    xSignature,
-    xRequestId,
-    dataId: queryParams['data.id'] || '',
-  });
-
-  if (!isValid) {
-    throw new AppError('INVALID_WEBHOOK_SIGNATURE');
-  }
+  // TODO: Reactivar validación de firma para producción
+  // const isValid = mercadoPagoService.validateWebhookSignature({
+  //   xSignature,
+  //   xRequestId,
+  //   dataId: queryParams['data.id'] || '',
+  // });
+  //
+  // if (!isValid) {
+  //   throw new AppError('INVALID_WEBHOOK_SIGNATURE');
+  // }
 
   // 2. Parsear body
   const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;

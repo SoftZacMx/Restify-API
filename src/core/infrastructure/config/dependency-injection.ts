@@ -135,6 +135,7 @@ container.registerSingleton('ReportFactory', ReportFactory);
 container.registerSingleton(StripeService);
 container.registerSingleton(StripeSubscriptionService);
 container.registerSingleton(MercadoPagoService);
+container.register('MercadoPagoService', { useFactory: () => container.resolve(MercadoPagoService) });
 
 // Register Subscription Repository
 container.register<ISubscriptionRepository>('ISubscriptionRepository', {

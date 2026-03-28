@@ -34,7 +34,7 @@ export class PayOrderWithQRMercadoPagoUseCase {
       throw new AppError('ORDER_ALREADY_PAID');
     }
 
-    // 2. Validar que no existe un pago pendiente de MP para esta orden
+    // 2. Si ya existe un pago pendiente de MP, reutilizar la preferencia existente
     const existingPayments = await this.paymentRepository.findAll({
       orderIds: [order.id],
       status: PaymentStatus.PENDING,
@@ -43,7 +43,20 @@ export class PayOrderWithQRMercadoPagoUseCase {
       (p) => p.gateway === PaymentGateway.MERCADO_PAGO
     );
     if (pendingMPPayment) {
-      throw new AppError('PENDING_MP_PAYMENT_EXISTS');
+      const existingSession = await this.paymentSessionRepository.findByPaymentId(pendingMPPayment.id);
+      if (existingSession && existingSession.expiresAt > new Date()) {
+        return {
+          paymentId: pendingMPPayment.id,
+          preferenceId: pendingMPPayment.gatewayTransactionId || '',
+          initPoint: existingSession.clientSecret,
+          expiresAt: existingSession.expiresAt,
+        };
+      }
+      // Si la sesión expiró, limpiar y crear una nueva
+      if (existingSession) {
+        await this.paymentSessionRepository.deleteByPaymentId(pendingMPPayment.id);
+      }
+      await this.paymentRepository.update(pendingMPPayment.id, { status: PaymentStatus.CANCELED });
     }
 
     // 3. Crear registro Payment con status PENDING
