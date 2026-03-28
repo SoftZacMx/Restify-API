@@ -98,6 +98,7 @@ export class ConfirmMercadoPagoPaymentUseCase {
       const order = await this.orderRepository.update(pendingPayment.orderId, {
         status: true,
         paymentMethod: 4, // 4 = QR Mercado Pago
+        delivered: true,
       });
       updatedOrder = {
         id: order.id,
