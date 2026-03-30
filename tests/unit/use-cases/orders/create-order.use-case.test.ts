@@ -4,9 +4,10 @@ import { IUserRepository } from '../../../../src/core/domain/interfaces/user-rep
 import { ITableRepository } from '../../../../src/core/domain/interfaces/table-repository.interface';
 import { IProductRepository } from '../../../../src/core/domain/interfaces/product-repository.interface';
 import { IMenuItemRepository } from '../../../../src/core/domain/interfaces/menu-item-repository.interface';
+import { ICompanyRepository } from '../../../../src/core/domain/interfaces/company-repository.interface';
+import { QueueOrderNotificationUseCase } from '../../../../src/core/application/use-cases/websocket/queue-order-notification.use-case';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { OrderItem } from '../../../../src/core/domain/entities/order-item.entity';
-import { OrderMenuItem } from '../../../../src/core/domain/entities/order-menu-item.entity';
 import { User } from '../../../../src/core/domain/entities/user.entity';
 import { Table } from '../../../../src/core/domain/entities/table.entity';
 import { Product } from '../../../../src/core/domain/entities/product.entity';
@@ -21,18 +22,27 @@ describe('CreateOrderUseCase', () => {
   let mockTableRepository: jest.Mocked<ITableRepository>;
   let mockProductRepository: jest.Mocked<IProductRepository>;
   let mockMenuItemRepository: jest.Mocked<IMenuItemRepository>;
+  let mockCompanyRepository: jest.Mocked<ICompanyRepository>;
+  let mockQueueOrderNotificationUseCase: jest.Mocked<Pick<QueueOrderNotificationUseCase, 'execute'>>;
 
   beforeEach(() => {
     mockOrderRepository = {
       findById: jest.fn(),
       findAll: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       createOrderItem: jest.fn(),
+      updateOrderItem: jest.fn(),
+      deleteOrderItem: jest.fn(),
+      deleteOrderItemsByOrderId: jest.fn(),
       findOrderItemsByOrderId: jest.fn(),
-      createOrderMenuItem: jest.fn(),
-      findOrderMenuItemsByOrderId: jest.fn(),
+      createOrderItemExtra: jest.fn(),
+      deleteOrderItemExtrasByOrderId: jest.fn(),
+      deleteOrderItemExtrasByOrderItemId: jest.fn(),
+      findOrderItemExtrasByOrderId: jest.fn(),
+      findOrderItemExtrasByOrderItemId: jest.fn(),
     };
 
     mockUserRepository = {
@@ -42,6 +52,7 @@ describe('CreateOrderUseCase', () => {
       update: jest.fn(),
       delete: jest.fn(),
       findAll: jest.fn(),
+      reactivate: jest.fn(),
     };
 
     mockTableRepository = {
@@ -55,6 +66,7 @@ describe('CreateOrderUseCase', () => {
 
     mockProductRepository = {
       findById: jest.fn(),
+      findByIds: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -63,10 +75,21 @@ describe('CreateOrderUseCase', () => {
 
     mockMenuItemRepository = {
       findById: jest.fn(),
+      findByIds: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+    };
+
+    mockCompanyRepository = {
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+      update: jest.fn(),
+    };
+
+    mockQueueOrderNotificationUseCase = {
+      execute: jest.fn().mockResolvedValue(undefined),
     };
 
     createOrderUseCase = new CreateOrderUseCase(
@@ -74,7 +97,9 @@ describe('CreateOrderUseCase', () => {
       mockUserRepository,
       mockTableRepository,
       mockProductRepository,
-      mockMenuItemRepository
+      mockMenuItemRepository,
+      mockCompanyRepository,
+      mockQueueOrderNotificationUseCase as any
     );
   });
 
@@ -99,7 +124,7 @@ describe('CreateOrderUseCase', () => {
 
     const mockTable = new Table(
       'table-123',
-      1,
+      'Mesa 1',
       'user-123',
       true,
       true,
@@ -123,6 +148,7 @@ describe('CreateOrderUseCase', () => {
       'Test Menu Item',
       10.50,
       true,
+      false,
       'category-123',
       'user-123',
       new Date(),
@@ -135,13 +161,8 @@ describe('CreateOrderUseCase', () => {
         paymentMethod: 1,
         origin: 'Local',
         orderItems: [
-          {
-            productId: 'product-123',
-            quantity: 2,
-            price: 10.00,
-          },
+          { productId: 'product-123', quantity: 2, price: 10.00, extras: [] },
         ],
-        orderMenuItems: [],
         tip: 0,
         paymentDiffer: false,
       };
@@ -175,6 +196,8 @@ describe('CreateOrderUseCase', () => {
         10.00,
         'order-123',
         'product-123',
+        null,
+        null,
         new Date(),
         new Date()
       );
@@ -182,7 +205,7 @@ describe('CreateOrderUseCase', () => {
       mockOrderRepository.create.mockResolvedValue(mockOrder);
       mockOrderRepository.createOrderItem.mockResolvedValue(mockOrderItem);
       mockOrderRepository.findOrderItemsByOrderId.mockResolvedValue([mockOrderItem]);
-      mockOrderRepository.findOrderMenuItemsByOrderId.mockResolvedValue([]);
+      mockOrderRepository.findOrderItemExtrasByOrderId.mockResolvedValue([]);
 
       const result = await createOrderUseCase.execute(validInput);
 
@@ -203,14 +226,8 @@ describe('CreateOrderUseCase', () => {
         userId: 'user-123',
         paymentMethod: 1,
         origin: 'Delivery',
-        orderItems: [],
-        orderMenuItems: [
-          {
-            menuItemId: 'menu-item-123',
-            amount: 3,
-            unitPrice: 10.50,
-            note: null,
-          },
+        orderItems: [
+          { menuItemId: 'menu-item-123', quantity: 3, price: 10.50, note: null, extras: [] },
         ],
         tip: 2.00,
         paymentDiffer: false,
@@ -239,30 +256,31 @@ describe('CreateOrderUseCase', () => {
         new Date()
       );
 
-      const mockOrderMenuItem = new OrderMenuItem(
-        'order-menu-item-123',
-        'order-123',
-        'menu-item-123',
+      const mockOrderItem = new OrderItem(
+        'order-item-123',
         3,
         10.50,
+        'order-123',
+        null,
+        'menu-item-123',
         null,
         new Date(),
         new Date()
       );
 
       mockOrderRepository.create.mockResolvedValue(mockOrder);
-      mockOrderRepository.createOrderMenuItem.mockResolvedValue(mockOrderMenuItem);
-      mockOrderRepository.findOrderItemsByOrderId.mockResolvedValue([]);
-      mockOrderRepository.findOrderMenuItemsByOrderId.mockResolvedValue([mockOrderMenuItem]);
+      mockOrderRepository.createOrderItem.mockResolvedValue(mockOrderItem);
+      mockOrderRepository.findOrderItemsByOrderId.mockResolvedValue([mockOrderItem]);
+      mockOrderRepository.findOrderItemExtrasByOrderId.mockResolvedValue([]);
 
       const result = await createOrderUseCase.execute(validInput);
 
       expect(result).toHaveProperty('id');
       expect(result.origin).toBe('Delivery');
       expect(result.tip).toBe(2.00);
-      expect(result.orderMenuItems).toHaveLength(1);
+      expect(result.orderItems).toHaveLength(1);
       expect(mockMenuItemRepository.findById).toHaveBeenCalledWith('menu-item-123');
-      expect(mockOrderRepository.createOrderMenuItem).toHaveBeenCalled();
+      expect(mockOrderRepository.createOrderItem).toHaveBeenCalled();
     });
 
     it('should create an order successfully with both order items and menu items', async () => {
@@ -272,19 +290,8 @@ describe('CreateOrderUseCase', () => {
         tableId: 'table-123',
         origin: 'Local',
         orderItems: [
-          {
-            productId: 'product-123',
-            quantity: 1,
-            price: 10.00,
-          },
-        ],
-        orderMenuItems: [
-          {
-            menuItemId: 'menu-item-123',
-            amount: 2,
-            unitPrice: 10.50,
-            note: 'Extra sauce',
-          },
+          { productId: 'product-123', quantity: 1, price: 10.00, extras: [] },
+          { menuItemId: 'menu-item-123', quantity: 2, price: 10.50, note: 'Extra sauce', extras: [] },
         ],
         tip: 1.50,
         paymentDiffer: false,
@@ -315,40 +322,41 @@ describe('CreateOrderUseCase', () => {
         new Date()
       );
 
-      const mockOrderItem = new OrderItem(
+      const mockOrderItemProduct = new OrderItem(
         'order-item-123',
         1,
         10.00,
         'order-123',
         'product-123',
+        null,
+        null,
         new Date(),
         new Date()
       );
 
-      const mockOrderMenuItem = new OrderMenuItem(
-        'order-menu-item-123',
-        'order-123',
-        'menu-item-123',
+      const mockOrderItemMenu = new OrderItem(
+        'order-item-456',
         2,
         10.50,
+        'order-123',
+        null,
+        'menu-item-123',
         'Extra sauce',
         new Date(),
         new Date()
       );
 
       mockOrderRepository.create.mockResolvedValue(mockOrder);
-      mockOrderRepository.createOrderItem.mockResolvedValue(mockOrderItem);
-      mockOrderRepository.createOrderMenuItem.mockResolvedValue(mockOrderMenuItem);
-      mockOrderRepository.findOrderItemsByOrderId.mockResolvedValue([mockOrderItem]);
-      mockOrderRepository.findOrderMenuItemsByOrderId.mockResolvedValue([mockOrderMenuItem]);
+      mockOrderRepository.createOrderItem.mockResolvedValue(mockOrderItemProduct);
+      mockOrderRepository.findOrderItemsByOrderId.mockResolvedValue([mockOrderItemProduct, mockOrderItemMenu]);
+      mockOrderRepository.findOrderItemExtrasByOrderId.mockResolvedValue([]);
 
       const result = await createOrderUseCase.execute(validInput);
 
       expect(result).toHaveProperty('id');
       expect(result.tableId).toBe('table-123');
       expect(result.paymentMethod).toBe(2);
-      expect(result.orderItems).toHaveLength(1);
-      expect(result.orderMenuItems).toHaveLength(1);
+      expect(result.orderItems).toHaveLength(2);
       expect(mockTableRepository.findById).toHaveBeenCalledWith('table-123');
     });
 
@@ -358,7 +366,6 @@ describe('CreateOrderUseCase', () => {
         paymentMethod: 1,
         origin: 'Local',
         orderItems: [],
-        orderMenuItems: [],
         tip: 0,
         paymentDiffer: false,
       };
@@ -381,7 +388,6 @@ describe('CreateOrderUseCase', () => {
         tableId: 'table-123',
         origin: 'Local',
         orderItems: [],
-        orderMenuItems: [],
         tip: 0,
         paymentDiffer: false,
       };
@@ -404,13 +410,8 @@ describe('CreateOrderUseCase', () => {
         paymentMethod: 1,
         origin: 'Local',
         orderItems: [
-          {
-            productId: 'product-123',
-            quantity: 1,
-            price: 10.00,
-          },
+          { productId: 'product-123', quantity: 1, price: 10.00, extras: [] },
         ],
-        orderMenuItems: [],
         tip: 0,
         paymentDiffer: false,
       };
@@ -432,14 +433,8 @@ describe('CreateOrderUseCase', () => {
         userId: 'user-123',
         paymentMethod: 1,
         origin: 'Local',
-        orderItems: [],
-        orderMenuItems: [
-          {
-            menuItemId: 'menu-item-123',
-            amount: 1,
-            unitPrice: 10.50,
-            note: null,
-          },
+        orderItems: [
+          { menuItemId: 'menu-item-123', quantity: 1, price: 10.50, extras: [] },
         ],
         tip: 0,
         paymentDiffer: false,
@@ -458,4 +453,3 @@ describe('CreateOrderUseCase', () => {
     });
   });
 });
-

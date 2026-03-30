@@ -18,6 +18,8 @@ describe('NotifyPaymentStatusUseCase', () => {
       getConnectionBySocketId: jest.fn(),
       sendToConnection: jest.fn(),
       getAllConnections: jest.fn(),
+      sendToUser: jest.fn(),
+      sendToStaffRoles: jest.fn(),
     };
 
     mockPaymentSessionRepository = {

@@ -25,6 +25,7 @@ describe('ExpenseAnalysisReportGenerator', () => {
       updateItem: jest.fn(),
       deleteItem: jest.fn(),
       deleteItemsByExpenseId: jest.fn(),
+      findAllWithUser: jest.fn(),
     };
 
     mockEmployeeSalaryPaymentRepository = {

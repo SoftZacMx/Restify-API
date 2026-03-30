@@ -1,16 +1,53 @@
 import { CreateSubscriptionCheckoutUseCase } from '../../../../src/core/application/use-cases/subscription/create-subscription-checkout.use-case';
 import { ISubscriptionRepository } from '../../../../src/core/domain/interfaces/subscription-repository.interface';
+import { ICompanyRepository } from '../../../../src/core/domain/interfaces/company-repository.interface';
+import { IUserRepository } from '../../../../src/core/domain/interfaces/user-repository.interface';
 import { StripeSubscriptionService } from '../../../../src/core/infrastructure/payment-gateways/stripe-subscription.service';
 import { Subscription } from '../../../../src/core/domain/entities/subscription.entity';
-import { SubscriptionStatus } from '@prisma/client';
+import { User } from '../../../../src/core/domain/entities/user.entity';
+import { Company } from '../../../../src/core/domain/entities/company.entity';
+import { SubscriptionStatus, UserRole } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('CreateSubscriptionCheckoutUseCase', () => {
   let useCase: CreateSubscriptionCheckoutUseCase;
   let mockSubscriptionRepository: jest.Mocked<ISubscriptionRepository>;
+  let mockCompanyRepository: jest.Mocked<ICompanyRepository>;
+  let mockUserRepository: jest.Mocked<IUserRepository>;
   let mockStripeService: jest.Mocked<StripeSubscriptionService>;
 
   const originalEnv = process.env;
+
+  const mockAdminUser = new User(
+    'user-admin-1',
+    'Admin',
+    'User',
+    null,
+    'test@restaurant.com',
+    'hashed_password',
+    null,
+    true,
+    UserRole.ADMIN,
+    new Date(),
+    new Date()
+  );
+
+  const mockCompany = new Company(
+    'company-1',
+    'Mi Restaurante',
+    'State',
+    'City',
+    'Street',
+    '123',
+    '5551234567',
+    null,
+    null,
+    null,
+    null,
+    null,
+    new Date(),
+    new Date()
+  );
 
   beforeEach(() => {
     process.env = { ...originalEnv, STRIPE_PRICE_ID: 'price_test_123' };
@@ -19,6 +56,22 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
       find: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+    };
+
+    mockCompanyRepository = {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    };
+
+    mockUserRepository = {
+      findByEmail: jest.fn(),
+      findById: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      findAll: jest.fn(),
+      reactivate: jest.fn(),
     };
 
     mockStripeService = {
@@ -32,6 +85,8 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
 
     useCase = new CreateSubscriptionCheckoutUseCase(
       mockSubscriptionRepository,
+      mockCompanyRepository,
+      mockUserRepository,
       mockStripeService
     );
   });
@@ -42,11 +97,12 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
   });
 
   const input = {
-    email: 'test@restaurant.com',
-    businessName: 'Mi Restaurante',
+    userId: 'user-admin-1',
   };
 
   it('should create checkout session for new subscription', async () => {
+    mockUserRepository.findById.mockResolvedValue(mockAdminUser);
+    mockCompanyRepository.findFirst.mockResolvedValue(mockCompany);
     mockSubscriptionRepository.find.mockResolvedValue(null);
     mockStripeService.createCustomer.mockResolvedValue('cus_test_123');
     mockStripeService.createCheckoutSession.mockResolvedValue({
@@ -93,6 +149,8 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
       new Date()
     );
 
+    mockUserRepository.findById.mockResolvedValue(mockAdminUser);
+    mockCompanyRepository.findFirst.mockResolvedValue(mockCompany);
     mockSubscriptionRepository.find.mockResolvedValue(existingSub);
     mockStripeService.createCheckoutSession.mockResolvedValue({
       sessionId: 'cs_test_456',
@@ -122,6 +180,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
       new Date()
     );
 
+    mockUserRepository.findById.mockResolvedValue(mockAdminUser);
     mockSubscriptionRepository.find.mockResolvedValue(activeSub);
 
     try {
@@ -137,6 +196,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
 
   it('should throw error when STRIPE_PRICE_ID is not configured', async () => {
     delete process.env.STRIPE_PRICE_ID;
+    mockUserRepository.findById.mockResolvedValue(mockAdminUser);
 
     try {
       await useCase.execute(input);

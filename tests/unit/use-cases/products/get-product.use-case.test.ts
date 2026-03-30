@@ -10,6 +10,7 @@ describe('GetProductUseCase', () => {
   beforeEach(() => {
     mockProductRepository = {
       findById: jest.fn(),
+      findByIds: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),

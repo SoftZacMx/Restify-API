@@ -42,13 +42,12 @@ describe('OrderNotificationWorker', () => {
 
     it('should not start if already running', () => {
       mockSQSService.receiveOrderMessages.mockResolvedValue([]);
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
       worker.start();
-      worker.start(); // Try to start again
+      worker.start(); // Try to start again — silently returns
 
-      expect(consoleSpy).toHaveBeenCalledWith('[OrderNotificationWorker] Worker is already running');
-      consoleSpy.mockRestore();
+      // Worker should still be running (didn't crash or restart)
+      expect(worker.isWorkerRunning()).toBe(true);
     });
   });
 
@@ -88,10 +87,8 @@ describe('OrderNotificationWorker', () => {
       mockNotifyUseCase.execute.mockResolvedValue({ notified: true, notifiedCount: 2 });
       mockSQSService.deleteOrderMessage.mockResolvedValue(undefined);
 
-      // Start worker and wait a bit for processing
-      worker.start();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      worker.stop();
+      // @ts-ignore - accessing private method for testing
+      await worker.processQueue();
 
       expect(mockSQSService.receiveOrderMessages).toHaveBeenCalled();
       expect(mockNotifyUseCase.execute).toHaveBeenCalledWith(
@@ -117,9 +114,8 @@ describe('OrderNotificationWorker', () => {
       mockSQSService.receiveOrderMessages.mockResolvedValue([mockMessage]);
       mockNotifyUseCase.execute.mockResolvedValue({ notified: false, notifiedCount: 0 });
 
-      worker.start();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      worker.stop();
+      // @ts-ignore - accessing private method for testing
+      await worker.processQueue();
 
       expect(mockNotifyUseCase.execute).toHaveBeenCalled();
       expect(mockSQSService.deleteOrderMessage).not.toHaveBeenCalled();
@@ -159,9 +155,8 @@ describe('OrderNotificationWorker', () => {
       mockSQSService.receiveOrderMessages.mockResolvedValue(messages);
       mockNotifyUseCase.execute.mockResolvedValue({ notified: true, notifiedCount: 1 });
 
-      worker.start();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      worker.stop();
+      // @ts-ignore - accessing private method for testing
+      await worker.processQueue();
 
       expect(mockNotifyUseCase.execute).toHaveBeenCalledTimes(3);
       expect(mockNotifyUseCase.execute).toHaveBeenCalledWith(

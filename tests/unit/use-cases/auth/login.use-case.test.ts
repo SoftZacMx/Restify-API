@@ -21,6 +21,7 @@ describe('LoginUseCase', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      reactivate: jest.fn(),
       findAll: jest.fn(),
     };
 

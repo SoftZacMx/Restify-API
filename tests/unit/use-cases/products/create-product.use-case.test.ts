@@ -14,6 +14,7 @@ describe('CreateProductUseCase', () => {
   beforeEach(() => {
     mockProductRepository = {
       findById: jest.fn(),
+      findByIds: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -27,6 +28,7 @@ describe('CreateProductUseCase', () => {
       update: jest.fn(),
       delete: jest.fn(),
       findAll: jest.fn(),
+      reactivate: jest.fn(),
     };
 
     createProductUseCase = new CreateProductUseCase(

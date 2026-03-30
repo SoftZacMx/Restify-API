@@ -17,6 +17,7 @@ describe('CreateMenuItemUseCase', () => {
   beforeEach(() => {
     mockMenuItemRepository = {
       findById: jest.fn(),
+      findByIds: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -39,6 +40,7 @@ describe('CreateMenuItemUseCase', () => {
       update: jest.fn(),
       delete: jest.fn(),
       findAll: jest.fn(),
+      reactivate: jest.fn(),
     };
 
     createMenuItemUseCase = new CreateMenuItemUseCase(
@@ -57,6 +59,7 @@ describe('CreateMenuItemUseCase', () => {
       name: 'Pizza',
       price: 15.99,
       status: true,
+      isExtra: false,
       categoryId: '123',
       userId: '456',
     };
@@ -85,6 +88,7 @@ describe('CreateMenuItemUseCase', () => {
         'Pizza',
         15.99,
         true,
+        false,
         '123',
         '456',
         new Date(),
@@ -153,6 +157,7 @@ describe('CreateMenuItemUseCase', () => {
         'Pizza',
         15.99,
         true,
+        false,
         '123',
         '456',
         new Date(),

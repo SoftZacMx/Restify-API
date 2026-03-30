@@ -28,6 +28,7 @@ describe('CreateEmployeeSalaryPaymentUseCase', () => {
       update: jest.fn(),
       delete: jest.fn(),
       findAll: jest.fn(),
+      reactivate: jest.fn(),
     };
 
     createEmployeeSalaryPaymentUseCase = new CreateEmployeeSalaryPaymentUseCase(

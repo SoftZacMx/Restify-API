@@ -1,238 +1,69 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import {
-  payOrderWithCashHandler,
-  payOrderWithTransferHandler,
-  payOrderWithCardPhysicalHandler,
-  payOrderWithCardStripeHandler,
-  confirmStripePaymentHandler,
-  getPaymentHandler,
-  listPaymentsHandler,
-  getPaymentSessionHandler,
-  payOrderWithQRMercadoPagoHandler,
-  getQRPaymentStatusHandler,
-  mercadoPagoWebhookHandler,
-} from '../../handlers/payments';
-import { HttpToLambdaAdapter } from '../../shared/utils/http-to-lambda.adapter';
+  payOrderWithCashController,
+  payOrderWithTransferController,
+  payOrderWithCardPhysicalController,
+  payOrderWithCardStripeController,
+  confirmStripePaymentController,
+  getPaymentController,
+  listPaymentsController,
+  getPaymentSessionController,
+  payOrderWithQRMercadoPagoController,
+  getQRPaymentStatusController,
+  mercadoPagoWebhookController,
+} from '../../controllers/payments';
+import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
+import {
+  payOrderWithCashSchema,
+  payOrderWithTransferSchema,
+  payOrderWithCardPhysicalSchema,
+  payOrderWithCardStripeSchema,
+  payOrderWithSplitPaymentSchema,
+  payOrderWithQRMercadoPagoSchema,
+  confirmStripePaymentSchema,
+  getPaymentSchema,
+  listPaymentsSchema,
+  getPaymentSessionSchema,
+  getQRPaymentStatusSchema,
+} from '../../core/application/dto/payment.dto';
 import { AuthMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
 
 // Webhook de Mercado Pago — sin autenticación (MP envía directamente)
-router.post('/webhooks/mercado-pago', async (req: Request, res: Response) => {
-  try {
-    const event = HttpToLambdaAdapter.convertRequest(req);
-    const context = HttpToLambdaAdapter.createContext();
-    const response = await mercadoPagoWebhookHandler(event as any, context);
-    HttpToLambdaAdapter.convertResponse(response, res);
-  } catch (error) {
-    console.error('Mercado Pago webhook route error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'ROUTE_ERROR',
-        message: 'An error occurred processing the webhook',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+router.post('/webhooks/mercado-pago', mercadoPagoWebhookController);
 
 // Apply authentication to all routes below
 router.use(AuthMiddleware.authenticate);
 
-// Payment routes
-router.post('/cash', async (req: Request, res: Response) => {
-  try {
-    const event = HttpToLambdaAdapter.convertRequest(req);
-    const context = HttpToLambdaAdapter.createContext();
-    const response = await payOrderWithCashHandler(event as any, context);
-    HttpToLambdaAdapter.convertResponse(response, res);
-  } catch (error) {
-    console.error('Pay order with cash route error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'ROUTE_ERROR',
-        message: 'An error occurred processing the payment request',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+/** POST /api/payments/cash */
+router.post('/cash', zodValidator({ schema: payOrderWithCashSchema, source: 'body' }), payOrderWithCashController);
 
-router.post('/transfer', async (req: Request, res: Response) => {
-  try {
-    const event = HttpToLambdaAdapter.convertRequest(req);
-    const context = HttpToLambdaAdapter.createContext();
-    const response = await payOrderWithTransferHandler(event as any, context);
-    HttpToLambdaAdapter.convertResponse(response, res);
-  } catch (error) {
-    console.error('Pay order with transfer route error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'ROUTE_ERROR',
-        message: 'An error occurred processing the payment request',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+/** POST /api/payments/transfer */
+router.post('/transfer', zodValidator({ schema: payOrderWithTransferSchema, source: 'body' }), payOrderWithTransferController);
 
-router.post('/card-physical', async (req: Request, res: Response) => {
-  try {
-    const event = HttpToLambdaAdapter.convertRequest(req);
-    const context = HttpToLambdaAdapter.createContext();
-    const response = await payOrderWithCardPhysicalHandler(event as any, context);
-    HttpToLambdaAdapter.convertResponse(response, res);
-  } catch (error) {
-    console.error('Pay order with card physical route error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'ROUTE_ERROR',
-        message: 'An error occurred processing the payment request',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+/** POST /api/payments/card-physical */
+router.post('/card-physical', zodValidator({ schema: payOrderWithCardPhysicalSchema, source: 'body' }), payOrderWithCardPhysicalController);
 
-router.post('/card-stripe', async (req: Request, res: Response) => {
-  try {
-    const event = HttpToLambdaAdapter.convertRequest(req);
-    const context = HttpToLambdaAdapter.createContext();
-    const response = await payOrderWithCardStripeHandler(event as any, context);
-    HttpToLambdaAdapter.convertResponse(response, res);
-  } catch (error) {
-    console.error('Pay order with card stripe route error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'ROUTE_ERROR',
-        message: 'An error occurred processing the payment request',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+/** POST /api/payments/card-stripe */
+router.post('/card-stripe', zodValidator({ schema: payOrderWithCardStripeSchema, source: 'body' }), payOrderWithCardStripeController);
 
-router.post('/qr-mercado-pago', async (req: Request, res: Response) => {
-  try {
-    const event = HttpToLambdaAdapter.convertRequest(req);
-    const context = HttpToLambdaAdapter.createContext();
-    const response = await payOrderWithQRMercadoPagoHandler(event as any, context);
-    HttpToLambdaAdapter.convertResponse(response, res);
-  } catch (error) {
-    console.error('Pay order with QR Mercado Pago route error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'ROUTE_ERROR',
-        message: 'An error occurred processing the QR payment request',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+/** POST /api/payments/qr-mercado-pago */
+router.post('/qr-mercado-pago', zodValidator({ schema: payOrderWithQRMercadoPagoSchema, source: 'body' }), payOrderWithQRMercadoPagoController);
 
-router.get('/qr-mercado-pago/:orderId', async (req: Request, res: Response) => {
-  try {
-    const event = HttpToLambdaAdapter.convertRequest(req, { orderId: req.params.orderId });
-    const context = HttpToLambdaAdapter.createContext();
-    const response = await getQRPaymentStatusHandler(event as any, context);
-    HttpToLambdaAdapter.convertResponse(response, res);
-  } catch (error) {
-    console.error('Get QR payment status route error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'ROUTE_ERROR',
-        message: 'An error occurred processing the QR payment status request',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+/** GET /api/payments/qr-mercado-pago/:orderId */
+router.get('/qr-mercado-pago/:orderId', zodValidator({ schema: getQRPaymentStatusSchema, source: 'params' }), getQRPaymentStatusController);
 
-// Pago dividido: usar POST /api/orders/:order_id/pay con body { firstPayment, secondPayment }
+/** POST /api/payments/stripe/confirm */
+router.post('/stripe/confirm', zodValidator({ schema: confirmStripePaymentSchema, source: 'body' }), confirmStripePaymentController);
 
-router.post('/stripe/confirm', async (req: Request, res: Response) => {
-  try {
-    const event = HttpToLambdaAdapter.convertRequest(req);
-    const context = HttpToLambdaAdapter.createContext();
-    const response = await confirmStripePaymentHandler(event as any, context);
-    HttpToLambdaAdapter.convertResponse(response, res);
-  } catch (error) {
-    console.error('Confirm stripe payment route error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'ROUTE_ERROR',
-        message: 'An error occurred processing the payment confirmation',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+/** GET /api/payments */
+router.get('/', zodValidator({ schema: listPaymentsSchema, source: 'query' }), listPaymentsController);
 
-// Payment queries - NOTE: list must come before :payment_id
-router.get('/', async (req: Request, res: Response) => {
-  try {
-    const event = HttpToLambdaAdapter.convertRequest(req);
-    const context = HttpToLambdaAdapter.createContext();
-    const response = await listPaymentsHandler(event as any, context);
-    HttpToLambdaAdapter.convertResponse(response, res);
-  } catch (error) {
-    console.error('List payments route error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'ROUTE_ERROR',
-        message: 'An error occurred processing the list payments request',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+/** GET /api/payments/:payment_id */
+router.get('/:payment_id', zodValidator({ schema: getPaymentSchema, source: 'params' }), getPaymentController);
 
-router.get('/:payment_id', async (req: Request, res: Response) => {
-  try {
-    const event = HttpToLambdaAdapter.convertRequest(req, { payment_id: req.params.payment_id });
-    const context = HttpToLambdaAdapter.createContext();
-    const response = await getPaymentHandler(event as any, context);
-    HttpToLambdaAdapter.convertResponse(response, res);
-  } catch (error) {
-    console.error('Get payment route error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'ROUTE_ERROR',
-        message: 'An error occurred processing the get payment request',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
-
-router.get('/:payment_id/session', async (req: Request, res: Response) => {
-  try {
-    const event = HttpToLambdaAdapter.convertRequest(req, { payment_id: req.params.payment_id });
-    const context = HttpToLambdaAdapter.createContext();
-    const response = await getPaymentSessionHandler(event as any, context);
-    HttpToLambdaAdapter.convertResponse(response, res);
-  } catch (error) {
-    console.error('Get payment session route error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'ROUTE_ERROR',
-        message: 'An error occurred processing the get payment session request',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+/** GET /api/payments/:payment_id/session */
+router.get('/:payment_id/session', zodValidator({ schema: getPaymentSessionSchema, source: 'params' }), getPaymentSessionController);
 
 export default router;
-

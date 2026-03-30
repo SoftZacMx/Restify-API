@@ -11,7 +11,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { getServerConfig } from './config/server.config';
 import routes from './routes';
-import { ErrorHandlerMiddleware } from './middleware/error-handler.middleware';
+import { expressErrorHandler } from '../shared/middleware/error-handler.middleware';
 import { NotFoundMiddleware } from './middleware/not-found.middleware';
 import { RequestLoggerMiddleware } from './middleware/request-logger.middleware';
 import { apiRateLimiter } from './middleware/rate-limit.middleware';
@@ -93,7 +93,7 @@ class LocalServer {
     this.app.use(NotFoundMiddleware.handle);
 
     // Error handler
-    this.app.use(ErrorHandlerMiddleware.handle);
+    this.app.use(expressErrorHandler);
   }
 
   private setupWebSocket(): void {

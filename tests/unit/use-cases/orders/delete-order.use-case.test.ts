@@ -1,26 +1,54 @@
 import { DeleteOrderUseCase } from '../../../../src/core/application/use-cases/orders/delete-order.use-case';
 import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
+import { ITableRepository } from '../../../../src/core/domain/interfaces/table-repository.interface';
+import { QueueOrderNotificationUseCase } from '../../../../src/core/application/use-cases/websocket/queue-order-notification.use-case';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('DeleteOrderUseCase', () => {
   let deleteOrderUseCase: DeleteOrderUseCase;
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
+  let mockTableRepository: jest.Mocked<ITableRepository>;
+  let mockQueueOrderNotificationUseCase: jest.Mocked<Pick<QueueOrderNotificationUseCase, 'execute'>>;
 
   beforeEach(() => {
     mockOrderRepository = {
       findById: jest.fn(),
       findAll: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       createOrderItem: jest.fn(),
+      updateOrderItem: jest.fn(),
+      deleteOrderItem: jest.fn(),
+      deleteOrderItemsByOrderId: jest.fn(),
       findOrderItemsByOrderId: jest.fn(),
-      createOrderMenuItem: jest.fn(),
-      findOrderMenuItemsByOrderId: jest.fn(),
+      createOrderItemExtra: jest.fn(),
+      deleteOrderItemExtrasByOrderId: jest.fn(),
+      deleteOrderItemExtrasByOrderItemId: jest.fn(),
+      findOrderItemExtrasByOrderId: jest.fn(),
+      findOrderItemExtrasByOrderItemId: jest.fn(),
     };
 
-    deleteOrderUseCase = new DeleteOrderUseCase(mockOrderRepository);
+    mockTableRepository = {
+      findById: jest.fn(),
+      findByName: jest.fn(),
+      findAll: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+
+    mockQueueOrderNotificationUseCase = {
+      execute: jest.fn().mockResolvedValue(undefined),
+    };
+
+    deleteOrderUseCase = new DeleteOrderUseCase(
+      mockOrderRepository,
+      mockTableRepository,
+      mockQueueOrderNotificationUseCase as any
+    );
   });
 
   afterEach(() => {
@@ -76,4 +104,3 @@ describe('DeleteOrderUseCase', () => {
     });
   });
 });
-

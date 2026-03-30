@@ -17,6 +17,7 @@ describe('UpdateMenuItemUseCase', () => {
   beforeEach(() => {
     mockMenuItemRepository = {
       findById: jest.fn(),
+      findByIds: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -39,6 +40,7 @@ describe('UpdateMenuItemUseCase', () => {
       update: jest.fn(),
       delete: jest.fn(),
       findAll: jest.fn(),
+      reactivate: jest.fn(),
     };
 
     updateMenuItemUseCase = new UpdateMenuItemUseCase(
@@ -59,6 +61,7 @@ describe('UpdateMenuItemUseCase', () => {
       'Pizza',
       15.99,
       true,
+      false,
       '456',
       '789',
       new Date(),

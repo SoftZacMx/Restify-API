@@ -151,13 +151,28 @@ describe('UserRepository', () => {
   });
 
   describe('delete', () => {
-    it('should delete a user', async () => {
-      mockPrismaClient.user.delete.mockResolvedValue({});
+    it('should soft delete a user by setting status to false', async () => {
+      const mockUpdatedUser = {
+        id: '123',
+        name: 'John',
+        last_name: 'Doe',
+        second_last_name: null,
+        email: 'john@example.com',
+        password: 'hashed_password',
+        phone: null,
+        status: false,
+        rol: UserRole.WAITER,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockPrismaClient.user.update.mockResolvedValue(mockUpdatedUser);
 
       await repository.delete('123');
 
-      expect(mockPrismaClient.user.delete).toHaveBeenCalledWith({
+      expect(mockPrismaClient.user.update).toHaveBeenCalledWith({
         where: { id: '123' },
+        data: { status: false },
       });
     });
   });

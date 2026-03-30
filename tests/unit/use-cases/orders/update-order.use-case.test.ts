@@ -1,9 +1,11 @@
 import { UpdateOrderUseCase } from '../../../../src/core/application/use-cases/orders/update-order.use-case';
 import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
 import { ITableRepository } from '../../../../src/core/domain/interfaces/table-repository.interface';
+import { IProductRepository } from '../../../../src/core/domain/interfaces/product-repository.interface';
+import { IMenuItemRepository } from '../../../../src/core/domain/interfaces/menu-item-repository.interface';
+import { QueueOrderNotificationUseCase } from '../../../../src/core/application/use-cases/websocket/queue-order-notification.use-case';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { OrderItem } from '../../../../src/core/domain/entities/order-item.entity';
-import { OrderMenuItem } from '../../../../src/core/domain/entities/order-menu-item.entity';
 import { Table } from '../../../../src/core/domain/entities/table.entity';
 import { AppError } from '../../../../src/shared/errors';
 
@@ -11,18 +13,28 @@ describe('UpdateOrderUseCase', () => {
   let updateOrderUseCase: UpdateOrderUseCase;
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockTableRepository: jest.Mocked<ITableRepository>;
+  let mockProductRepository: jest.Mocked<IProductRepository>;
+  let mockMenuItemRepository: jest.Mocked<IMenuItemRepository>;
+  let mockQueueOrderNotificationUseCase: jest.Mocked<Pick<QueueOrderNotificationUseCase, 'execute'>>;
 
   beforeEach(() => {
     mockOrderRepository = {
       findById: jest.fn(),
       findAll: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       createOrderItem: jest.fn(),
+      updateOrderItem: jest.fn(),
+      deleteOrderItem: jest.fn(),
+      deleteOrderItemsByOrderId: jest.fn(),
       findOrderItemsByOrderId: jest.fn(),
-      createOrderMenuItem: jest.fn(),
-      findOrderMenuItemsByOrderId: jest.fn(),
+      createOrderItemExtra: jest.fn(),
+      deleteOrderItemExtrasByOrderId: jest.fn(),
+      deleteOrderItemExtrasByOrderItemId: jest.fn(),
+      findOrderItemExtrasByOrderId: jest.fn(),
+      findOrderItemExtrasByOrderItemId: jest.fn(),
     };
 
     mockTableRepository = {
@@ -34,7 +46,35 @@ describe('UpdateOrderUseCase', () => {
       delete: jest.fn(),
     };
 
-    updateOrderUseCase = new UpdateOrderUseCase(mockOrderRepository, mockTableRepository);
+    mockProductRepository = {
+      findById: jest.fn(),
+      findByIds: jest.fn(),
+      findAll: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+
+    mockMenuItemRepository = {
+      findById: jest.fn(),
+      findByIds: jest.fn(),
+      findAll: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+
+    mockQueueOrderNotificationUseCase = {
+      execute: jest.fn().mockResolvedValue(undefined),
+    };
+
+    updateOrderUseCase = new UpdateOrderUseCase(
+      mockOrderRepository,
+      mockTableRepository,
+      mockProductRepository,
+      mockMenuItemRepository,
+      mockQueueOrderNotificationUseCase as any
+    );
   });
 
   afterEach(() => {
@@ -92,7 +132,7 @@ describe('UpdateOrderUseCase', () => {
       mockOrderRepository.findById.mockResolvedValue(existingOrder);
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
       mockOrderRepository.findOrderItemsByOrderId.mockResolvedValue([]);
-      mockOrderRepository.findOrderMenuItemsByOrderId.mockResolvedValue([]);
+      mockOrderRepository.findOrderItemExtrasByOrderId.mockResolvedValue([]);
 
       const result = await updateOrderUseCase.execute(orderId, updateInput);
 
@@ -132,7 +172,7 @@ describe('UpdateOrderUseCase', () => {
       mockOrderRepository.findById.mockResolvedValue(existingOrder);
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
       mockOrderRepository.findOrderItemsByOrderId.mockResolvedValue([]);
-      mockOrderRepository.findOrderMenuItemsByOrderId.mockResolvedValue([]);
+      mockOrderRepository.findOrderItemExtrasByOrderId.mockResolvedValue([]);
 
       const result = await updateOrderUseCase.execute(orderId, updateInput);
 
@@ -150,7 +190,7 @@ describe('UpdateOrderUseCase', () => {
 
       const mockTable = new Table(
         'table-123',
-        1,
+        'Mesa 1',
         'user-123',
         true,
         true,
@@ -182,7 +222,7 @@ describe('UpdateOrderUseCase', () => {
       mockTableRepository.findById.mockResolvedValue(mockTable);
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
       mockOrderRepository.findOrderItemsByOrderId.mockResolvedValue([]);
-      mockOrderRepository.findOrderMenuItemsByOrderId.mockResolvedValue([]);
+      mockOrderRepository.findOrderItemExtrasByOrderId.mockResolvedValue([]);
 
       const result = await updateOrderUseCase.execute(orderId, updateInput);
 
@@ -216,37 +256,23 @@ describe('UpdateOrderUseCase', () => {
       );
 
       const mockOrderItem = new OrderItem(
-        'order-item-123',
-        2,
-        10.00,
-        orderId,
-        'product-123',
-        new Date(),
-        new Date()
+        'order-item-123', 2, 10.00, orderId, 'product-123', null, null, new Date(), new Date()
       );
 
-      const mockOrderMenuItem = new OrderMenuItem(
-        'order-menu-item-123',
-        orderId,
-        'menu-item-123',
-        1,
-        10.50,
-        null,
-        new Date(),
-        new Date()
+      const mockMenuOrderItem = new OrderItem(
+        'order-item-456', 1, 10.50, orderId, null, 'menu-item-123', null, new Date(), new Date()
       );
 
       mockOrderRepository.findById.mockResolvedValue(existingOrder);
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
-      mockOrderRepository.findOrderItemsByOrderId.mockResolvedValue([mockOrderItem]);
-      mockOrderRepository.findOrderMenuItemsByOrderId.mockResolvedValue([mockOrderMenuItem]);
+      mockOrderRepository.findOrderItemsByOrderId.mockResolvedValue([mockOrderItem, mockMenuOrderItem]);
+      mockOrderRepository.findOrderItemExtrasByOrderId.mockResolvedValue([]);
 
       const result = await updateOrderUseCase.execute(orderId, updateInput);
 
-      expect(result.orderItems).toHaveLength(1);
-      expect(result.orderMenuItems).toHaveLength(1);
+      expect(result.orderItems).toHaveLength(2);
       expect(result.orderItems![0].id).toBe('order-item-123');
-      expect(result.orderMenuItems![0].id).toBe('order-menu-item-123');
+      expect(result.orderItems![1].id).toBe('order-item-456');
     });
 
     it('should throw error when order not found', async () => {
@@ -310,7 +336,7 @@ describe('UpdateOrderUseCase', () => {
       mockOrderRepository.findById.mockResolvedValue(existingOrder);
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
       mockOrderRepository.findOrderItemsByOrderId.mockResolvedValue([]);
-      mockOrderRepository.findOrderMenuItemsByOrderId.mockResolvedValue([]);
+      mockOrderRepository.findOrderItemExtrasByOrderId.mockResolvedValue([]);
 
       const result = await updateOrderUseCase.execute(orderId, updateInput);
 
@@ -347,7 +373,7 @@ describe('UpdateOrderUseCase', () => {
       mockOrderRepository.findById.mockResolvedValue(existingOrder);
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
       mockOrderRepository.findOrderItemsByOrderId.mockResolvedValue([]);
-      mockOrderRepository.findOrderMenuItemsByOrderId.mockResolvedValue([]);
+      mockOrderRepository.findOrderItemExtrasByOrderId.mockResolvedValue([]);
 
       const result = await updateOrderUseCase.execute(orderId, updateInput);
 
@@ -357,4 +383,3 @@ describe('UpdateOrderUseCase', () => {
     });
   });
 });
-

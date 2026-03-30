@@ -3,7 +3,6 @@
 import { OrderRepository } from '../../../src/core/infrastructure/database/repositories/order.repository';
 import { Order } from '../../../src/core/domain/entities/order.entity';
 import { OrderItem } from '../../../src/core/domain/entities/order-item.entity';
-import { OrderMenuItem } from '../../../src/core/domain/entities/order-menu-item.entity';
 
 // Mock Prisma Client
 const mockPrismaClient = {
@@ -15,10 +14,6 @@ const mockPrismaClient = {
     delete: jest.fn(),
   },
   orderItem: {
-    create: jest.fn(),
-    findMany: jest.fn(),
-  },
-  orderMenuItem: {
     create: jest.fn(),
     findMany: jest.fn(),
   },
@@ -290,6 +285,8 @@ describe('OrderRepository', () => {
         price: 10.00,
         orderId: 'order-123',
         productId: 'product-123',
+        menuItemId: null,
+        note: null,
       };
 
       const mockCreatedOrderItem = {
@@ -319,6 +316,8 @@ describe('OrderRepository', () => {
           price: 10.00,
           orderId: 'order-123',
           productId: 'product-123',
+          menuItemId: null,
+          note: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -328,6 +327,8 @@ describe('OrderRepository', () => {
           price: 15.00,
           orderId: 'order-123',
           productId: 'product-456',
+          menuItemId: null,
+          note: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -345,72 +346,4 @@ describe('OrderRepository', () => {
       });
     });
   });
-
-  describe('createOrderMenuItem', () => {
-    it('should create an order menu item', async () => {
-      const orderMenuItemData = {
-        orderId: 'order-123',
-        menuItemId: 'menu-item-123',
-        amount: 3,
-        unitPrice: 10.50,
-        note: 'Extra sauce',
-      };
-
-      const mockCreatedOrderMenuItem = {
-        id: 'order-menu-item-123',
-        ...orderMenuItemData,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      mockPrismaClient.orderMenuItem.create.mockResolvedValue(mockCreatedOrderMenuItem);
-
-      const result = await repository.createOrderMenuItem(orderMenuItemData);
-
-      expect(result).toBeInstanceOf(OrderMenuItem);
-      expect(result.amount).toBe(3);
-      expect(result.unitPrice).toBe(10.50);
-      expect(result.note).toBe('Extra sauce');
-      expect(mockPrismaClient.orderMenuItem.create).toHaveBeenCalled();
-    });
-  });
-
-  describe('findOrderMenuItemsByOrderId', () => {
-    it('should return order menu items for an order', async () => {
-      const mockOrderMenuItems = [
-        {
-          id: 'order-menu-item-1',
-          orderId: 'order-123',
-          menuItemId: 'menu-item-123',
-          amount: 2,
-          unitPrice: 10.50,
-          note: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: 'order-menu-item-2',
-          orderId: 'order-123',
-          menuItemId: 'menu-item-456',
-          amount: 1,
-          unitPrice: 15.00,
-          note: 'No onions',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ];
-
-      mockPrismaClient.orderMenuItem.findMany.mockResolvedValue(mockOrderMenuItems);
-
-      const result = await repository.findOrderMenuItemsByOrderId('order-123');
-
-      expect(result).toHaveLength(2);
-      expect(result[0]).toBeInstanceOf(OrderMenuItem);
-      expect(result[1]).toBeInstanceOf(OrderMenuItem);
-      expect(mockPrismaClient.orderMenuItem.findMany).toHaveBeenCalledWith({
-        where: { orderId: 'order-123' },
-      });
-    });
-  });
 });
-

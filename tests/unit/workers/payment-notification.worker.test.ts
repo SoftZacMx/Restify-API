@@ -39,13 +39,12 @@ describe('PaymentNotificationWorker', () => {
 
     it('should not start if already running', () => {
       mockSQSService.receiveMessages.mockResolvedValue([]);
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
       worker.start();
-      worker.start(); // Try to start again
+      worker.start(); // Try to start again — silently returns
 
-      expect(consoleSpy).toHaveBeenCalledWith('[PaymentNotificationWorker] Worker is already running');
-      consoleSpy.mockRestore();
+      // Worker should still be running (didn't crash or restart)
+      expect(worker.isWorkerRunning()).toBe(true);
     });
   });
 

@@ -1,6 +1,7 @@
 import { PayOrderWithCardPhysicalUseCase } from '../../../../src/core/application/use-cases/payments/pay-order-with-card-physical.use-case';
 import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
 import { IPaymentRepository } from '../../../../src/core/domain/interfaces/payment-repository.interface';
+import { ITableRepository } from '../../../../src/core/domain/interfaces/table-repository.interface';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { Payment } from '../../../../src/core/domain/entities/payment.entity';
 import { PaymentStatus, PaymentMethod } from '@prisma/client';
@@ -10,18 +11,26 @@ describe('PayOrderWithCardPhysicalUseCase', () => {
   let payOrderWithCardPhysicalUseCase: PayOrderWithCardPhysicalUseCase;
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockPaymentRepository: jest.Mocked<IPaymentRepository>;
+  let mockTableRepository: jest.Mocked<ITableRepository>;
 
   beforeEach(() => {
     mockOrderRepository = {
       findById: jest.fn(),
       findAll: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       createOrderItem: jest.fn(),
+      updateOrderItem: jest.fn(),
+      deleteOrderItem: jest.fn(),
+      deleteOrderItemsByOrderId: jest.fn(),
       findOrderItemsByOrderId: jest.fn(),
-      createOrderMenuItem: jest.fn(),
-      findOrderMenuItemsByOrderId: jest.fn(),
+      createOrderItemExtra: jest.fn(),
+      deleteOrderItemExtrasByOrderId: jest.fn(),
+      deleteOrderItemExtrasByOrderItemId: jest.fn(),
+      findOrderItemExtrasByOrderId: jest.fn(),
+      findOrderItemExtrasByOrderItemId: jest.fn(),
     };
 
     mockPaymentRepository = {
@@ -33,9 +42,19 @@ describe('PayOrderWithCardPhysicalUseCase', () => {
       delete: jest.fn(),
     };
 
+    mockTableRepository = {
+      findById: jest.fn(),
+      findByName: jest.fn(),
+      findAll: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+
     payOrderWithCardPhysicalUseCase = new PayOrderWithCardPhysicalUseCase(
       mockOrderRepository,
-      mockPaymentRepository
+      mockPaymentRepository,
+      mockTableRepository
     );
   });
 

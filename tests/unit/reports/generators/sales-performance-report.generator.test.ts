@@ -7,7 +7,7 @@ import { MenuItem } from '../../../../src/core/domain/entities/menu-item.entity'
 
 // Mock Prisma Client
 const mockPrismaClient = {
-  orderMenuItem: {
+  orderItem: {
     findMany: jest.fn(),
   },
 };
@@ -29,17 +29,25 @@ describe('SalesPerformanceReportGenerator', () => {
     mockOrderRepository = {
       findById: jest.fn(),
       findAll: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       createOrderItem: jest.fn(),
+      updateOrderItem: jest.fn(),
+      deleteOrderItem: jest.fn(),
+      deleteOrderItemsByOrderId: jest.fn(),
       findOrderItemsByOrderId: jest.fn(),
-      createOrderMenuItem: jest.fn(),
-      findOrderMenuItemsByOrderId: jest.fn(),
+      createOrderItemExtra: jest.fn(),
+      deleteOrderItemExtrasByOrderId: jest.fn(),
+      deleteOrderItemExtrasByOrderItemId: jest.fn(),
+      findOrderItemExtrasByOrderId: jest.fn(),
+      findOrderItemExtrasByOrderItemId: jest.fn(),
     };
 
     mockMenuItemRepository = {
       findById: jest.fn(),
+      findByIds: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -78,8 +86,8 @@ describe('SalesPerformanceReportGenerator', () => {
           id: 'omi-1',
           orderId: 'order-1',
           menuItemId: 'menu-1',
-          amount: 2,
-          unitPrice: 15.0,
+          quantity: 2,
+          price: 15.0,
           note: null,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -107,8 +115,8 @@ describe('SalesPerformanceReportGenerator', () => {
           id: 'omi-2',
           orderId: 'order-2',
           menuItemId: 'menu-1',
-          amount: 3,
-          unitPrice: 15.0,
+          quantity: 3,
+          price: 15.0,
           note: null,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -136,8 +144,8 @@ describe('SalesPerformanceReportGenerator', () => {
           id: 'omi-3',
           orderId: 'order-3',
           menuItemId: 'menu-2',
-          amount: 1,
-          unitPrice: 25.0,
+          quantity: 1,
+          price: 25.0,
           note: null,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -164,11 +172,11 @@ describe('SalesPerformanceReportGenerator', () => {
       ];
 
       const mockMenuItems = [
-        new MenuItem('menu-1', 'Burger', 15.0, true, 'cat-1', 'user-1', new Date(), new Date()),
-        new MenuItem('menu-2', 'Pizza', 25.0, true, 'cat-1', 'user-1', new Date(), new Date()),
+        new MenuItem('menu-1', 'Burger', 15.0, true, false, 'cat-1', 'user-1', new Date(), new Date()),
+        new MenuItem('menu-2', 'Pizza', 25.0, true, false, 'cat-1', 'user-1', new Date(), new Date()),
       ];
 
-      mockPrismaClient.orderMenuItem.findMany.mockResolvedValue(mockOrderMenuItems as any);
+      mockPrismaClient.orderItem.findMany.mockResolvedValue(mockOrderMenuItems as any);
       mockMenuItemRepository.findAll.mockResolvedValue(mockMenuItems);
 
       const result = await generator.generate(baseFilters);
@@ -197,8 +205,8 @@ describe('SalesPerformanceReportGenerator', () => {
           id: 'omi-1',
           orderId: 'order-1',
           menuItemId: 'menu-1',
-          amount: 2,
-          unitPrice: 10.0,
+          quantity: 2,
+          price: 10.0,
           note: null,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -219,8 +227,8 @@ describe('SalesPerformanceReportGenerator', () => {
           id: 'omi-2',
           orderId: 'order-2',
           menuItemId: 'menu-2',
-          amount: 1,
-          unitPrice: 30.0,
+          quantity: 1,
+          price: 30.0,
           note: null,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -240,11 +248,11 @@ describe('SalesPerformanceReportGenerator', () => {
       ];
 
       const mockMenuItems = [
-        new MenuItem('menu-1', 'Item 1', 10.0, true, 'cat-1', 'user-1', new Date(), new Date()),
-        new MenuItem('menu-2', 'Item 2', 30.0, true, 'cat-1', 'user-1', new Date(), new Date()),
+        new MenuItem('menu-1', 'Item 1', 10.0, true, false, 'cat-1', 'user-1', new Date(), new Date()),
+        new MenuItem('menu-2', 'Item 2', 30.0, true, false, 'cat-1', 'user-1', new Date(), new Date()),
       ];
 
-      mockPrismaClient.orderMenuItem.findMany.mockResolvedValue(mockOrderMenuItems as any);
+      mockPrismaClient.orderItem.findMany.mockResolvedValue(mockOrderMenuItems as any);
       mockMenuItemRepository.findAll.mockResolvedValue(mockMenuItems);
 
       const result = await generator.generate(baseFilters);
@@ -264,8 +272,8 @@ describe('SalesPerformanceReportGenerator', () => {
           id: 'omi-1',
           orderId: 'order-1',
           menuItemId: 'menu-1',
-          amount: 5,
-          unitPrice: 10.0,
+          quantity: 5,
+          price: 10.0,
           note: null,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -286,8 +294,8 @@ describe('SalesPerformanceReportGenerator', () => {
           id: 'omi-2',
           orderId: 'order-2',
           menuItemId: 'menu-2',
-          amount: 1,
-          unitPrice: 20.0,
+          quantity: 1,
+          price: 20.0,
           note: null,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -307,11 +315,11 @@ describe('SalesPerformanceReportGenerator', () => {
       ];
 
       const mockMenuItems = [
-        new MenuItem('menu-1', 'Top Seller', 10.0, true, 'cat-1', 'user-1', new Date(), new Date()),
-        new MenuItem('menu-2', 'Other Item', 20.0, true, 'cat-1', 'user-1', new Date(), new Date()),
+        new MenuItem('menu-1', 'Top Seller', 10.0, true, false, 'cat-1', 'user-1', new Date(), new Date()),
+        new MenuItem('menu-2', 'Other Item', 20.0, true, false, 'cat-1', 'user-1', new Date(), new Date()),
       ];
 
-      mockPrismaClient.orderMenuItem.findMany.mockResolvedValue(mockOrderMenuItems as any);
+      mockPrismaClient.orderItem.findMany.mockResolvedValue(mockOrderMenuItems as any);
       mockMenuItemRepository.findAll.mockResolvedValue(mockMenuItems);
 
       const result = await generator.generate(baseFilters);
@@ -323,7 +331,7 @@ describe('SalesPerformanceReportGenerator', () => {
     });
 
     it('should handle empty data correctly', async () => {
-      mockPrismaClient.orderMenuItem.findMany.mockResolvedValue([]);
+      mockPrismaClient.orderItem.findMany.mockResolvedValue([]);
       mockMenuItemRepository.findAll.mockResolvedValue([]);
 
       const result = await generator.generate(baseFilters);

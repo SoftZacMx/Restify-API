@@ -10,6 +10,7 @@ describe('DeleteMenuItemUseCase', () => {
   beforeEach(() => {
     mockMenuItemRepository = {
       findById: jest.fn(),
+      findByIds: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -34,6 +35,7 @@ describe('DeleteMenuItemUseCase', () => {
         'Pizza',
         15.99,
         true,
+        false,
         '456',
         '789',
         new Date(),

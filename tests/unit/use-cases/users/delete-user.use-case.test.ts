@@ -16,6 +16,7 @@ describe('DeleteUserUseCase', () => {
       update: jest.fn(),
       delete: jest.fn(),
       findAll: jest.fn(),
+      reactivate: jest.fn(),
     };
 
     deleteUserUseCase = new DeleteUserUseCase(mockUserRepository);

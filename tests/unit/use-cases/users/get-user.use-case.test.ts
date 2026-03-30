@@ -16,6 +16,7 @@ describe('GetUserUseCase', () => {
       update: jest.fn(),
       delete: jest.fn(),
       findAll: jest.fn(),
+      reactivate: jest.fn(),
     };
 
     getUserUseCase = new GetUserUseCase(mockUserRepository);

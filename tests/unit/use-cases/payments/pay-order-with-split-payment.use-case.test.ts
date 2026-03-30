@@ -2,6 +2,7 @@ import { PayOrderWithSplitPaymentUseCase } from '../../../../src/core/applicatio
 import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
 import { IPaymentRepository } from '../../../../src/core/domain/interfaces/payment-repository.interface';
 import { IPaymentDifferentiationRepository } from '../../../../src/core/domain/interfaces/payment-differentiation-repository.interface';
+import { ITableRepository } from '../../../../src/core/domain/interfaces/table-repository.interface';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { Payment } from '../../../../src/core/domain/entities/payment.entity';
 import { PaymentDifferentiation } from '../../../../src/core/domain/entities/payment-differentiation.entity';
@@ -13,18 +14,26 @@ describe('PayOrderWithSplitPaymentUseCase', () => {
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockPaymentRepository: jest.Mocked<IPaymentRepository>;
   let mockPaymentDiffRepository: jest.Mocked<IPaymentDifferentiationRepository>;
+  let mockTableRepository: jest.Mocked<ITableRepository>;
 
   beforeEach(() => {
     mockOrderRepository = {
       findById: jest.fn(),
       findAll: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       createOrderItem: jest.fn(),
+      updateOrderItem: jest.fn(),
+      deleteOrderItem: jest.fn(),
+      deleteOrderItemsByOrderId: jest.fn(),
       findOrderItemsByOrderId: jest.fn(),
-      createOrderMenuItem: jest.fn(),
-      findOrderMenuItemsByOrderId: jest.fn(),
+      createOrderItemExtra: jest.fn(),
+      deleteOrderItemExtrasByOrderId: jest.fn(),
+      deleteOrderItemExtrasByOrderItemId: jest.fn(),
+      findOrderItemExtrasByOrderId: jest.fn(),
+      findOrderItemExtrasByOrderItemId: jest.fn(),
     };
 
     mockPaymentRepository = {
@@ -46,10 +55,20 @@ describe('PayOrderWithSplitPaymentUseCase', () => {
       deleteByOrderId: jest.fn(),
     };
 
+    mockTableRepository = {
+      findById: jest.fn(),
+      findByName: jest.fn(),
+      findAll: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+
     payOrderWithSplitPaymentUseCase = new PayOrderWithSplitPaymentUseCase(
       mockOrderRepository,
       mockPaymentRepository,
-      mockPaymentDiffRepository
+      mockPaymentDiffRepository,
+      mockTableRepository
     );
   });
 

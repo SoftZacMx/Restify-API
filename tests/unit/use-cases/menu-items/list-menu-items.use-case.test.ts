@@ -9,6 +9,7 @@ describe('ListMenuItemsUseCase', () => {
   beforeEach(() => {
     mockMenuItemRepository = {
       findById: jest.fn(),
+      findByIds: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -25,8 +26,8 @@ describe('ListMenuItemsUseCase', () => {
   describe('execute', () => {
     it('should return all menu items when no filters provided', async () => {
       const mockMenuItems = [
-        new MenuItem('1', 'Pizza', 15.99, true, '123', '456', new Date(), new Date()),
-        new MenuItem('2', 'Hamburguesa', 12.50, true, '123', '456', new Date(), new Date()),
+        new MenuItem('1', 'Pizza', 15.99, true, false, '123', '456', new Date(), new Date()),
+        new MenuItem('2', 'Hamburguesa', 12.50, true, false, '123', '456', new Date(), new Date()),
       ];
 
       mockMenuItemRepository.findAll.mockResolvedValue(mockMenuItems);
@@ -41,7 +42,7 @@ describe('ListMenuItemsUseCase', () => {
 
     it('should return filtered menu items by status', async () => {
       const mockMenuItems = [
-        new MenuItem('1', 'Pizza', 15.99, true, '123', '456', new Date(), new Date()),
+        new MenuItem('1', 'Pizza', 15.99, true, false, '123', '456', new Date(), new Date()),
       ];
 
       mockMenuItemRepository.findAll.mockResolvedValue(mockMenuItems);
@@ -60,7 +61,7 @@ describe('ListMenuItemsUseCase', () => {
 
     it('should return filtered menu items by categoryId', async () => {
       const mockMenuItems = [
-        new MenuItem('1', 'Pizza', 15.99, true, '123', '456', new Date(), new Date()),
+        new MenuItem('1', 'Pizza', 15.99, true, false, '123', '456', new Date(), new Date()),
       ];
 
       mockMenuItemRepository.findAll.mockResolvedValue(mockMenuItems);
