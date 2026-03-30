@@ -36,6 +36,8 @@ export class WebSocketServer {
 
   private setupEventHandlers(): void {
     this.io.on('connection', async (socket: Socket) => {
+      console.log(`[WebSocket] Nueva conexión: socketId=${socket.id}, transport=${socket.conn.transport.name}`);
+
       // Handle connection registration
       socket.on('register_connection', async (data: { connectionId: string; paymentId?: string; userId?: string; token?: string }) => {
         try {
@@ -219,7 +221,8 @@ export class WebSocketServer {
       });
 
       // Handle disconnect
-      socket.on('disconnect', () => {
+      socket.on('disconnect', (reason) => {
+        console.log(`[WebSocket] Desconexión: socketId=${socket.id}, razón=${reason}`);
         this.connectionManager.removeConnection(socket.id);
       });
 

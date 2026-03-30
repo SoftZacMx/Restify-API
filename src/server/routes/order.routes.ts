@@ -25,10 +25,10 @@ router.post('/', zodValidator({ schema: createOrderSchema, source: 'body' }), cr
 router.get('/', zodValidator({ schema: listOrdersSchema, source: 'query' }), listOrdersController);
 
 /** POST /api/orders/:order_id/pay */
-router.post('/:order_id/pay', zodValidator({ schema: payOrderSchema, source: 'body' }), (req, res, next) => {
+router.post('/:order_id/pay', (req, res, next) => {
   req.body = { ...req.body, orderId: req.params.order_id };
-  payOrderController(req, res, next);
-});
+  next();
+}, zodValidator({ schema: payOrderSchema, source: 'body' }), payOrderController);
 
 /** GET /api/orders/:order_id/ticket/kitchen-ticket */
 router.get('/:order_id/ticket/kitchen-ticket', zodValidator({ schema: getOrderSchema, source: 'params' }), getKitchenTicketController);

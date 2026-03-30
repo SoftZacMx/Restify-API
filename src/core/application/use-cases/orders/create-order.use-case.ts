@@ -259,7 +259,7 @@ export class CreateOrderUseCase {
 
     // Queue WebSocket notification for order creation (non-blocking, decoupled)
     // This ensures notifications are delivered even if staff members are temporarily disconnected
-    this.queueOrderNotificationUseCase
+    /*this.queueOrderNotificationUseCase
       .execute({
         orderId: order.id,
         notificationType: OrderNotificationType.CREATED,
@@ -279,6 +279,7 @@ export class CreateOrderUseCase {
         // Log error but don't fail the use case if queueing fails
         console.error('Failed to queue order creation notification:', error);
       });
+    */
 
     return orderResult;
   }
