@@ -37,7 +37,7 @@
     "local:clean": "docker-compose down -v",
     "localstack:init": "ts-node scripts/init-localstack.ts",
     "test:dynamodb": "ts-node scripts/test-dynamodb.ts",
-    "prepare": "husky"
+    "prepare": "node -e \"try{require('husky')}catch(e){}\""
   },
   "prisma": {
     "schema": "./src/core/infrastructure/database/prisma/schema.prisma"
