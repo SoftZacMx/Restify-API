@@ -1,59 +1,52 @@
-import { MiddlewareObj } from '@middy/core';
-import { ApiResponseHandler } from '../types/lambda.types';
+import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../errors/app-error';
 import { ERROR_CONFIG, ErrorCode } from '../errors/error-config';
 import { ZodError } from 'zod';
 
 /**
- * Custom error handler middleware for Middy
- * Formats errors consistently with ApiResponseHandler
- * Handles AppError instances and converts other errors to AppError
+ * Express global error handler middleware
  */
-export const customErrorHandler = (): MiddlewareObj => {
-  const onError = async (request: any): Promise<void> => {
-    const error: any = request.error;
+export const expressErrorHandler = (
+  error: any,
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): void => {
+  let appError: AppError;
 
-    let appError: AppError;
+  if (error instanceof AppError) {
+    appError = error;
+  } else {
+    appError = convertToAppError(error);
+  }
 
-    // If it's already an AppError, use it directly
-    if (error instanceof AppError) {
-      appError = error;
-    } else {
-      // Convert other error types to AppError
-      appError = convertToAppError(error);
-    }
+  console.error('Handler error:', {
+    code: appError.code,
+    message: appError.message,
+    category: appError.category,
+    statusCode: appError.statusCode,
+    path: req.path,
+    method: req.method,
+    stack:
+      process.env.NODE_ENV === 'development' && error?.stack
+        ? error.stack
+        : undefined,
+  });
 
-    // Log error with context
-    console.error('Handler error:', {
+  res.status(appError.statusCode).json({
+    success: false,
+    error: {
       code: appError.code,
       message: appError.message,
-      category: appError.category,
-      statusCode: appError.statusCode,
-      metadata: appError.metadata,
-      stack:
-        process.env.NODE_ENV === 'development' && error?.stack
-          ? error.stack
-          : undefined,
-    });
-
-    // Format error response
-    request.response = ApiResponseHandler.error(
-      appError.message,
-      appError.code,
-      appError.statusCode
-    );
-  };
-
-  return {
-    onError,
-  };
+    },
+    timestamp: new Date().toISOString(),
+  });
 };
 
 /**
  * Converts various error types to AppError
  */
 function convertToAppError(error: any): AppError {
-  // Handle ZodError specifically
   if (error instanceof ZodError) {
     const errorMessage = error.errors
       .map((e) => `${e.path.join('.')}: ${e.message}`)
@@ -61,19 +54,15 @@ function convertToAppError(error: any): AppError {
     return new AppError('VALIDATION_ERROR', errorMessage);
   }
 
-  // Handle string errors
   if (typeof error === 'string') {
     return mapStringToAppError(error);
   }
 
-  // Handle Error objects
   if (error instanceof Error) {
     return mapErrorToAppError(error);
   }
 
-  // Handle objects with error properties
   if (error && typeof error === 'object') {
-    // If it has code and statusCode, try to use it as ErrorCode
     if (error.code && ERROR_CONFIG[error.code as ErrorCode]) {
       return new AppError(
         error.code as ErrorCode,
@@ -84,13 +73,9 @@ function convertToAppError(error: any): AppError {
     return mapErrorToAppError(error);
   }
 
-  // Unknown error type - default to INTERNAL_ERROR
   return new AppError('INTERNAL_ERROR', 'An unexpected error occurred');
 }
 
-/**
- * Maps string error messages to AppError codes
- */
 function mapStringToAppError(message: string): AppError {
   const upperMessage = message.toUpperCase();
 
@@ -116,12 +101,7 @@ function mapStringToAppError(message: string): AppError {
   return new AppError('INTERNAL_ERROR', message);
 }
 
-/**
- * Maps Error objects to AppError
- */
 function mapErrorToAppError(error: Error | any): AppError {
   const message = error.message || String(error) || 'An error occurred';
   return mapStringToAppError(message);
 }
-
-

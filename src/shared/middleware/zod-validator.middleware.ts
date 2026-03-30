@@ -1,62 +1,37 @@
-import { MiddlewareObj } from '@middy/core';
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
 import { AppError } from '../errors';
 
+type ValidationSource = 'body' | 'query' | 'params';
+
 interface ZodValidatorOptions {
   schema: ZodSchema;
-  eventKey?: 'body' | 'queryStringParameters' | 'pathParameters';
+  source?: ValidationSource;
 }
 
 /**
- * Middy middleware for Zod validation
+ * Express middleware for Zod validation
  */
-export const zodValidator = (options: ZodValidatorOptions): MiddlewareObj => {
-  const { schema, eventKey = 'body' } = options;
+export const zodValidator = (options: ZodValidatorOptions) => {
+  const { schema, source = 'body' } = options;
 
-  const before = async (request: any): Promise<void> => {
-    const event = request.event as APIGatewayProxyEvent;
-    let dataToValidate: any;
-
-    switch (eventKey) {
-      case 'body':
-        dataToValidate = event.body;
-        break;
-      case 'queryStringParameters':
-        dataToValidate = event.queryStringParameters || {};
-        break;
-      case 'pathParameters':
-        dataToValidate = event.pathParameters || {};
-        break;
-      default:
-        dataToValidate = event.body;
-    }
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    const dataToValidate = req[source] || {};
 
     try {
       const validated = schema.parse(dataToValidate);
-      
-      // Store validated data back in the event
-      if (eventKey === 'body') {
-        request.event.body = validated;
-      } else if (eventKey === 'queryStringParameters') {
-        request.event.queryStringParameters = validated;
-      } else if (eventKey === 'pathParameters') {
-        request.event.pathParameters = validated;
-      }
+      req[source] = validated;
+      next();
     } catch (error) {
       if (error instanceof ZodError) {
         const errorMessage = error.errors
           .map((e) => `${e.path.join('.')}: ${e.message}`)
           .join(', ');
 
-        throw new AppError('VALIDATION_ERROR', errorMessage);
+        next(new AppError('VALIDATION_ERROR', errorMessage));
+        return;
       }
-      throw error;
+      next(error);
     }
   };
-
-  return {
-    before,
-  };
 };
-
