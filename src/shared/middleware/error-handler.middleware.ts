@@ -68,7 +68,7 @@ function convertToAppError(error: unknown): AppError {
       return new AppError(
         err.code as ErrorCode,
         typeof err.message === 'string' ? err.message : undefined,
-        err.metadata
+        err.metadata as Record<string, any> | undefined
       );
     }
     const message = typeof err.message === 'string' ? err.message : String(error);
