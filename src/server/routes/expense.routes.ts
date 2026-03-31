@@ -13,6 +13,7 @@ import { AuthMiddleware } from '../middleware/auth.middleware';
 const router = Router();
 
 router.use(AuthMiddleware.authenticate);
+router.use(AuthMiddleware.authorize('ADMIN', 'MANAGER'));
 
 router.post('/', zodValidator({ schema: createExpenseSchema, source: 'body' }), createExpenseController);
 router.get('/', zodValidator({ schema: listExpensesSchema, source: 'query' }), listExpensesController);

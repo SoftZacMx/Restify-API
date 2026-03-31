@@ -3,7 +3,7 @@ export interface ServerConfig {
   host: string;
   environment: string;
   cors: {
-    origin: string;
+    origin: string | string[];
     credentials: boolean;
   };
 }
@@ -15,24 +15,28 @@ export function stripEnvQuotes(s: string): string {
   return t;
 }
 
-/** Orígenes permitidos por CORS: se lee de la variable de entorno CORS_ORIGIN. */
-const CORS_ALLOWED_ORIGINS = process.env.CORS_ORIGIN
-  ? [stripEnvQuotes(process.env.CORS_ORIGIN)]
-  : ['http://localhost:5173'];
+/**
+ * Parse CORS_ORIGIN env var. Supports comma-separated origins.
+ * Example: CORS_ORIGIN=http://localhost:5173,https://app.restify.com
+ */
+function parseCorsOrigins(): string | string[] {
+  const raw = process.env.CORS_ORIGIN;
+  if (!raw) return 'http://localhost:5173';
+
+  const cleaned = stripEnvQuotes(raw);
+  const origins = cleaned.split(',').map((o) => o.trim()).filter(Boolean);
+
+  return origins.length === 1 ? origins[0] : origins;
+}
 
 export const getServerConfig = (): ServerConfig => {
-  const corsOrigin = process.env.CORS_ORIGIN
-    ? stripEnvQuotes(process.env.CORS_ORIGIN)
-    : 'http://localhost:5173';
-
   return {
     port: parseInt(process.env.PORT || '3000', 10),
     host: process.env.HOST || '0.0.0.0',
     environment: process.env.NODE_ENV || 'development',
     cors: {
-      origin: corsOrigin,
+      origin: parseCorsOrigins(),
       credentials: true,
     },
   };
 };
-

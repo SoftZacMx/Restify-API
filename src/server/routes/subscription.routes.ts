@@ -19,8 +19,9 @@ router.post('/webhooks/stripe', (req: Request, res: Response, next: NextFunction
   stripeWebhookController(req, res, next);
 });
 
-// Rutas protegidas con autenticación
+// Rutas protegidas con autenticación - solo ADMIN
 router.use(AuthMiddleware.authenticate);
+router.use(AuthMiddleware.authorize('ADMIN'));
 
 /** POST /api/subscription/checkout */
 router.post('/checkout', createSubscriptionCheckoutController);

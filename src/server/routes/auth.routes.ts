@@ -1,11 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { loginController } from '../../controllers/auth/login.controller';
 import { verifyUserController } from '../../controllers/auth/verify-user.controller';
 import { setPasswordController } from '../../controllers/auth/set-password.controller';
 import { logoutController } from '../../controllers/auth/logout.controller';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
 import { loginSchema, verifyUserSchema } from '../../core/application/dto/auth.dto';
 import { authRateLimiter, passwordResetRateLimiter } from '../middleware/rate-limit.middleware';
+import { AuthMiddleware, AuthenticatedRequest } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -21,29 +21,25 @@ router.post(
   zodValidator({ schema: loginSchema, source: 'body' }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Intercept res.json to set cookie before sending response
-      await new Promise<void>((resolve, reject) => {
-        const originalJsonFn = res.json.bind(res);
-        res.json = function (body: any) {
-          if (body?.success && body?.data?.token) {
-            const isProduction = process.env.NODE_ENV === 'production';
-            res.cookie('token', body.data.token, {
-              httpOnly: true,
-              secure: isProduction,
-              sameSite: 'strict',
-              maxAge: 24 * 60 * 60 * 1000,
-              path: '/',
-            });
-          }
-          originalJsonFn(body);
-          resolve();
-          return res;
-        };
+      const { container } = await import('tsyringe');
+      const { LoginUseCase } = await import('../../core/application/use-cases/auth/login.use-case');
 
-        loginController(req, res, (err: any) => {
-          res.json = originalJsonFn;
-          if (err) reject(err);
-        });
+      const loginUseCase = container.resolve(LoginUseCase);
+      const result = await loginUseCase.execute(req.body, req.params.rol);
+
+      const isProduction = process.env.NODE_ENV === 'production';
+      res.cookie('token', result.token, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000,
+        path: '/',
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       next(error);
@@ -66,11 +62,31 @@ router.post(
 /**
  * POST /api/auth/set-password/:user_id
  * Set password endpoint
+ * Protected with authentication: only the own user or ADMIN/MANAGER can set passwords
  * Protected with rate limiting: 3 attempts per 15 minutes
  */
 router.post(
   '/set-password/:user_id',
   passwordResetRateLimiter,
+  AuthMiddleware.authenticate,
+  (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const { user_id } = req.params;
+    const isOwnUser = req.user?.userId === user_id;
+    const isAdminOrManager = req.user?.rol === 'ADMIN' || req.user?.rol === 'MANAGER';
+
+    if (!isOwnUser && !isAdminOrManager) {
+      res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'No tienes permisos para cambiar esta contraseña',
+        },
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+    next();
+  },
   setPasswordController
 );
 

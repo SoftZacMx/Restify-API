@@ -26,8 +26,7 @@ router.use('/health', healthRoutes);
 router.use('/api/auth', authRoutes);
 router.use('/api/subscription', subscriptionRoutes);
 
-// TODO: Reactivar cuando se configure la suscripción en Stripe
-// router.use(SubscriptionMiddleware.validateSubscription);
+router.use(SubscriptionMiddleware.validateSubscription);
 
 // Rutas CON validación de suscripción
 router.use('/api/company', companyRoutes);

@@ -8,6 +8,7 @@ import { IUserRepository } from '../../core/domain/interfaces/user-repository.in
 import { WebSocketEventType, WebSocketMessage } from '../../core/domain/interfaces/websocket-connection.interface';
 import { JwtUtil, JwtPayload } from '../../shared/utils/jwt.util';
 import { AppError } from '../../shared/errors';
+import { logger } from '../../shared/utils/logger';
 import { stripEnvQuotes } from '../config/server.config';
 
 export class WebSocketServer {
@@ -36,7 +37,7 @@ export class WebSocketServer {
 
   private setupEventHandlers(): void {
     this.io.on('connection', async (socket: Socket) => {
-      console.log(`[WebSocket] Nueva conexión: socketId=${socket.id}, transport=${socket.conn.transport.name}`);
+      logger.info({ socketId: socket.id, transport: socket.conn.transport.name }, 'WebSocket nueva conexión');
 
       // Handle connection registration
       socket.on('register_connection', async (data: { connectionId: string; paymentId?: string; userId?: string; token?: string }) => {
@@ -163,7 +164,7 @@ export class WebSocketServer {
                 return;
               }
             } catch (error) {
-              console.error('[WebSocket] Error fetching user:', error);
+              logger.error({ err: error }, 'WebSocket error fetching user');
               socket.emit(WebSocketEventType.ERROR, {
                 type: WebSocketEventType.ERROR,
                 data: { message: 'Failed to validate user' },
@@ -190,7 +191,7 @@ export class WebSocketServer {
                 });
               }
             } catch (error) {
-              console.error('Error updating PaymentSession with connectionId:', error);
+              logger.error({ err: error }, 'Error updating PaymentSession with connectionId');
               // Don't fail connection registration if update fails
             }
           }
@@ -208,7 +209,7 @@ export class WebSocketServer {
 
           socket.emit(WebSocketEventType.CONNECTION_ACK, ackMessage);
         } catch (error) {
-          console.error('[WebSocket] Error registering connection:', error);
+          logger.error({ err: error }, 'WebSocket error registering connection');
           socket.emit(WebSocketEventType.ERROR, {
             type: WebSocketEventType.ERROR,
             data: {
@@ -222,7 +223,7 @@ export class WebSocketServer {
 
       // Handle disconnect
       socket.on('disconnect', (reason) => {
-        console.log(`[WebSocket] Desconexión: socketId=${socket.id}, razón=${reason}`);
+        logger.info({ socketId: socket.id, reason }, 'WebSocket desconexión');
         this.connectionManager.removeConnection(socket.id);
       });
 

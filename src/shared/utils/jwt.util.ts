@@ -7,14 +7,22 @@ export interface JwtPayload {
 }
 
 export class JwtUtil {
-  private static readonly SECRET: string = (() => {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      throw new Error('JWT_SECRET environment variable is required');
+  private static _secret: string | null = null;
+
+  private static get SECRET(): string {
+    if (!this._secret) {
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+        throw new Error('JWT_SECRET environment variable is required');
+      }
+      this._secret = secret;
     }
-    return secret;
-  })();
-  private static readonly EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '24h';
+    return this._secret;
+  }
+
+  private static get EXPIRES_IN(): string {
+    return process.env.JWT_EXPIRES_IN || '24h';
+  }
 
   static generateToken(payload: JwtPayload, expiresIn?: string): string {
     return jwt.sign(payload, this.SECRET, {
@@ -38,4 +46,3 @@ export class JwtUtil {
     }
   }
 }
-

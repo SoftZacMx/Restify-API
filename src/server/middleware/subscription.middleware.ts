@@ -53,7 +53,14 @@ export class SubscriptionMiddleware {
 
       next();
     } catch (error) {
-      next();
+      // Fail closed: if we can't verify subscription, deny access
+      res.status(503).json({
+        success: false,
+        error: {
+          code: 'SUBSCRIPTION_CHECK_FAILED',
+          message: 'No se pudo verificar la suscripción. Intenta de nuevo más tarde.',
+        },
+      });
     }
   }
 }

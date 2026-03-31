@@ -13,6 +13,7 @@ import { AuthMiddleware } from '../middleware/auth.middleware';
 const router = Router();
 
 router.use(AuthMiddleware.authenticate);
+router.use(AuthMiddleware.authorize('ADMIN', 'MANAGER'));
 
 router.post('/', zodValidator({ schema: createEmployeeSalaryPaymentSchema, source: 'body' }), createEmployeeSalaryPaymentController);
 router.get('/', zodValidator({ schema: listEmployeeSalaryPaymentsSchema, source: 'query' }), listEmployeeSalaryPaymentsController);

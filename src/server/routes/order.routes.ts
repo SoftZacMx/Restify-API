@@ -10,7 +10,7 @@ import {
   payOrderController,
 } from '../../controllers/orders';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
-import { createOrderSchema, listOrdersSchema, getOrderSchema, deleteOrderSchema } from '../../core/application/dto/order.dto';
+import { createOrderSchema, listOrdersSchema, getOrderSchema, updateOrderSchema, deleteOrderSchema } from '../../core/application/dto/order.dto';
 import { payOrderSchema } from '../../core/application/dto/payment.dto';
 import { AuthMiddleware } from '../middleware/auth.middleware';
 
@@ -40,7 +40,7 @@ router.get('/:order_id/ticket/sale-ticket', zodValidator({ schema: getOrderSchem
 router.get('/:order_id', zodValidator({ schema: getOrderSchema, source: 'params' }), getOrderController);
 
 /** PUT /api/orders/:order_id */
-router.put('/:order_id', updateOrderController);
+router.put('/:order_id', zodValidator({ schema: updateOrderSchema, source: 'body' }), updateOrderController);
 
 /** DELETE /api/orders/:order_id */
 router.delete('/:order_id', zodValidator({ schema: deleteOrderSchema, source: 'params' }), deleteOrderController);

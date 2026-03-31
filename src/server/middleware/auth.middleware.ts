@@ -45,25 +45,29 @@ export class AuthMiddleware {
       next();
     } catch (error) {
       if (error instanceof AppError) {
-        res.status(error.statusCode).json({
-          success: false,
-          error: {
-            code: error.code,
-            message: error.message,
-          },
-          timestamp: new Date().toISOString(),
-        });
+        next(error);
       } else {
-        res.status(401).json({
-          success: false,
-          error: {
-            code: 'UNAUTHORIZED',
-            message: 'Invalid or expired token',
-          },
-          timestamp: new Date().toISOString(),
-        });
+        next(new AppError('UNAUTHORIZED', 'Invalid or expired token'));
       }
     }
+  }
+
+  /**
+   * Role-based authorization middleware.
+   * Must be used AFTER authenticate.
+   * @param allowedRoles - Roles that can access the route
+   */
+  static authorize(...allowedRoles: string[]) {
+    return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+      const userRole = req.user?.rol;
+
+      if (!userRole || !allowedRoles.includes(userRole)) {
+        next(new AppError('FORBIDDEN', 'No tienes permisos para acceder a este recurso'));
+        return;
+      }
+
+      next();
+    };
   }
 
   /**
@@ -85,4 +89,3 @@ export class AuthMiddleware {
     }
   }
 }
-

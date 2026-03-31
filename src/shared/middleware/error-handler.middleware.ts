@@ -2,12 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../errors/app-error';
 import { ERROR_CONFIG, ErrorCode } from '../errors/error-config';
 import { ZodError } from 'zod';
+import { logger } from '../utils/logger';
 
 /**
  * Express global error handler middleware
  */
 export const expressErrorHandler = (
-  error: any,
+  error: unknown,
   req: Request,
   res: Response,
   _next: NextFunction
@@ -20,18 +21,17 @@ export const expressErrorHandler = (
     appError = convertToAppError(error);
   }
 
-  console.error('Handler error:', {
+  const stack = process.env.NODE_ENV === 'development' && error instanceof Error
+    ? error.stack
+    : undefined;
+
+  logger.error({
     code: appError.code,
-    message: appError.message,
-    category: appError.category,
     statusCode: appError.statusCode,
     path: req.path,
     method: req.method,
-    stack:
-      process.env.NODE_ENV === 'development' && error?.stack
-        ? error.stack
-        : undefined,
-  });
+    stack,
+  }, appError.message);
 
   res.status(appError.statusCode).json({
     success: false,
@@ -46,7 +46,7 @@ export const expressErrorHandler = (
 /**
  * Converts various error types to AppError
  */
-function convertToAppError(error: any): AppError {
+function convertToAppError(error: unknown): AppError {
   if (error instanceof ZodError) {
     const errorMessage = error.errors
       .map((e) => `${e.path.join('.')}: ${e.message}`)
@@ -59,18 +59,20 @@ function convertToAppError(error: any): AppError {
   }
 
   if (error instanceof Error) {
-    return mapErrorToAppError(error);
+    return mapStringToAppError(error.message);
   }
 
   if (error && typeof error === 'object') {
-    if (error.code && ERROR_CONFIG[error.code as ErrorCode]) {
+    const err = error as Record<string, unknown>;
+    if (typeof err.code === 'string' && ERROR_CONFIG[err.code as ErrorCode]) {
       return new AppError(
-        error.code as ErrorCode,
-        error.message,
-        error.metadata
+        err.code as ErrorCode,
+        typeof err.message === 'string' ? err.message : undefined,
+        err.metadata
       );
     }
-    return mapErrorToAppError(error);
+    const message = typeof err.message === 'string' ? err.message : String(error);
+    return mapStringToAppError(message);
   }
 
   return new AppError('INTERNAL_ERROR', 'An unexpected error occurred');
@@ -99,9 +101,4 @@ function mapStringToAppError(message: string): AppError {
   }
 
   return new AppError('INTERNAL_ERROR', message);
-}
-
-function mapErrorToAppError(error: Error | any): AppError {
-  const message = error.message || String(error) || 'An error occurred';
-  return mapStringToAppError(message);
 }

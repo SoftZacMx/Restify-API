@@ -8,6 +8,7 @@ import { AuthMiddleware } from '../middleware/auth.middleware';
 const router = Router();
 
 router.use(AuthMiddleware.authenticate);
+router.use(AuthMiddleware.authorize('ADMIN', 'MANAGER'));
 
 router.get('/summary', getReportsSummaryController);
 router.get('/', zodValidator({ schema: generateReportSchema, source: 'query' }), generateReportController);

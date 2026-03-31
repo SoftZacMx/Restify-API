@@ -8,6 +8,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 import express, { Express, Request, Response, NextFunction } from 'express';
 import http from 'http';
 import cors from 'cors';
+import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { getServerConfig } from './config/server.config';
 import routes from './routes';
@@ -18,6 +19,7 @@ import { apiRateLimiter } from './middleware/rate-limit.middleware';
 import { WebSocketServer } from './websocket/websocket.server';
 import { container } from 'tsyringe';
 import { PrismaService } from '../core/infrastructure/config/prisma.config';
+import { logger } from '../shared/utils/logger';
 import '../core/infrastructure/config/dependency-injection';
 
 class LocalServer {
@@ -49,6 +51,7 @@ class LocalServer {
       allowedHeaders: ['Content-Type', 'Authorization'],
     };
 
+    this.app.use(helmet());
     this.app.use(cors(corsOptions));
     // Cookie parser - must be before body parsing
     this.app.use(cookieParser());
@@ -57,8 +60,8 @@ class LocalServer {
     this.app.use('/api/subscription/webhooks/stripe', express.raw({ type: 'application/json' }));
 
     // Body parsing
-    this.app.use(express.json());
-    this.app.use(express.urlencoded({ extended: true }));
+    this.app.use(express.json({ limit: '1mb' }));
+    this.app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
     // Global rate limiting for API endpoints (100 requests per minute)
     // Note: Auth endpoints have stricter limits applied in their routes
@@ -107,7 +110,7 @@ class LocalServer {
 
     // Escuchar primero para que Railway/proxy reciba respuestas de inmediato (evita 502 en OPTIONS/health).
     this.httpServer.listen(port, host, () => {
-      console.log(`[Server] API escuchando en http://${host}:${port} (NODE_ENV=${this.config.environment})`);
+      logger.info({ port, host, env: this.config.environment }, 'API escuchando');
     });
 
     // Comprobar DB en segundo plano; no bloquear el arranque.
@@ -116,13 +119,12 @@ class LocalServer {
       await prismaService.connect();
       const isHealthy = await prismaService.healthCheck();
       if (isHealthy) {
-        console.log('[Server] Conectado a la base de datos correctamente. API lista.');
+        logger.info('Conectado a la base de datos correctamente. API lista.');
       } else {
-        console.warn('⚠️  [Server] Advertencia: La base de datos no responde correctamente');
+        logger.warn('La base de datos no responde correctamente');
       }
     } catch (error) {
-      console.error('❌ [Server] Error al conectar con la base de datos:', error);
-      console.error('❌ [Server] El servidor está en marcha pero la base de datos puede no estar disponible');
+      logger.error({ err: error }, 'Error al conectar con la base de datos');
     }
   }
 
@@ -139,7 +141,7 @@ class LocalServer {
 if (require.main === module) {
   const server = new LocalServer();
   server.start().catch((error) => {
-    console.error('❌ [Server] Error al iniciar el servidor:', error);
+    logger.fatal({ err: error }, 'Error al iniciar el servidor');
     process.exit(1);
   });
 }
