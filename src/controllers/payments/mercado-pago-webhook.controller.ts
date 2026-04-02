@@ -7,6 +7,14 @@ import { sendSuccess } from '../../shared/middleware/response-formatter.middlewa
 
 export const mercadoPagoWebhookController = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // TODO: Remover logs de debug después de verificar firma
+    console.log('[MP Webhook] headers:', {
+      xSignature: req.headers['x-signature'],
+      xRequestId: req.headers['x-request-id'],
+    });
+    console.log('[MP Webhook] query:', req.query);
+    console.log('[MP Webhook] body:', req.body);
+
     const xSignature = req.headers['x-signature'] as string || '';
     const xRequestId = req.headers['x-request-id'] as string || '';
     const dataId = req.query['data.id'] as string || '';
