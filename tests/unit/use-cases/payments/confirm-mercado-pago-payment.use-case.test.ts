@@ -3,7 +3,6 @@ import { IPaymentRepository } from '../../../../src/core/domain/interfaces/payme
 import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
 import { ITableRepository } from '../../../../src/core/domain/interfaces/table-repository.interface';
 import { MercadoPagoService } from '../../../../src/core/infrastructure/payment-gateways/mercado-pago.service';
-import { QueuePaymentNotificationUseCase } from '../../../../src/core/application/use-cases/websocket/queue-payment-notification.use-case';
 import { Payment } from '../../../../src/core/domain/entities/payment.entity';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { Table } from '../../../../src/core/domain/entities/table.entity';
@@ -15,7 +14,6 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockTableRepository: jest.Mocked<ITableRepository>;
   let mockMercadoPagoService: jest.Mocked<MercadoPagoService>;
-  let mockQueueNotification: jest.Mocked<QueuePaymentNotificationUseCase>;
 
   const orderId = 'order-123';
   const userId = 'user-123';
@@ -77,16 +75,11 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       validateWebhookSignature: jest.fn(),
     } as any;
 
-    mockQueueNotification = {
-      execute: jest.fn().mockResolvedValue(undefined),
-    } as any;
-
     useCase = new ConfirmMercadoPagoPaymentUseCase(
       mockPaymentRepository,
       mockOrderRepository,
       mockTableRepository,
       mockMercadoPagoService,
-      mockQueueNotification
     );
   });
 

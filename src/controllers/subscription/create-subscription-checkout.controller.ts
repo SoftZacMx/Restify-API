@@ -9,15 +9,11 @@ export const createSubscriptionCheckoutController = async (
   next: NextFunction
 ) => {
   try {
-    // userId viene del token JWT (inyectado por el auth middleware en el header)
-    const authHeader = req.headers.authorization || req.headers['authorization'] || '';
-    const token = (authHeader as string).replace('Bearer ', '');
-
-    // Decodificar el payload del JWT para obtener userId
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+    // userId ya fue verificado por AuthMiddleware.authenticate y está en req.user
+    const { userId } = (req as any).user;
 
     const useCase = container.resolve(CreateSubscriptionCheckoutUseCase);
-    const result = await useCase.execute({ userId: payload.userId });
+    const result = await useCase.execute({ userId });
 
     sendSuccess(res, result);
   } catch (error) {

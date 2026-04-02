@@ -7,8 +7,6 @@ import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-reposi
 import { ICompanyRepository } from '../../../domain/interfaces/company-repository.interface';
 import { CreateOrderInput } from '../../dto/order.dto';
 import { AppError } from '../../../../shared/errors';
-import { QueueOrderNotificationUseCase } from '../websocket/queue-order-notification.use-case';
-import { OrderNotificationType } from '../websocket/notify-order-status.use-case';
 
 /** Convierte "HH:mm" a minutos desde medianoche (0-1439) */
 function timeToMinutes(hhmm: string): number {
@@ -75,7 +73,6 @@ export class CreateOrderUseCase {
     @inject('IProductRepository') private readonly productRepository: IProductRepository,
     @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
     @inject('ICompanyRepository') private readonly companyRepository: ICompanyRepository,
-    @inject(QueueOrderNotificationUseCase) private readonly queueOrderNotificationUseCase: QueueOrderNotificationUseCase
   ) {}
 
   async execute(input: CreateOrderInput): Promise<CreateOrderResult> {
@@ -256,30 +253,6 @@ export class CreateOrderUseCase {
         })),
       })),
     };
-
-    // Queue WebSocket notification for order creation (non-blocking, decoupled)
-    // This ensures notifications are delivered even if staff members are temporarily disconnected
-    /*this.queueOrderNotificationUseCase
-      .execute({
-        orderId: order.id,
-        notificationType: OrderNotificationType.CREATED,
-        orderData: {
-          id: order.id,
-          date: order.date,
-          status: order.status,
-          total: order.total,
-          subtotal: order.subtotal,
-          delivered: order.delivered,
-          tableId: order.tableId,
-          origin: order.origin,
-          client: order.client,
-        },
-      })
-      .catch((error) => {
-        // Log error but don't fail the use case if queueing fails
-        console.error('Failed to queue order creation notification:', error);
-      });
-    */
 
     return orderResult;
   }

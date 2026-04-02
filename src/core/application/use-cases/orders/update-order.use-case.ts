@@ -5,8 +5,6 @@ import { IProductRepository } from '../../../domain/interfaces/product-repositor
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
 import { UpdateOrderInput } from '../../dto/order.dto';
 import { AppError } from '../../../../shared/errors';
-import { QueueOrderNotificationUseCase } from '../websocket/queue-order-notification.use-case';
-import { OrderNotificationType } from '../websocket/notify-order-status.use-case';
 
 export interface UpdateOrderResult {
   id: string;
@@ -53,7 +51,6 @@ export class UpdateOrderUseCase {
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
     @inject('IProductRepository') private readonly productRepository: IProductRepository,
     @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
-    @inject(QueueOrderNotificationUseCase) private readonly queueOrderNotificationUseCase: QueueOrderNotificationUseCase
   ) {}
 
   async execute(orderId: string, input: UpdateOrderInput): Promise<UpdateOrderResult> {
@@ -226,40 +223,6 @@ export class UpdateOrderUseCase {
         })),
       })),
     };
-
-    // Determine notification type based on what changed
-    // If delivered status changed to true, send ORDER_DELIVERED notification
-    // Otherwise, send ORDER_UPDATED notification
-    const wasDelivered = existingOrder.delivered;
-    const isNowDelivered = order.delivered;
-    const deliveryStatusChanged = input.delivered !== undefined && wasDelivered !== isNowDelivered;
-
-    const notificationType = deliveryStatusChanged && isNowDelivered
-      ? OrderNotificationType.DELIVERED
-      : OrderNotificationType.UPDATED;
-
-    // Queue WebSocket notification for order update (non-blocking, decoupled)
-    // This ensures notifications are delivered even if staff members are temporarily disconnected
-    this.queueOrderNotificationUseCase
-      .execute({
-        orderId: order.id,
-        notificationType,
-        orderData: {
-          id: order.id,
-          date: order.date,
-          status: order.status,
-          total: order.total,
-          subtotal: order.subtotal,
-          delivered: order.delivered,
-          tableId: order.tableId,
-          origin: order.origin,
-          client: order.client,
-        },
-      })
-      .catch((error) => {
-        // Log error but don't fail the use case if queueing fails
-        console.error('Failed to queue order update notification:', error);
-      });
 
     return orderResult;
   }

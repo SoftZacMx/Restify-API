@@ -4,7 +4,6 @@ import { IOrderRepository } from '../../../domain/interfaces/order-repository.in
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { PaymentStatus, PaymentGateway } from '@prisma/client';
 import { MercadoPagoService } from '../../../infrastructure/payment-gateways/mercado-pago.service';
-import { QueuePaymentNotificationUseCase } from '../websocket/queue-payment-notification.use-case';
 
 export interface ConfirmMPPaymentInput {
   mpPaymentId: number;
@@ -49,7 +48,6 @@ export class ConfirmMercadoPagoPaymentUseCase {
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
     @inject('MercadoPagoService') private readonly mercadoPagoService: MercadoPagoService,
-    @inject(QueuePaymentNotificationUseCase) private readonly queuePaymentNotificationUseCase: QueuePaymentNotificationUseCase
   ) {}
 
   async execute(input: ConfirmMPPaymentInput): Promise<ConfirmMPPaymentResult | null> {
@@ -114,19 +112,6 @@ export class ConfirmMercadoPagoPaymentUseCase {
         tableReleased = true;
       }
     }
-
-    // 7. Encolar notificación via SQS (no bloquea)
-    const errorMsg = newStatus === PaymentStatus.FAILED ? 'El pago no pudo ser procesado' : undefined;
-    this.queuePaymentNotificationUseCase
-      .execute({
-        paymentId: updatedPayment.id,
-        status: updatedPayment.status,
-        orderId: updatedPayment.orderId,
-        error: errorMsg,
-      })
-      .catch((error) => {
-        console.error('Failed to queue payment notification:', error);
-      });
 
     return {
       payment: {

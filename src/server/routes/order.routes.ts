@@ -42,7 +42,7 @@ router.get('/:order_id', zodValidator({ schema: getOrderSchema, source: 'params'
 /** PUT /api/orders/:order_id */
 router.put('/:order_id', zodValidator({ schema: updateOrderSchema, source: 'body' }), updateOrderController);
 
-/** DELETE /api/orders/:order_id */
-router.delete('/:order_id', zodValidator({ schema: deleteOrderSchema, source: 'params' }), deleteOrderController);
+/** DELETE /api/orders/:order_id (solo ADMIN y MANAGER) */
+router.delete('/:order_id', AuthMiddleware.authorize('ADMIN', 'MANAGER'), zodValidator({ schema: deleteOrderSchema, source: 'params' }), deleteOrderController);
 
 export default router;

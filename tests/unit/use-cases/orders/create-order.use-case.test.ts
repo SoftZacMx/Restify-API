@@ -5,7 +5,6 @@ import { ITableRepository } from '../../../../src/core/domain/interfaces/table-r
 import { IProductRepository } from '../../../../src/core/domain/interfaces/product-repository.interface';
 import { IMenuItemRepository } from '../../../../src/core/domain/interfaces/menu-item-repository.interface';
 import { ICompanyRepository } from '../../../../src/core/domain/interfaces/company-repository.interface';
-import { QueueOrderNotificationUseCase } from '../../../../src/core/application/use-cases/websocket/queue-order-notification.use-case';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { OrderItem } from '../../../../src/core/domain/entities/order-item.entity';
 import { User } from '../../../../src/core/domain/entities/user.entity';
@@ -23,7 +22,6 @@ describe('CreateOrderUseCase', () => {
   let mockProductRepository: jest.Mocked<IProductRepository>;
   let mockMenuItemRepository: jest.Mocked<IMenuItemRepository>;
   let mockCompanyRepository: jest.Mocked<ICompanyRepository>;
-  let mockQueueOrderNotificationUseCase: jest.Mocked<Pick<QueueOrderNotificationUseCase, 'execute'>>;
 
   beforeEach(() => {
     mockOrderRepository = {
@@ -88,10 +86,6 @@ describe('CreateOrderUseCase', () => {
       update: jest.fn(),
     };
 
-    mockQueueOrderNotificationUseCase = {
-      execute: jest.fn().mockResolvedValue(undefined),
-    };
-
     createOrderUseCase = new CreateOrderUseCase(
       mockOrderRepository,
       mockUserRepository,
@@ -99,7 +93,6 @@ describe('CreateOrderUseCase', () => {
       mockProductRepository,
       mockMenuItemRepository,
       mockCompanyRepository,
-      mockQueueOrderNotificationUseCase as any
     );
   });
 

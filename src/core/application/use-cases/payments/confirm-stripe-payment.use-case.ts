@@ -6,7 +6,6 @@ import { ConfirmStripePaymentInput } from '../../dto/payment.dto';
 import { PaymentStatus } from '@prisma/client';
 import { AppError } from '../../../../shared/errors';
 import { StripeService } from '../../../infrastructure/payment-gateways/stripe.service';
-import { QueuePaymentNotificationUseCase } from '../websocket/queue-payment-notification.use-case';
 
 export interface ConfirmStripePaymentResult {
   payment: {
@@ -30,7 +29,6 @@ export class ConfirmStripePaymentUseCase {
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
     @inject('StripeService') private readonly stripeService: StripeService,
-    @inject(QueuePaymentNotificationUseCase) private readonly queuePaymentNotificationUseCase: QueuePaymentNotificationUseCase
   ) {}
 
   async execute(input: ConfirmStripePaymentInput): Promise<ConfirmStripePaymentResult> {
@@ -90,20 +88,6 @@ export class ConfirmStripePaymentUseCase {
         tableReleased = true;
       }
     }
-
-    // 6. Queue payment notification via SQS (non-blocking, decoupled)
-    // This ensures notifications are delivered even if client is disconnected
-    this.queuePaymentNotificationUseCase
-      .execute({
-        paymentId: updatedPayment.id,
-        status: updatedPayment.status,
-        orderId: updatedPayment.orderId,
-        error: input.status === 'failed' ? 'Payment could not be processed' : undefined,
-      })
-      .catch((error) => {
-        // Log error but don't fail the use case if queueing fails
-        console.error('Failed to queue payment notification:', error);
-      });
 
     return {
       payment: {
