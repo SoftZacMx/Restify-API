@@ -17,7 +17,8 @@ export const mercadoPagoWebhookController = async (req: Request, res: Response, 
 
     const xSignature = req.headers['x-signature'] as string || '';
     const xRequestId = req.headers['x-request-id'] as string || '';
-    const dataId = req.query['data.id'] as string || '';
+    // MP envía data.id en formato V2 y id en formato IPN
+    const dataId = (req.query['data.id'] || req.query.id) as string || '';
 
     const mercadoPagoService = container.resolve(MercadoPagoService);
     const isValid = mercadoPagoService.validateWebhookSignature({
