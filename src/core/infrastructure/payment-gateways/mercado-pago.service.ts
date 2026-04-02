@@ -157,6 +157,12 @@ export class MercadoPagoService {
       .update(manifest)
       .digest('hex');
 
+    // TODO: Remover log de debug
+    console.log('[MP Signature] manifest:', manifest);
+    console.log('[MP Signature] hmac:', hmac);
+    console.log('[MP Signature] v1:', v1);
+    console.log('[MP Signature] match:', hmac === v1);
+
     return hmac === v1;
   }
 }
