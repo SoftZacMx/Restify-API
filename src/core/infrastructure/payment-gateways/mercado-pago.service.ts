@@ -151,7 +151,10 @@ export class MercadoPagoService {
     const v1 = v1Entry.split('=')[1];
 
     // Construir el manifest según la documentación de MP
-    const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+    // Si un valor no está presente, se omite del manifest
+    let manifest = '';
+    if (dataId) manifest += `id:${dataId};`;
+    manifest += `request-id:${xRequestId};ts:${ts};`;
 
     const hmac = createHmac('sha256', secret)
       .update(manifest)
