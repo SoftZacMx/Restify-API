@@ -136,9 +136,6 @@ export class MercadoPagoService {
       throw new Error('MP_WEBHOOK_SECRET environment variable is required');
     }
 
-    // TODO: Remover log de debug
-    console.log('[MP Signature] secret (first 10):', secret.substring(0, 10));
-
     const { xSignature, xRequestId, dataId } = params;
 
     // Parsear x-signature: "ts=xxx,v1=xxx"
@@ -162,12 +159,6 @@ export class MercadoPagoService {
     const hmac = createHmac('sha256', secret)
       .update(manifest)
       .digest('hex');
-
-    // TODO: Remover log de debug
-    console.log('[MP Signature] manifest:', manifest);
-    console.log('[MP Signature] hmac:', hmac);
-    console.log('[MP Signature] v1:', v1);
-    console.log('[MP Signature] match:', hmac === v1);
 
     return hmac === v1;
   }

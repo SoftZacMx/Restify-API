@@ -5,6 +5,9 @@ import path from 'path';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
+import { validateEnv } from './config/env.config';
+validateEnv();
+
 import express, { Express, Request, Response, NextFunction } from 'express';
 import http from 'http';
 import cors from 'cors';
@@ -126,6 +129,48 @@ class LocalServer {
     } catch (error) {
       logger.error({ err: error }, 'Error al conectar con la base de datos');
     }
+
+    this.setupGracefulShutdown();
+  }
+
+  private setupGracefulShutdown(): void {
+    const shutdown = async (signal: string) => {
+      logger.info(`${signal} recibido. Cerrando servidor...`);
+
+      // 1. Dejar de aceptar nuevas conexiones y esperar las que están en curso
+      this.httpServer.close(() => {
+        logger.info('Servidor HTTP cerrado');
+      });
+
+      // 2. Cerrar WebSocket
+      if (this.webSocketServer) {
+        this.webSocketServer.close();
+        logger.info('WebSocket cerrado');
+      }
+
+      // 3. Cerrar conexión a BD
+      try {
+        const prismaService = container.resolve(PrismaService);
+        await prismaService.disconnect();
+        logger.info('Base de datos desconectada');
+      } catch (error) {
+        logger.error({ err: error }, 'Error al desconectar base de datos');
+      }
+
+      process.exit(0);
+    };
+
+    // Timeout de seguridad: si no termina en 10s, forzar salida
+    const forceShutdown = (signal: string) => {
+      shutdown(signal);
+      setTimeout(() => {
+        logger.error('Shutdown forzado por timeout (10s)');
+        process.exit(1);
+      }, 10000).unref();
+    };
+
+    process.on('SIGTERM', () => forceShutdown('SIGTERM'));
+    process.on('SIGINT', () => forceShutdown('SIGINT'));
   }
 
   public getApp(): Express {

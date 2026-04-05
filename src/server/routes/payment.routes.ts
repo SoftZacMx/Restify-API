@@ -1,8 +1,5 @@
 import { Router } from 'express';
 import {
-  payOrderWithCashController,
-  payOrderWithTransferController,
-  payOrderWithCardPhysicalController,
   payOrderWithCardStripeController,
   confirmStripePaymentController,
   getPaymentController,
@@ -14,11 +11,7 @@ import {
 } from '../../controllers/payments';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
 import {
-  payOrderWithCashSchema,
-  payOrderWithTransferSchema,
-  payOrderWithCardPhysicalSchema,
   payOrderWithCardStripeSchema,
-  payOrderWithSplitPaymentSchema,
   payOrderWithQRMercadoPagoSchema,
   confirmStripePaymentSchema,
   getPaymentSchema,
@@ -35,15 +28,6 @@ router.post('/webhooks/mercado-pago', mercadoPagoWebhookController);
 
 // Apply authentication to all routes below
 router.use(AuthMiddleware.authenticate);
-
-/** POST /api/payments/cash */
-router.post('/cash', zodValidator({ schema: payOrderWithCashSchema, source: 'body' }), payOrderWithCashController);
-
-/** POST /api/payments/transfer */
-router.post('/transfer', zodValidator({ schema: payOrderWithTransferSchema, source: 'body' }), payOrderWithTransferController);
-
-/** POST /api/payments/card-physical */
-router.post('/card-physical', zodValidator({ schema: payOrderWithCardPhysicalSchema, source: 'body' }), payOrderWithCardPhysicalController);
 
 /** POST /api/payments/card-stripe */
 router.post('/card-stripe', zodValidator({ schema: payOrderWithCardStripeSchema, source: 'body' }), payOrderWithCardStripeController);
