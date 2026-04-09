@@ -19,7 +19,6 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string({ required_error: 'STRIPE_SECRET_KEY is required' }),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_SUBSCRIPTION_WEBHOOK_SECRET: z.string().optional(),
-  STRIPE_PRICE_ID: z.string().optional(),
 
   // Mercado Pago
   MP_ACCESS_TOKEN: z.string({ required_error: 'MP_ACCESS_TOKEN is required' }),

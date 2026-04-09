@@ -426,6 +426,26 @@ enum SubscriptionStatus {
   TRIALING        // En período de prueba (opcional)
 }
 
+enum BillingPeriod {
+  MONTHLY
+  ANNUAL
+}
+
+model SubscriptionPlan {
+  id              String              @id @default(uuid())
+  name            String              // "Mensual", "Anual"
+  billingPeriod   BillingPeriod       // MONTHLY, ANNUAL
+  price           Int                 // Precio en centavos MXN (322000, 3112300)
+  stripePriceId   String              @unique
+  status          Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  subscriptions   Subscription[]
+
+  @@map("subscription_plans")
+}
+
 // Subscription Entity (una por base de datos = un negocio = una suscripción)
 model Subscription {
   id                     String             @id @default(uuid())
@@ -435,6 +455,8 @@ model Subscription {
   currentPeriodStart     DateTime?
   currentPeriodEnd       DateTime?
   cancelAtPeriodEnd      Boolean            @default(false)
+  planId                 String?
+  plan                   SubscriptionPlan?  @relation(fields: [planId], references: [id])
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 

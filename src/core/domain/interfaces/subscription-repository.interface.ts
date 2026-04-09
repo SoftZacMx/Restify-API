@@ -8,6 +8,7 @@ export interface CreateSubscriptionData {
   currentPeriodStart?: Date | null;
   currentPeriodEnd?: Date | null;
   cancelAtPeriodEnd?: boolean;
+  planId?: string | null;
 }
 
 export interface UpdateSubscriptionData {
@@ -16,6 +17,7 @@ export interface UpdateSubscriptionData {
   currentPeriodStart?: Date | null;
   currentPeriodEnd?: Date | null;
   cancelAtPeriodEnd?: boolean;
+  planId?: string | null;
 }
 
 export interface ISubscriptionRepository {

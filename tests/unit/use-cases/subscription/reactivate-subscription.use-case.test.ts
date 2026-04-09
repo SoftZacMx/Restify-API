@@ -45,6 +45,7 @@ describe('ReactivateSubscriptionUseCase', () => {
       new Date(),
       new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
       true, // cancelAtPeriodEnd
+      null,
       new Date(),
       new Date()
     );
@@ -57,6 +58,7 @@ describe('ReactivateSubscriptionUseCase', () => {
       new Date(),
       new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
       false, // cancelAtPeriodEnd = false
+      null,
       new Date(),
       new Date()
     );
@@ -95,6 +97,7 @@ describe('ReactivateSubscriptionUseCase', () => {
       new Date(),
       new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
       false, // NOT pending cancellation
+      null,
       new Date(),
       new Date()
     );
@@ -119,6 +122,7 @@ describe('ReactivateSubscriptionUseCase', () => {
       new Date(),
       new Date(Date.now() - 1000),
       true,
+      null,
       new Date(),
       new Date()
     );

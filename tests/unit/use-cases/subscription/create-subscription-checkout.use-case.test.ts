@@ -1,22 +1,23 @@
 import { CreateSubscriptionCheckoutUseCase } from '../../../../src/core/application/use-cases/subscription/create-subscription-checkout.use-case';
 import { ISubscriptionRepository } from '../../../../src/core/domain/interfaces/subscription-repository.interface';
+import { ISubscriptionPlanRepository } from '../../../../src/core/domain/interfaces/subscription-plan-repository.interface';
 import { ICompanyRepository } from '../../../../src/core/domain/interfaces/company-repository.interface';
 import { IUserRepository } from '../../../../src/core/domain/interfaces/user-repository.interface';
 import { StripeSubscriptionService } from '../../../../src/core/infrastructure/payment-gateways/stripe-subscription.service';
 import { Subscription } from '../../../../src/core/domain/entities/subscription.entity';
+import { SubscriptionPlan } from '../../../../src/core/domain/entities/subscription-plan.entity';
 import { User } from '../../../../src/core/domain/entities/user.entity';
 import { Company } from '../../../../src/core/domain/entities/company.entity';
-import { SubscriptionStatus, UserRole } from '@prisma/client';
+import { SubscriptionStatus, UserRole, BillingPeriod } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('CreateSubscriptionCheckoutUseCase', () => {
   let useCase: CreateSubscriptionCheckoutUseCase;
   let mockSubscriptionRepository: jest.Mocked<ISubscriptionRepository>;
+  let mockPlanRepository: jest.Mocked<ISubscriptionPlanRepository>;
   let mockCompanyRepository: jest.Mocked<ICompanyRepository>;
   let mockUserRepository: jest.Mocked<IUserRepository>;
   let mockStripeService: jest.Mocked<StripeSubscriptionService>;
-
-  const originalEnv = process.env;
 
   const mockAdminUser = new User(
     'user-admin-1',
@@ -49,13 +50,29 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     new Date()
   );
 
-  beforeEach(() => {
-    process.env = { ...originalEnv, STRIPE_PRICE_ID: 'price_test_123' };
+  const mockPlan = new SubscriptionPlan(
+    'plan-monthly-1',
+    'Mensual',
+    BillingPeriod.MONTHLY,
+    322000,
+    'price_test_123',
+    true,
+    new Date(),
+    new Date()
+  );
 
+  beforeEach(() => {
     mockSubscriptionRepository = {
       find: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+    };
+
+    mockPlanRepository = {
+      findAll: jest.fn(),
+      findActive: jest.fn(),
+      findById: jest.fn(),
+      findByStripePriceId: jest.fn(),
     };
 
     mockCompanyRepository = {
@@ -78,6 +95,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
       createCustomer: jest.fn(),
       createCheckoutSession: jest.fn(),
       getSubscription: jest.fn(),
+      getSubscriptionMetadata: jest.fn(),
       cancelSubscription: jest.fn(),
       reactivateSubscription: jest.fn(),
       constructWebhookEvent: jest.fn(),
@@ -85,6 +103,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
 
     useCase = new CreateSubscriptionCheckoutUseCase(
       mockSubscriptionRepository,
+      mockPlanRepository,
       mockCompanyRepository,
       mockUserRepository,
       mockStripeService
@@ -92,16 +111,17 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
   });
 
   afterEach(() => {
-    process.env = originalEnv;
     jest.clearAllMocks();
   });
 
   const input = {
     userId: 'user-admin-1',
+    planId: 'plan-monthly-1',
   };
 
-  it('should create checkout session for new subscription', async () => {
+  it('should create checkout session for new subscription with plan', async () => {
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
+    mockPlanRepository.findById.mockResolvedValue(mockPlan);
     mockCompanyRepository.findFirst.mockResolvedValue(mockCompany);
     mockSubscriptionRepository.find.mockResolvedValue(null);
     mockStripeService.createCustomer.mockResolvedValue('cus_test_123');
@@ -118,6 +138,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
         null,
         null,
         false,
+        'plan-monthly-1',
         new Date(),
         new Date()
       )
@@ -131,8 +152,15 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
       email: 'test@restaurant.com',
       name: 'Mi Restaurante',
     });
+    expect(mockStripeService.createCheckoutSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        priceId: 'price_test_123',
+        metadata: { planId: 'plan-monthly-1' },
+      })
+    );
     expect(mockSubscriptionRepository.create).toHaveBeenCalledWith({
       stripeCustomerId: 'cus_test_123',
+      planId: 'plan-monthly-1',
     });
   });
 
@@ -145,13 +173,16 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
       null,
       null,
       false,
+      null,
       new Date(),
       new Date()
     );
 
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
+    mockPlanRepository.findById.mockResolvedValue(mockPlan);
     mockCompanyRepository.findFirst.mockResolvedValue(mockCompany);
     mockSubscriptionRepository.find.mockResolvedValue(existingSub);
+    mockSubscriptionRepository.update.mockResolvedValue(existingSub);
     mockStripeService.createCheckoutSession.mockResolvedValue({
       sessionId: 'cs_test_456',
       url: 'https://checkout.stripe.com/cs_test_456',
@@ -162,6 +193,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     expect(result.checkoutUrl).toBe('https://checkout.stripe.com/cs_test_456');
     expect(mockStripeService.createCustomer).not.toHaveBeenCalled();
     expect(mockSubscriptionRepository.create).not.toHaveBeenCalled();
+    expect(mockSubscriptionRepository.update).toHaveBeenCalledWith('sub-id-1', { planId: 'plan-monthly-1' });
     expect(mockStripeService.createCheckoutSession).toHaveBeenCalledWith(
       expect.objectContaining({ customerId: 'cus_existing_123' })
     );
@@ -176,11 +208,13 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
       new Date(),
       new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       false,
+      'plan-monthly-1',
       new Date(),
       new Date()
     );
 
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
+    mockPlanRepository.findById.mockResolvedValue(mockPlan);
     mockSubscriptionRepository.find.mockResolvedValue(activeSub);
 
     try {
@@ -194,16 +228,16 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     expect(mockStripeService.createCheckoutSession).not.toHaveBeenCalled();
   });
 
-  it('should throw error when STRIPE_PRICE_ID is not configured', async () => {
-    delete process.env.STRIPE_PRICE_ID;
+  it('should throw error when plan is not found', async () => {
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
+    mockPlanRepository.findById.mockResolvedValue(null);
 
     try {
       await useCase.execute(input);
       fail('Should have thrown an error');
     } catch (error) {
       expect(error).toBeInstanceOf(AppError);
-      expect((error as AppError).code).toBe('SUBSCRIPTION_PRICE_NOT_CONFIGURED');
+      expect((error as AppError).code).toBe('SUBSCRIPTION_PLAN_NOT_FOUND');
     }
   });
 });

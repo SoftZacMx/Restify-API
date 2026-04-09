@@ -68,7 +68,11 @@ class LocalServer {
 
     // Global rate limiting for API endpoints (100 requests per minute)
     // Note: Auth endpoints have stricter limits applied in their routes
-    this.app.use('/api', apiRateLimiter);
+    // Stripe webhooks are excluded — they arrive in bursts and are authenticated via signature
+    this.app.use('/api', (req: Request, res: Response, next: NextFunction) => {
+      if (req.path === '/subscription/webhooks/stripe') return next();
+      apiRateLimiter(req, res, next);
+    });
 
     // Request logging
     if (this.config.environment === 'development') {

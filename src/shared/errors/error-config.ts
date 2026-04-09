@@ -314,6 +314,11 @@ export const ERROR_CONFIG = {
     statusCode: 502,
     category: 'SYSTEM',
   },
+  SUBSCRIPTION_PLAN_NOT_FOUND: {
+    message: 'El plan de suscripción no existe o no está activo',
+    statusCode: 404,
+    category: 'BUSINESS',
+  },
   SUBSCRIPTION_PRICE_NOT_CONFIGURED: {
     message: 'El precio de suscripción no está configurado',
     statusCode: 500,
