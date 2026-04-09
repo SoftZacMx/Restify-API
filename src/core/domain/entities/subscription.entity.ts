@@ -9,6 +9,7 @@ export class Subscription {
     public readonly currentPeriodStart: Date | null,
     public readonly currentPeriodEnd: Date | null,
     public readonly cancelAtPeriodEnd: boolean,
+    public readonly planId: string | null,
     public readonly createdAt: Date,
     public readonly updatedAt: Date
   ) {}

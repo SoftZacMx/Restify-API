@@ -22,6 +22,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
     null,
     null,
     false,
+    null,
     now,
     now
   );
@@ -37,6 +38,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
       createCustomer: jest.fn(),
       createCheckoutSession: jest.fn(),
       getSubscription: jest.fn(),
+      getSubscriptionMetadata: jest.fn(),
       cancelSubscription: jest.fn(),
       reactivateSubscription: jest.fn(),
       constructWebhookEvent: jest.fn(),
@@ -72,6 +74,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
         currentPeriodEnd: periodEnd,
         cancelAtPeriodEnd: false,
       });
+      mockStripeService.getSubscriptionMetadata.mockResolvedValue({ planId: null });
       mockSubscriptionRepository.update.mockResolvedValue(existingSub);
 
       await useCase.execute({ event });
@@ -81,6 +84,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
         status: SubscriptionStatus.ACTIVE,
         currentPeriodStart: periodStart,
         currentPeriodEnd: periodEnd,
+        planId: null,
       });
     });
 
@@ -120,6 +124,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
         periodStart,
         periodEnd,
         false,
+        null,
         now,
         now
       );
@@ -163,6 +168,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
         periodStart,
         periodEnd,
         false,
+        null,
         now,
         now
       );
@@ -194,6 +200,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
         periodStart,
         periodEnd,
         false,
+        null,
         now,
         now
       );
@@ -228,6 +235,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
         periodStart,
         periodEnd,
         false,
+        null,
         now,
         now
       );
@@ -269,6 +277,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
         periodStart,
         periodEnd,
         true,
+        null,
         now,
         now
       );

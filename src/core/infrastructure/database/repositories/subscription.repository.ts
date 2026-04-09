@@ -20,6 +20,7 @@ export class SubscriptionRepository implements ISubscriptionRepository {
       subscription.currentPeriodStart,
       subscription.currentPeriodEnd,
       subscription.cancelAtPeriodEnd,
+      subscription.planId,
       subscription.createdAt,
       subscription.updatedAt
     );
@@ -34,6 +35,7 @@ export class SubscriptionRepository implements ISubscriptionRepository {
         currentPeriodStart: data.currentPeriodStart || null,
         currentPeriodEnd: data.currentPeriodEnd || null,
         cancelAtPeriodEnd: data.cancelAtPeriodEnd || false,
+        planId: data.planId || null,
       },
     });
 
@@ -45,6 +47,7 @@ export class SubscriptionRepository implements ISubscriptionRepository {
       subscription.currentPeriodStart,
       subscription.currentPeriodEnd,
       subscription.cancelAtPeriodEnd,
+      subscription.planId,
       subscription.createdAt,
       subscription.updatedAt
     );
@@ -58,6 +61,7 @@ export class SubscriptionRepository implements ISubscriptionRepository {
     if (data.currentPeriodStart !== undefined) updateData.currentPeriodStart = data.currentPeriodStart;
     if (data.currentPeriodEnd !== undefined) updateData.currentPeriodEnd = data.currentPeriodEnd;
     if (data.cancelAtPeriodEnd !== undefined) updateData.cancelAtPeriodEnd = data.cancelAtPeriodEnd;
+    if (data.planId !== undefined) updateData.planId = data.planId;
 
     const subscription = await this.prisma.subscription.update({
       where: { id },
@@ -72,6 +76,7 @@ export class SubscriptionRepository implements ISubscriptionRepository {
       subscription.currentPeriodStart,
       subscription.currentPeriodEnd,
       subscription.cancelAtPeriodEnd,
+      subscription.planId,
       subscription.createdAt,
       subscription.updatedAt
     );

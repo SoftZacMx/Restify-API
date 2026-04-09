@@ -47,6 +47,7 @@ describe('CancelSubscriptionUseCase', () => {
       new Date(),
       periodEnd,
       false,
+      null,
       new Date(),
       new Date()
     );
@@ -59,6 +60,7 @@ describe('CancelSubscriptionUseCase', () => {
       new Date(),
       periodEnd,
       true, // cancelAtPeriodEnd
+      null,
       new Date(),
       new Date()
     );
@@ -100,6 +102,7 @@ describe('CancelSubscriptionUseCase', () => {
       new Date(),
       new Date(Date.now() - 1000),
       false,
+      null,
       new Date(),
       new Date()
     );
@@ -124,6 +127,7 @@ describe('CancelSubscriptionUseCase', () => {
       new Date(),
       periodEnd,
       false,
+      null,
       new Date(),
       new Date()
     );

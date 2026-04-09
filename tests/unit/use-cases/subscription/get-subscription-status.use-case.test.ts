@@ -1,11 +1,13 @@
 import { GetSubscriptionStatusUseCase } from '../../../../src/core/application/use-cases/subscription/get-subscription-status.use-case';
 import { ISubscriptionRepository } from '../../../../src/core/domain/interfaces/subscription-repository.interface';
+import { ISubscriptionPlanRepository } from '../../../../src/core/domain/interfaces/subscription-plan-repository.interface';
 import { Subscription } from '../../../../src/core/domain/entities/subscription.entity';
 import { SubscriptionStatus } from '@prisma/client';
 
 describe('GetSubscriptionStatusUseCase', () => {
   let useCase: GetSubscriptionStatusUseCase;
   let mockSubscriptionRepository: jest.Mocked<ISubscriptionRepository>;
+  let mockPlanRepository: jest.Mocked<ISubscriptionPlanRepository>;
 
   beforeEach(() => {
     mockSubscriptionRepository = {
@@ -14,7 +16,14 @@ describe('GetSubscriptionStatusUseCase', () => {
       update: jest.fn(),
     };
 
-    useCase = new GetSubscriptionStatusUseCase(mockSubscriptionRepository);
+    mockPlanRepository = {
+      findAll: jest.fn(),
+      findActive: jest.fn(),
+      findById: jest.fn(),
+      findByStripePriceId: jest.fn(),
+    };
+
+    useCase = new GetSubscriptionStatusUseCase(mockSubscriptionRepository, mockPlanRepository);
   });
 
   afterEach(() => {
@@ -42,6 +51,7 @@ describe('GetSubscriptionStatusUseCase', () => {
       new Date(),
       futureDate,
       false,
+      null,
       new Date(),
       new Date()
     );
@@ -67,6 +77,7 @@ describe('GetSubscriptionStatusUseCase', () => {
       new Date(),
       futureDate,
       false,
+      null,
       new Date(),
       new Date()
     );
@@ -88,6 +99,7 @@ describe('GetSubscriptionStatusUseCase', () => {
       new Date(),
       new Date(Date.now() - 1000),
       false,
+      null,
       new Date(),
       new Date()
     );
@@ -97,6 +109,31 @@ describe('GetSubscriptionStatusUseCase', () => {
     const result = await useCase.execute();
 
     expect(result.exists).toBe(true);
+    expect(result.isActive).toBe(false);
+    expect(result.daysRemaining).toBe(0);
+  });
+
+  it('should return isActive: false for ACTIVE subscription with expired period', async () => {
+    const pastDate = new Date(Date.now() - 1000);
+    const expiredSub = new Subscription(
+      'sub-id-1',
+      'cus_test_123',
+      'sub_test_123',
+      SubscriptionStatus.ACTIVE,
+      new Date(),
+      pastDate,
+      false,
+      null,
+      new Date(),
+      new Date()
+    );
+
+    mockSubscriptionRepository.find.mockResolvedValue(expiredSub);
+
+    const result = await useCase.execute();
+
+    expect(result.exists).toBe(true);
+    expect(result.status).toBe(SubscriptionStatus.ACTIVE);
     expect(result.isActive).toBe(false);
     expect(result.daysRemaining).toBe(0);
   });
@@ -111,6 +148,7 @@ describe('GetSubscriptionStatusUseCase', () => {
       new Date(),
       futureDate,
       true, // cancelAtPeriodEnd
+      null,
       new Date(),
       new Date()
     );

@@ -39,7 +39,6 @@ export class HandleSubscriptionWebhookUseCase {
 
   private async handleCheckoutCompleted(event: Stripe.Event): Promise<void> {
     const session = event.data.object as Stripe.Checkout.Session;
-    const stripeCustomerId = session.customer as string;
     const stripeSubscriptionId = session.subscription as string;
 
     if (!stripeSubscriptionId) return;
@@ -51,11 +50,16 @@ export class HandleSubscriptionWebhookUseCase {
     const subscription = await this.subscriptionRepository.find();
     if (!subscription) return;
 
+    // Obtener planId desde metadata de la suscripción de Stripe
+    const stripeSubFull = await this.stripeSubscriptionService.getSubscriptionMetadata(stripeSubscriptionId);
+    const planId = stripeSubFull?.planId || subscription.planId;
+
     await this.subscriptionRepository.update(subscription.id, {
       stripeSubscriptionId,
       status: SubscriptionStatus.ACTIVE,
       currentPeriodStart: stripeSub.currentPeriodStart,
       currentPeriodEnd: stripeSub.currentPeriodEnd,
+      planId,
     });
   }
 

@@ -5,6 +5,7 @@ import {
   cancelSubscriptionController,
   reactivateSubscriptionController,
   stripeWebhookController,
+  listSubscriptionPlansController,
 } from '../../controllers/subscription';
 import { AuthMiddleware } from '../middleware/auth.middleware';
 
@@ -18,6 +19,9 @@ router.post('/webhooks/stripe', (req: Request, res: Response, next: NextFunction
   }
   stripeWebhookController(req, res, next);
 });
+
+/** GET /api/subscription/plans — Ruta pública (el frontend la necesita antes del login) */
+router.get('/plans', listSubscriptionPlansController);
 
 // Rutas protegidas con autenticación - solo ADMIN
 router.use(AuthMiddleware.authenticate);
