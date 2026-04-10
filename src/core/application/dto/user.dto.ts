@@ -7,7 +7,12 @@ export const createUserSchema = z.object({
   last_name: z.string().min(1, 'Last name is required').max(100, 'Last name is too long'),
   second_last_name: z.string().max(100, 'Second last name is too long').optional().nullable(),
   email: z.string().email('Invalid email format'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string()
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .regex(/[a-z]/, 'Debe incluir al menos una minúscula')
+    .regex(/[A-Z]/, 'Debe incluir al menos una mayúscula')
+    .regex(/\d/, 'Debe incluir al menos un número')
+    .regex(/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/, 'Debe incluir al menos un carácter especial'),
   phone: z.string().max(20, 'Phone number is too long').optional().nullable(),
   status: z.boolean().default(true),
   rol: z.nativeEnum(UserRole, {
@@ -21,7 +26,13 @@ export const updateUserSchema = z.object({
   last_name: z.string().min(1, 'Last name is required').max(100, 'Last name is too long').optional(),
   second_last_name: z.string().max(100, 'Second last name is too long').optional().nullable(),
   email: z.string().email('Invalid email format').optional(),
-  password: z.string().min(6, 'Password must be at least 6 characters').optional(),
+  password: z.string()
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .regex(/[a-z]/, 'Debe incluir al menos una minúscula')
+    .regex(/[A-Z]/, 'Debe incluir al menos una mayúscula')
+    .regex(/\d/, 'Debe incluir al menos un número')
+    .regex(/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/, 'Debe incluir al menos un carácter especial')
+    .optional(),
   phone: z.string().max(20, 'Phone number is too long').optional().nullable(),
   status: z.boolean().optional(),
   rol: z.nativeEnum(UserRole, {
