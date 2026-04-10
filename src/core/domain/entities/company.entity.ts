@@ -13,6 +13,7 @@ export class Company {
     public readonly endOperations: string | null,
     /** JSON crudo desde BDD; usar mergeTicketPrintConfig al exponer por API */
     public readonly ticketConfig: unknown | null,
+    public readonly paymentConfig: string | null,
     public readonly createdAt: Date,
     public readonly updatedAt: Date
   ) {}

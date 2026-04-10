@@ -255,6 +255,7 @@ model Company {
   startOperations  String?  // Hora inicio operaciones "HH:mm"
   endOperations    String?  // Hora fin operaciones "HH:mm"
   ticketConfig     Json?    // Config tickets térmicos (JSON)
+  paymentConfig    String?  @db.Text // JSON encriptado con AES-256-GCM (credenciales MP)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

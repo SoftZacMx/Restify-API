@@ -1,6 +1,8 @@
 import { MercadoPagoConfig, Preference, Payment as PaymentMP } from 'mercadopago';
-import { injectable } from 'tsyringe';
+import { inject, injectable } from 'tsyringe';
 import { createHmac } from 'crypto';
+import { PaymentConfigService } from '../../application/services/payment-config.service';
+import { AppError } from '../../../shared/errors';
 
 // --- Interfaces ---
 
@@ -48,22 +50,30 @@ export interface ValidateWebhookParams {
 
 @injectable()
 export class MercadoPagoService {
-  private client: MercadoPagoConfig;
-  private preference: Preference;
-  private paymentClient: PaymentMP;
+  private client: MercadoPagoConfig | null = null;
+  private preference: Preference | null = null;
+  private paymentClient: PaymentMP | null = null;
 
-  constructor() {
-    const accessToken = process.env.MP_ACCESS_TOKEN;
-    if (!accessToken) {
-      throw new Error('MP_ACCESS_TOKEN environment variable is required');
+  constructor(
+    @inject(PaymentConfigService) private readonly paymentConfigService: PaymentConfigService
+  ) {}
+
+  private async initClient(): Promise<void> {
+    if (this.client) return;
+    const config = await this.paymentConfigService.get();
+    if (!config.mercadoPago.accessToken) {
+      throw new AppError('PAYMENT_CONFIG_NOT_CONFIGURED', 'Mercado Pago access token no configurado');
     }
-    this.client = new MercadoPagoConfig({ accessToken });
+    this.client = new MercadoPagoConfig({ accessToken: config.mercadoPago.accessToken });
     this.preference = new Preference(this.client);
     this.paymentClient = new PaymentMP(this.client);
   }
 
   async createPreference(params: CreateMPPreferenceParams): Promise<MPPreferenceResult> {
-    const preference = await this.preference.create({
+    await this.initClient();
+    const backUrl = process.env.MP_BACK_URL || 'https://restify.app';
+
+    const preference = await this.preference!.create({
       body: {
         items: [
           {
@@ -79,9 +89,9 @@ export class MercadoPagoService {
         external_reference: params.orderId,
         notification_url: params.notificationUrl,
         back_urls: {
-          success: `${process.env.MP_BACK_URL || 'https://restify.app'}/payment/success`,
-          failure: `${process.env.MP_BACK_URL || 'https://restify.app'}/payment/failure?status=failure`,
-          pending: `${process.env.MP_BACK_URL || 'https://restify.app'}/payment/pending?status=pending`,
+          success: `${backUrl}/payment/success`,
+          failure: `${backUrl}/payment/failure?status=failure`,
+          pending: `${backUrl}/payment/pending?status=pending`,
         },
         auto_return: 'approved',
         expires: true,
@@ -104,7 +114,8 @@ export class MercadoPagoService {
   }
 
   async getPreference(preferenceId: string): Promise<MPPreferenceResult> {
-    const preference = await this.preference.get({ preferenceId });
+    await this.initClient();
+    const preference = await this.preference!.get({ preferenceId });
 
     return {
       id: preference.id!,
@@ -115,7 +126,8 @@ export class MercadoPagoService {
   }
 
   async getPayment(paymentId: string): Promise<MPPaymentResult> {
-    const payment = await this.paymentClient.get({ id: paymentId });
+    await this.initClient();
+    const payment = await this.paymentClient!.get({ id: paymentId });
 
     return {
       id: payment.id!,
@@ -130,15 +142,15 @@ export class MercadoPagoService {
     };
   }
 
-  validateWebhookSignature(params: ValidateWebhookParams): boolean {
-    const secret = process.env.MP_WEBHOOK_SECRET;
+  async validateWebhookSignature(params: ValidateWebhookParams): Promise<boolean> {
+    const config = await this.paymentConfigService.get();
+    const secret = config.mercadoPago.webhookSecret;
     if (!secret) {
-      throw new Error('MP_WEBHOOK_SECRET environment variable is required');
+      throw new AppError('PAYMENT_CONFIG_NOT_CONFIGURED', 'Mercado Pago webhook secret no configurado');
     }
 
     const { xSignature, xRequestId, dataId } = params;
 
-    // Parsear x-signature: "ts=xxx,v1=xxx"
     const parts = xSignature.split(',');
     const tsEntry = parts.find((p) => p.trim().startsWith('ts='));
     const v1Entry = parts.find((p) => p.trim().startsWith('v1='));
@@ -150,8 +162,6 @@ export class MercadoPagoService {
     const ts = tsEntry.split('=')[1];
     const v1 = v1Entry.split('=')[1];
 
-    // Construir el manifest según la documentación de MP
-    // Si un valor no está presente, se omite del manifest
     let manifest = '';
     if (dataId) manifest += `id:${dataId};`;
     manifest += `request-id:${xRequestId};ts:${ts};`;

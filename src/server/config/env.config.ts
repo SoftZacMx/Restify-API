@@ -20,11 +20,14 @@ const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_SUBSCRIPTION_WEBHOOK_SECRET: z.string().optional(),
 
-  // Mercado Pago
-  MP_ACCESS_TOKEN: z.string({ required_error: 'MP_ACCESS_TOKEN is required' }),
+  // Mercado Pago (opcionales — pueden vivir en BD vía paymentConfig)
+  MP_ACCESS_TOKEN: z.string().optional(),
   MP_NOTIFICATION_URL: z.string().optional(),
   MP_WEBHOOK_SECRET: z.string().optional(),
   MP_BACK_URL: z.string().optional(),
+
+  // Encriptación de config de pagos
+  PAYMENT_CONFIG_ENCRYPTION_KEY: z.string().length(64, 'Must be 64-char hex (32 bytes)'),
 });
 
 export function validateEnv(): void {

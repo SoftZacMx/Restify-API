@@ -14,6 +14,7 @@ export interface ICompanyRepository {
     startOperations?: string | null;
     endOperations?: string | null;
     ticketConfig?: unknown | null;
+    paymentConfig?: string | null;
   }): Promise<Company>;
   update(
     id: string,
@@ -29,6 +30,7 @@ export interface ICompanyRepository {
       startOperations?: string | null;
       endOperations?: string | null;
       ticketConfig?: unknown | null;
+      paymentConfig?: string | null;
     }
   ): Promise<Company>;
 }

@@ -1,4 +1,5 @@
 import { MercadoPagoService } from '../../../src/core/infrastructure/payment-gateways/mercado-pago.service';
+import { PaymentConfigService } from '../../../src/core/application/services/payment-config.service';
 
 // Mock mercadopago SDK
 const mockPreferenceCreate = jest.fn();
@@ -16,26 +17,26 @@ jest.mock('mercadopago', () => ({
   })),
 }));
 
+const mockPaymentConfig = {
+  mercadoPago: {
+    accessToken: 'TEST-token-123',
+    webhookSecret: 'webhook-secret-123',
+  },
+};
+
 describe('MercadoPagoService', () => {
   let service: MercadoPagoService;
+  let mockPaymentConfigService: jest.Mocked<PaymentConfigService>;
 
   beforeEach(() => {
-    process.env.MP_ACCESS_TOKEN = 'TEST-token-123';
-    process.env.MP_WEBHOOK_SECRET = 'webhook-secret-123';
+    process.env.MP_BACK_URL = 'https://restify.app';
     jest.clearAllMocks();
-    service = new MercadoPagoService();
-  });
-
-  afterEach(() => {
-    delete process.env.MP_ACCESS_TOKEN;
-    delete process.env.MP_WEBHOOK_SECRET;
-  });
-
-  describe('constructor', () => {
-    it('should throw error if MP_ACCESS_TOKEN is not set', () => {
-      delete process.env.MP_ACCESS_TOKEN;
-      expect(() => new MercadoPagoService()).toThrow('MP_ACCESS_TOKEN environment variable is required');
-    });
+    mockPaymentConfigService = {
+      get: jest.fn().mockResolvedValue(mockPaymentConfig),
+      save: jest.fn(),
+      clearCache: jest.fn(),
+    } as any;
+    service = new MercadoPagoService(mockPaymentConfigService);
   });
 
   describe('createPreference', () => {
@@ -76,6 +77,11 @@ describe('MercadoPagoService', () => {
           })],
           external_reference: 'order-123',
           notification_url: 'https://api.restify.com/webhooks/mercado-pago',
+          back_urls: {
+            success: 'https://restify.app/payment/success',
+            failure: 'https://restify.app/payment/failure?status=failure',
+            pending: 'https://restify.app/payment/pending?status=pending',
+          },
           expires: true,
           payment_methods: expect.objectContaining({
             excluded_payment_types: [{ id: 'ticket' }],
@@ -153,7 +159,7 @@ describe('MercadoPagoService', () => {
   });
 
   describe('validateWebhookSignature', () => {
-    it('should return true for a valid signature', () => {
+    it('should return true for a valid signature', async () => {
       const crypto = require('crypto');
       const secret = 'webhook-secret-123';
       const dataId = '12345';
@@ -163,7 +169,7 @@ describe('MercadoPagoService', () => {
       const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
       const expectedHmac = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
 
-      const result = service.validateWebhookSignature({
+      const result = await service.validateWebhookSignature({
         xSignature: `ts=${ts},v1=${expectedHmac}`,
         xRequestId,
         dataId,
@@ -172,8 +178,8 @@ describe('MercadoPagoService', () => {
       expect(result).toBe(true);
     });
 
-    it('should return false for an invalid signature', () => {
-      const result = service.validateWebhookSignature({
+    it('should return false for an invalid signature', async () => {
+      const result = await service.validateWebhookSignature({
         xSignature: 'ts=123,v1=invalidsignature',
         xRequestId: 'req-abc',
         dataId: '12345',
@@ -182,8 +188,8 @@ describe('MercadoPagoService', () => {
       expect(result).toBe(false);
     });
 
-    it('should return false when x-signature format is invalid', () => {
-      const result = service.validateWebhookSignature({
+    it('should return false when x-signature format is invalid', async () => {
+      const result = await service.validateWebhookSignature({
         xSignature: 'malformed-header',
         xRequestId: 'req-abc',
         dataId: '12345',
@@ -192,14 +198,16 @@ describe('MercadoPagoService', () => {
       expect(result).toBe(false);
     });
 
-    it('should throw error if MP_WEBHOOK_SECRET is not set', () => {
-      delete process.env.MP_WEBHOOK_SECRET;
+    it('should throw error if webhook secret is not configured', async () => {
+      mockPaymentConfigService.get.mockResolvedValue({
+        mercadoPago: { ...mockPaymentConfig.mercadoPago, webhookSecret: '' },
+      });
 
-      expect(() => service.validateWebhookSignature({
+      await expect(service.validateWebhookSignature({
         xSignature: 'ts=123,v1=abc',
         xRequestId: 'req-abc',
         dataId: '12345',
-      })).toThrow('MP_WEBHOOK_SECRET environment variable is required');
+      })).rejects.toThrow('Mercado Pago webhook secret no configurado');
     });
   });
 });

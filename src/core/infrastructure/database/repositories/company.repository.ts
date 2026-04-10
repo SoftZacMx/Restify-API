@@ -25,6 +25,7 @@ export class CompanyRepository implements ICompanyRepository {
     startOperations?: string | null;
     endOperations?: string | null;
     ticketConfig?: unknown | null;
+    paymentConfig?: string | null;
   }): Promise<Company> {
     const company = await this.prisma.company.create({
       data: {
@@ -44,6 +45,7 @@ export class CompanyRepository implements ICompanyRepository {
               ? Prisma.JsonNull
               : (data.ticketConfig as Prisma.InputJsonValue),
         }),
+        ...(data.paymentConfig !== undefined && { paymentConfig: data.paymentConfig }),
       },
     });
     return this.toEntity(company);
@@ -63,6 +65,7 @@ export class CompanyRepository implements ICompanyRepository {
       startOperations?: string | null;
       endOperations?: string | null;
       ticketConfig?: unknown | null;
+      paymentConfig?: string | null;
     }
   ): Promise<Company> {
     const company = await this.prisma.company.update({
@@ -84,6 +87,7 @@ export class CompanyRepository implements ICompanyRepository {
               ? Prisma.JsonNull
               : (data.ticketConfig as Prisma.InputJsonValue),
         }),
+        ...(data.paymentConfig !== undefined && { paymentConfig: data.paymentConfig }),
       },
     });
     return this.toEntity(company);
@@ -102,6 +106,7 @@ export class CompanyRepository implements ICompanyRepository {
     startOperations: string | null;
     endOperations: string | null;
     ticketConfig: Prisma.JsonValue | null;
+    paymentConfig: string | null;
     createdAt: Date;
     updatedAt: Date;
   }): Company {
@@ -118,6 +123,7 @@ export class CompanyRepository implements ICompanyRepository {
       row.startOperations,
       row.endOperations,
       row.ticketConfig,
+      row.paymentConfig,
       row.createdAt,
       row.updatedAt
     );

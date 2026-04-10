@@ -46,6 +46,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     null,
     null,
     null,
+    null,
     new Date(),
     new Date()
   );

@@ -319,6 +319,11 @@ export const ERROR_CONFIG = {
     statusCode: 404,
     category: 'BUSINESS',
   },
+  PAYMENT_CONFIG_NOT_CONFIGURED: {
+    message: 'La configuración de pagos no está completa',
+    statusCode: 500,
+    category: 'SYSTEM',
+  },
   SUBSCRIPTION_PRICE_NOT_CONFIGURED: {
     message: 'El precio de suscripción no está configurado',
     statusCode: 500,
