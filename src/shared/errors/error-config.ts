@@ -120,6 +120,11 @@ export const ERROR_CONFIG = {
     statusCode: 404,
     category: 'BUSINESS',
   },
+  MENU_ITEM_NOT_AVAILABLE: {
+    message: 'Menu item is not available',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
   INVALID_MENU_ITEM: {
     message: 'Menu item is an extra and should be in the extras array',
     statusCode: 400,

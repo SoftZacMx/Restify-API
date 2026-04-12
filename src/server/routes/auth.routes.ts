@@ -91,6 +91,19 @@ router.post(
 );
 
 /**
+ * POST /api/auth/recover-password/:user_id
+ * Reset password endpoint (público — flujo de recuperación sin sesión)
+ * El frontend primero verifica el email con /verify-user, obtiene el user_id,
+ * y luego llama a este endpoint para cambiar la contraseña.
+ * Protegido con rate limiting: 3 intentos por 15 minutos.
+ */
+router.post(
+  '/recover-password/:user_id',
+  passwordResetRateLimiter,
+  setPasswordController
+);
+
+/**
  * POST /api/auth/logout
  * Logout endpoint
  * Clears the HttpOnly cookie containing the JWT token

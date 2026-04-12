@@ -27,7 +27,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
   const mockOrder = new Order(
     orderId, new Date(), false, null, 150.50, 129.74, 20.76,
-    false, 'table-1', 0, 'Local', null, false, null, userId, new Date(), new Date()
+    false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, new Date(), new Date()
   );
 
   beforeEach(() => {
@@ -114,7 +114,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
       const updatedOrder = new Order(
         orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
-        false, 'table-1', 0, 'Local', null, false, null, userId, new Date(), new Date()
+        false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, new Date(), new Date()
       );
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
 
@@ -338,7 +338,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
     it('should not release table for non-local orders', async () => {
       const deliveryOrder = new Order(
         orderId, new Date(), false, null, 150.50, 129.74, 20.76,
-        false, null, 0, 'Delivery', null, false, null, userId, new Date(), new Date()
+        false, null, 0, 'Delivery', null, false, null, userId, null, null, null, null, null, null, null, new Date(), new Date()
       );
 
       mockMercadoPagoService.getPayment.mockResolvedValue({
@@ -365,7 +365,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
       const updatedOrder = new Order(
         orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
-        false, null, 0, 'Delivery', null, false, null, userId, new Date(), new Date()
+        false, null, 0, 'Delivery', null, false, null, userId, null, null, null, null, null, null, null, new Date(), new Date()
       );
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
 

@@ -36,7 +36,13 @@ export const createOrderSchema = z.object({
   client: z.string().max(200, 'Client name is too long').optional().nullable(),
   paymentDiffer: z.boolean().optional().default(false),
   note: z.string().max(1000, 'Note is too long').optional().nullable(),
-  userId: z.string().uuid('Invalid user ID format'),
+  userId: z.string().uuid('Invalid user ID format').optional().nullable(),
+  customerName: z.string().max(200, 'Customer name is too long').optional().nullable(),
+  customerPhone: z.string().max(13, 'Customer phone must be at most 13 digits').optional().nullable(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
+  deliveryAddress: z.string().max(500, 'Delivery address is too long').optional().nullable(),
+  scheduledAt: z.string().datetime().optional().nullable(),
   orderItems: z.array(orderItemSchema).min(1, 'At least one order item must be provided'),
 });
 
@@ -112,6 +118,11 @@ export const listOrdersSchema = z.object({
 // Delete Order Schema (path parameter)
 export const deleteOrderSchema = z.object({
   order_id: z.string().uuid('Invalid order ID format'),
+});
+
+// Update Delivery Status Schema (body)
+export const updateDeliveryStatusSchema = z.object({
+  status: z.enum(['PREPARING', 'READY', 'ON_THE_WAY', 'DELIVERED']),
 });
 
 // Type exports

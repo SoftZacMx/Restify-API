@@ -33,3 +33,6 @@ container.register('MercadoPagoService', { useFactory: () => container.resolve(M
 container.register(PayOrderWithQRMercadoPagoUseCase, PayOrderWithQRMercadoPagoUseCase);
 container.register(ConfirmMercadoPagoPaymentUseCase, ConfirmMercadoPagoPaymentUseCase);
 container.register(GetQRPaymentStatusUseCase, GetQRPaymentStatusUseCase);
+
+import { PayPublicOrderUseCase } from '../../../application/use-cases/payments/pay-public-order.use-case';
+container.register(PayPublicOrderUseCase, PayPublicOrderUseCase);

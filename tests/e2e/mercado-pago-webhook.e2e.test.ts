@@ -240,12 +240,12 @@ describe('Mercado Pago Webhook E2E Tests', () => {
 
   const unpaidOrder = new Order(
     orderId, new Date(), false, null, 150.00, 129.31, 20.69,
-    false, tableId, 0, 'Local', null, false, null, userId, new Date(), new Date()
+    false, tableId, 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, new Date(), new Date()
   );
 
   const paidOrder = new Order(
     orderId, new Date(), true, 4, 150.00, 129.31, 20.69,
-    true, tableId, 0, 'Local', null, false, null, userId, new Date(), new Date()
+    true, tableId, 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, new Date(), new Date()
   );
 
   const mockTable = new Table(tableId, 'Mesa 1', userId, true, true, new Date(), new Date());

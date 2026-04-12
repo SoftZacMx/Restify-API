@@ -40,7 +40,7 @@ export interface CreateOrderResult {
   client: string | null;
   paymentDiffer: boolean;
   note: string | null;
-  userId: string;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
   orderItems?: Array<{
@@ -90,9 +90,11 @@ export class CreateOrderUseCase {
       }
     }
 
-    const user = await this.userRepository.findById(input.userId);
-    if (!user) {
-      throw new AppError('USER_NOT_FOUND');
+    if (input.userId) {
+      const user = await this.userRepository.findById(input.userId);
+      if (!user) {
+        throw new AppError('USER_NOT_FOUND');
+      }
     }
 
     if (input.tableId) {

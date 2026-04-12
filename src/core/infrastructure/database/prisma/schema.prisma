@@ -76,13 +76,20 @@ model Order {
   origin        String // 'Local', 'Delivery', 'Order', etc.
   client        String?
   paymentDiffer Boolean  @default(false)
-  note          String?
-  userId        String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  note             String?
+  userId           String?
+  customerName     String?           // Nombre del cliente (pedidos online)
+  customerPhone    String?           // Teléfono del cliente (pedidos online)
+  latitude         Float?            // Coordenadas para domicilio
+  longitude        Float?            // Coordenadas para domicilio
+  deliveryAddress  String?   @db.Text // Dirección de referencia
+  scheduledAt      DateTime?         // Hora programada de entrega/recolección
+  trackingToken    String?   @unique  // Token UUID para seguimiento público
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Relations
-  user                   User                    @relation(fields: [userId], references: [id])
+  user                   User?                   @relation(fields: [userId], references: [id])
   table                  Table?                  @relation(fields: [tableId], references: [id])
   orderItems             OrderItem[]
   orderItemExtras        OrderItemExtra[]

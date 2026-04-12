@@ -36,6 +36,7 @@ describe('PayOrderWithQRMercadoPagoUseCase', () => {
     false,
     null,
     userId,
+    null, null, null, null, null, null, null,
     new Date(),
     new Date()
   );
@@ -172,7 +173,7 @@ describe('PayOrderWithQRMercadoPagoUseCase', () => {
   it('should throw ORDER_ALREADY_PAID when order is already paid', async () => {
     const paidOrder = new Order(
       orderId, new Date(), true, 1, 150.50, 129.74, 20.76,
-      false, null, 0, 'Local', null, false, null, userId, new Date(), new Date()
+      false, null, 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, new Date(), new Date()
     );
     mockOrderRepository.findById.mockResolvedValue(paidOrder);
 

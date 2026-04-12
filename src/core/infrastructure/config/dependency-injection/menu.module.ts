@@ -3,6 +3,7 @@ import { MenuCategoryRepository } from '../../database/repositories/menu-categor
 import { IMenuCategoryRepository } from '../../../domain/interfaces/menu-category-repository.interface';
 import { MenuItemRepository } from '../../database/repositories/menu-item.repository';
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
+import { ListPublicMenuUseCase } from '../../../application/use-cases/menu-items/list-public-menu.use-case';
 import { prismaClient } from './prisma.module';
 
 container.register<IMenuCategoryRepository>('IMenuCategoryRepository', {
@@ -12,3 +13,5 @@ container.register<IMenuCategoryRepository>('IMenuCategoryRepository', {
 container.register<IMenuItemRepository>('IMenuItemRepository', {
   useFactory: () => new MenuItemRepository(prismaClient),
 });
+
+container.register(ListPublicMenuUseCase, ListPublicMenuUseCase);

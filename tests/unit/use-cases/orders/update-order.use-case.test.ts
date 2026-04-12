@@ -93,6 +93,7 @@ describe('UpdateOrderUseCase', () => {
       false,
       null,
       'user-123',
+      null, null, null, null, null, null, null,
       new Date(),
       new Date()
     );
@@ -118,6 +119,7 @@ describe('UpdateOrderUseCase', () => {
         existingOrder.paymentDiffer,
         existingOrder.note,
         existingOrder.userId,
+        null, null, null, null, null, null, null,
         existingOrder.createdAt,
         new Date(),
       );
@@ -158,6 +160,7 @@ describe('UpdateOrderUseCase', () => {
         existingOrder.paymentDiffer,
         'Updated note',
         existingOrder.userId,
+        null, null, null, null, null, null, null,
         existingOrder.createdAt,
         new Date(),
       );
@@ -207,6 +210,7 @@ describe('UpdateOrderUseCase', () => {
         existingOrder.paymentDiffer,
         existingOrder.note,
         existingOrder.userId,
+        null, null, null, null, null, null, null,
         existingOrder.createdAt,
         new Date(),
       );
@@ -244,6 +248,7 @@ describe('UpdateOrderUseCase', () => {
         existingOrder.paymentDiffer,
         existingOrder.note,
         existingOrder.userId,
+        null, null, null, null, null, null, null,
         existingOrder.createdAt,
         new Date(),
       );
@@ -322,6 +327,7 @@ describe('UpdateOrderUseCase', () => {
         existingOrder.paymentDiffer,
         existingOrder.note,
         existingOrder.userId,
+        null, null, null, null, null, null, null,
         existingOrder.createdAt,
         new Date(),
       );
@@ -359,6 +365,7 @@ describe('UpdateOrderUseCase', () => {
         true, // paymentDiffer
         existingOrder.note,
         existingOrder.userId,
+        null, null, null, null, null, null, null,
         existingOrder.createdAt,
         new Date(),
       );

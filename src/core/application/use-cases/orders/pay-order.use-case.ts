@@ -84,6 +84,10 @@ export class PayOrderUseCase {
         throw new AppError('PAYMENT_AMOUNT_MISMATCH', `Amount must match order total. Order total: ${orderTotal}, received: ${amount}`);
       }
 
+      if (!order.userId) {
+        throw new AppError('VALIDATION_ERROR', 'Cannot process payment: order has no associated user');
+      }
+
       const payment = await tx.payment.create({
         data: {
           orderId: order.id,
@@ -158,6 +162,10 @@ export class PayOrderUseCase {
       const method2 = toPaymentMethodEnum(secondPayment.paymentMethod);
       if (method1 === method2) {
         throw new AppError('SPLIT_PAYMENT_SAME_METHOD', 'Split payments must use different payment methods');
+      }
+
+      if (!order.userId) {
+        throw new AppError('VALIDATION_ERROR', 'Cannot process payment: order has no associated user');
       }
 
       const paymentDiff = await tx.paymentDifferentiation.create({

@@ -95,6 +95,7 @@ describe('GetOrderUseCase', () => {
         false,
         null,
         'user-123',
+        null, null, null, null, null, null, null,
         new Date(),
         new Date()
       );
@@ -184,6 +185,7 @@ describe('GetOrderUseCase', () => {
         false,
         null,
         'user-123',
+        null, null, null, null, null, null, null,
         new Date(),
         new Date()
       );

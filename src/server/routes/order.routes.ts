@@ -8,9 +8,10 @@ import {
   updateOrderController,
   deleteOrderController,
   payOrderController,
+  updateDeliveryStatusController,
 } from '../../controllers/orders';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
-import { createOrderSchema, listOrdersSchema, getOrderSchema, updateOrderSchema, deleteOrderSchema } from '../../core/application/dto/order.dto';
+import { createOrderSchema, listOrdersSchema, getOrderSchema, updateOrderSchema, deleteOrderSchema, updateDeliveryStatusSchema } from '../../core/application/dto/order.dto';
 import { payOrderSchema } from '../../core/application/dto/payment.dto';
 import { AuthMiddleware } from '../middleware/auth.middleware';
 
@@ -41,6 +42,9 @@ router.get('/:order_id', zodValidator({ schema: getOrderSchema, source: 'params'
 
 /** PUT /api/orders/:order_id */
 router.put('/:order_id', zodValidator({ schema: updateOrderSchema, source: 'body' }), updateOrderController);
+
+/** PUT /api/orders/:order_id/delivery-status */
+router.put('/:order_id/delivery-status', AuthMiddleware.authorize('ADMIN', 'MANAGER'), zodValidator({ schema: updateDeliveryStatusSchema, source: 'body' }), updateDeliveryStatusController);
 
 /** DELETE /api/orders/:order_id (solo ADMIN y MANAGER) */
 router.delete('/:order_id', AuthMiddleware.authorize('ADMIN', 'MANAGER'), zodValidator({ schema: deleteOrderSchema, source: 'params' }), deleteOrderController);

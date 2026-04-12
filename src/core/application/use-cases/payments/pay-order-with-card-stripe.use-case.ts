@@ -44,6 +44,10 @@ export class PayOrderWithCardStripeUseCase {
       throw new AppError('ORDER_ALREADY_PAID');
     }
 
+    if (!order.userId) {
+      throw new AppError('VALIDATION_ERROR', 'Cannot process payment: order has no associated user');
+    }
+
     // 2. Create payment with PENDING status
     const payment = await this.paymentRepository.create({
       orderId: order.id,

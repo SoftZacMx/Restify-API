@@ -6,3 +6,4 @@ export { listOrdersController } from './list-orders.controller';
 export { updateOrderController } from './update-order.controller';
 export { deleteOrderController } from './delete-order.controller';
 export { payOrderController } from './pay-order.controller';
+export { updateDeliveryStatusController } from './update-delivery-status.controller';

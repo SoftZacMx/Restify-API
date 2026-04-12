@@ -32,6 +32,7 @@ export enum WebSocketEventType {
   ORDER_UPDATED = 'order_updated',
   ORDER_DELIVERED = 'order_delivered',
   ORDER_CANCELED = 'order_canceled',
+  ORDER_NEW_ONLINE = 'order_new_online',
 
   // Error events
   ERROR = 'error',

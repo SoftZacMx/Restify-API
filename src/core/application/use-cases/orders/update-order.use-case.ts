@@ -21,7 +21,7 @@ export interface UpdateOrderResult {
   client: string | null;
   paymentDiffer: boolean;
   note: string | null;
-  userId: string;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
   orderItems?: Array<{

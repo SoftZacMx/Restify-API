@@ -14,6 +14,7 @@ export interface OrderFilters {
 
 export interface IOrderRepository {
   findById(id: string): Promise<Order | null>;
+  findByTrackingToken(trackingToken: string): Promise<Order | null>;
   findAll(filters?: OrderFilters, pagination?: { skip: number; take: number }): Promise<Order[]>;
   count(filters?: OrderFilters): Promise<number>;
   create(data: {
@@ -30,7 +31,14 @@ export interface IOrderRepository {
     client: string | null;
     paymentDiffer: boolean;
     note: string | null;
-    userId: string;
+    userId: string | null;
+    customerName?: string | null;
+    customerPhone?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    deliveryAddress?: string | null;
+    scheduledAt?: Date | null;
+    trackingToken?: string | null;
   }): Promise<Order>;
   update(id: string, data: {
     status?: boolean;

@@ -16,6 +16,7 @@ import companyRoutes from './company.routes';
 import healthRoutes from './health.routes';
 import subscriptionRoutes from './subscription.routes';
 import settingsRoutes from './settings.routes';
+import publicRoutes from './public.routes';
 import { SubscriptionMiddleware } from '../middleware/subscription.middleware';
 
 const router = Router();
@@ -26,6 +27,9 @@ router.use('/health', healthRoutes);
 // Rutas SIN validación de suscripción (siempre accesibles)
 router.use('/api/auth', authRoutes);
 router.use('/api/subscription', subscriptionRoutes);
+
+// Rutas públicas: sin auth, CON validación de suscripción
+router.use('/api/public', SubscriptionMiddleware.validateSubscription, publicRoutes);
 
 router.use(SubscriptionMiddleware.validateSubscription);
 

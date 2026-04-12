@@ -7,15 +7,7 @@ import { OrderItemExtra } from '../../../domain/entities/order-item-extra.entity
 export class OrderRepository implements IOrderRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async findById(id: string): Promise<Order | null> {
-    const order = await this.prisma.order.findUnique({
-      where: { id },
-    });
-
-    if (!order) {
-      return null;
-    }
-
+  private toEntity(order: any): Order {
     return new Order(
       order.id,
       order.date,
@@ -32,9 +24,40 @@ export class OrderRepository implements IOrderRepository {
       order.paymentDiffer,
       order.note,
       order.userId,
+      order.customerName ?? null,
+      order.customerPhone ?? null,
+      order.latitude ?? null,
+      order.longitude ?? null,
+      order.deliveryAddress ?? null,
+      order.scheduledAt ?? null,
+      order.trackingToken ?? null,
       order.createdAt,
       order.updatedAt
     );
+  }
+
+  async findById(id: string): Promise<Order | null> {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+    });
+
+    if (!order) {
+      return null;
+    }
+
+    return this.toEntity(order);
+  }
+
+  async findByTrackingToken(trackingToken: string): Promise<Order | null> {
+    const order = await this.prisma.order.findUnique({
+      where: { trackingToken },
+    });
+
+    if (!order) {
+      return null;
+    }
+
+    return this.toEntity(order);
   }
 
   private buildWhereFromFilters(filters?: OrderFilters): Record<string, unknown> {
@@ -77,28 +100,7 @@ export class OrderRepository implements IOrderRepository {
       ...(pagination && { skip: pagination.skip, take: pagination.take }),
     });
 
-    return orders.map(
-      (order) =>
-        new Order(
-          order.id,
-          order.date,
-          order.status,
-          order.paymentMethod,
-          Number(order.total),
-          Number(order.subtotal),
-          Number(order.iva),
-          order.delivered,
-          order.tableId,
-          Number(order.tip),
-          order.origin,
-          order.client,
-          order.paymentDiffer,
-          order.note,
-          order.userId,
-          order.createdAt,
-          order.updatedAt
-        )
-    );
+    return orders.map((order) => this.toEntity(order));
   }
 
   async count(filters?: OrderFilters): Promise<number> {
@@ -120,7 +122,14 @@ export class OrderRepository implements IOrderRepository {
     client: string | null;
     paymentDiffer: boolean;
     note: string | null;
-    userId: string;
+    userId: string | null;
+    customerName?: string | null;
+    customerPhone?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    deliveryAddress?: string | null;
+    scheduledAt?: Date | null;
+    trackingToken?: string | null;
   }): Promise<Order> {
     const order = await this.prisma.order.create({
       data: {
@@ -138,28 +147,17 @@ export class OrderRepository implements IOrderRepository {
         paymentDiffer: data.paymentDiffer,
         note: data.note,
         userId: data.userId,
+        customerName: data.customerName ?? null,
+        customerPhone: data.customerPhone ?? null,
+        latitude: data.latitude ?? null,
+        longitude: data.longitude ?? null,
+        deliveryAddress: data.deliveryAddress ?? null,
+        scheduledAt: data.scheduledAt ?? null,
+        trackingToken: data.trackingToken ?? null,
       },
     });
 
-    return new Order(
-      order.id,
-      order.date,
-      order.status,
-      order.paymentMethod,
-      Number(order.total),
-      Number(order.subtotal),
-      Number(order.iva),
-      order.delivered,
-      order.tableId,
-      Number(order.tip),
-      order.origin,
-      order.client,
-      order.paymentDiffer,
-      order.note,
-      order.userId,
-      order.createdAt,
-      order.updatedAt
-    );
+    return this.toEntity(order);
   }
 
   async update(
@@ -199,25 +197,7 @@ export class OrderRepository implements IOrderRepository {
       data: updateData,
     });
 
-    return new Order(
-      order.id,
-      order.date,
-      order.status,
-      order.paymentMethod,
-      Number(order.total),
-      Number(order.subtotal),
-      Number(order.iva),
-      order.delivered,
-      order.tableId,
-      Number(order.tip),
-      order.origin,
-      order.client,
-      order.paymentDiffer,
-      order.note,
-      order.userId,
-      order.createdAt,
-      order.updatedAt
-    );
+    return this.toEntity(order);
   }
 
   async delete(id: string): Promise<void> {

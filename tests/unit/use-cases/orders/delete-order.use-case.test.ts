@@ -70,6 +70,7 @@ describe('DeleteOrderUseCase', () => {
         false,
         null,
         'user-123',
+        null, null, null, null, null, null, null,
         new Date(),
         new Date()
       );
