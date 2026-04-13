@@ -125,6 +125,46 @@ export const updateDeliveryStatusSchema = z.object({
   status: z.enum(['PREPARING', 'READY', 'ON_THE_WAY', 'DELIVERED']),
 });
 
+// ============================================
+// Public Order Schemas
+// ============================================
+
+// Public Order Item Extra Schema
+const publicOrderItemExtraSchema = z.object({
+  extraId: z.string().uuid('Invalid extra ID format'),
+  quantity: z.number().int().positive('Quantity must be positive').max(99, 'Max 99 per extra').default(1),
+});
+
+// Public Order Item Schema
+const publicOrderItemSchema = z.object({
+  menuItemId: z.string().uuid('Invalid menu item ID format'),
+  quantity: z.number().int().positive('Quantity must be positive').max(99, 'Max 99 per item'),
+  note: z.string().max(50, 'Note must be at most 50 characters').optional().nullable(),
+  extras: z.array(publicOrderItemExtraSchema).optional(),
+});
+
+// Create Public Order Schema
+export const createPublicOrderSchema = z.object({
+  customerName: z.string().min(1, 'Customer name is required').max(200, 'Customer name is too long'),
+  customerPhone: z.string().min(10, 'Phone must be at least 10 digits').max(13, 'Phone must be at most 13 digits'),
+  orderType: z.enum(['DELIVERY', 'PICKUP']),
+  deliveryAddress: z.string().max(500, 'Delivery address is too long').optional().nullable(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
+  scheduledAt: z.string().datetime().optional().nullable(),
+  items: z.array(publicOrderItemSchema).min(1, 'At least one item is required').max(50, 'Max 50 items per order'),
+});
+
+// Pay Public Order Schema (path parameter)
+export const payPublicOrderParamsSchema = z.object({
+  orderId: z.string().uuid('Invalid order ID format'),
+});
+
+// Get Public Order Status Schema (path parameter)
+export const getPublicOrderStatusParamsSchema = z.object({
+  trackingToken: z.string().uuid('Invalid tracking token format'),
+});
+
 // Type exports
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type UpdateOrderInput = z.infer<typeof updateOrderSchema>;

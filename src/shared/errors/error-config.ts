@@ -150,6 +150,11 @@ export const ERROR_CONFIG = {
     statusCode: 400,
     category: 'BUSINESS',
   },
+  ORDER_ALREADY_DELIVERED: {
+    message: 'Order has already been delivered',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
   PAYMENT_AMOUNT_MISMATCH: {
     message: 'Payment amount must match order total',
     statusCode: 400,

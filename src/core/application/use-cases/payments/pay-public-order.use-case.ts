@@ -66,7 +66,7 @@ export class PayPublicOrderUseCase {
     // 3. Crear Payment PENDING (sin userId — orden pública)
     const payment = await this.paymentRepository.create({
       orderId: order.id,
-      userId: 'public',
+      userId: null,
       amount: order.total,
       currency: 'MXN',
       status: PaymentStatus.PENDING,

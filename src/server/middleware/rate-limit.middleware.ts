@@ -60,3 +60,60 @@ export const passwordResetRateLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
+/**
+ * Rate limiter for public menu endpoint
+ * Allows frequent reads but prevents excessive polling
+ */
+export const publicMenuRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 30, // 30 req/min por IP
+  message: {
+    success: false,
+    error: {
+      code: 'TOO_MANY_REQUESTS',
+      message: 'Too many requests. Please try again later.',
+    },
+    timestamp: new Date().toISOString(),
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/**
+ * Rate limiter for public order creation
+ * Strict limit to prevent order spam from bots
+ */
+export const publicOrderRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 5, // 5 órdenes/min por IP
+  message: {
+    success: false,
+    error: {
+      code: 'TOO_MANY_REQUESTS',
+      message: 'Too many orders. Please try again later.',
+    },
+    timestamp: new Date().toISOString(),
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/**
+ * Rate limiter for public order status polling
+ * Allows frequent polling but prevents abuse
+ */
+export const publicStatusRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 60, // 60 req/min por IP (polling cada 15s = 4/min)
+  message: {
+    success: false,
+    error: {
+      code: 'TOO_MANY_REQUESTS',
+      message: 'Too many requests. Please try again later.',
+    },
+    timestamp: new Date().toISOString(),
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+

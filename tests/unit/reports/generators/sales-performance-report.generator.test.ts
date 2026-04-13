@@ -28,6 +28,7 @@ describe('SalesPerformanceReportGenerator', () => {
   beforeEach(() => {
     mockOrderRepository = {
       findById: jest.fn(),
+      findByTrackingToken: jest.fn(),
       findAll: jest.fn(),
       count: jest.fn(),
       create: jest.fn(),

@@ -4,7 +4,7 @@ export class Payment {
   constructor(
     public readonly id: string,
     public readonly orderId: string | null,
-    public readonly userId: string,
+    public readonly userId: string | null,
     public readonly amount: number,
     public readonly currency: string,
     public readonly status: PaymentStatus,

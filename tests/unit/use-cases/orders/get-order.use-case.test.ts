@@ -20,6 +20,7 @@ describe('GetOrderUseCase', () => {
   beforeEach(() => {
     mockOrderRepository = {
       findById: jest.fn(),
+      findByTrackingToken: jest.fn(),
       findAll: jest.fn(),
       count: jest.fn(),
       create: jest.fn(),
@@ -95,7 +96,7 @@ describe('GetOrderUseCase', () => {
         false,
         null,
         'user-123',
-        null, null, null, null, null, null, null,
+        null, null, null, null, null, null, null, null,
         new Date(),
         new Date()
       );
@@ -185,7 +186,7 @@ describe('GetOrderUseCase', () => {
         false,
         null,
         'user-123',
-        null, null, null, null, null, null, null,
+        null, null, null, null, null, null, null, null,
         new Date(),
         new Date()
       );

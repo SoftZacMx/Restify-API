@@ -26,6 +26,7 @@ describe('ListOrdersUseCase', () => {
   beforeEach(() => {
     mockOrderRepository = {
       findById: jest.fn(),
+      findByTrackingToken: jest.fn(),
       findAll: jest.fn(),
       count: jest.fn(),
       create: jest.fn(),
@@ -69,7 +70,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),
@@ -89,6 +90,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-456',
+          null,
           null,
           null,
           null,
@@ -133,7 +135,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),
@@ -188,7 +190,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),
@@ -233,7 +235,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),
@@ -278,7 +280,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),
@@ -323,7 +325,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),
@@ -370,7 +372,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),

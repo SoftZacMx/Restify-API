@@ -18,7 +18,7 @@ export interface IPaymentRepository {
   findAll(filters?: PaymentFilters): Promise<Payment[]>;
   create(data: {
     orderId?: string | null;
-    userId: string;
+    userId: string | null;
     amount: number;
     currency?: string;
     status: PaymentStatus;

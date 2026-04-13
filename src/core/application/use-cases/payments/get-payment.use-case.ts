@@ -6,7 +6,7 @@ import { AppError } from '../../../../shared/errors';
 export interface GetPaymentResult {
   id: string;
   orderId: string | null;
-  userId: string;
+  userId: string | null;
   amount: number;
   currency: string;
   status: string;

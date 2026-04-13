@@ -31,6 +31,7 @@ export class OrderRepository implements IOrderRepository {
       order.deliveryAddress ?? null,
       order.scheduledAt ?? null,
       order.trackingToken ?? null,
+      order.deliveryStatus ?? null,
       order.createdAt,
       order.updatedAt
     );
@@ -175,6 +176,7 @@ export class OrderRepository implements IOrderRepository {
       total?: number;
       subtotal?: number;
       iva?: number;
+      deliveryStatus?: string | null;
     }
   ): Promise<Order> {
     const updateData: any = {};
@@ -191,6 +193,7 @@ export class OrderRepository implements IOrderRepository {
     if (data.total !== undefined) updateData.total = data.total;
     if (data.subtotal !== undefined) updateData.subtotal = data.subtotal;
     if (data.iva !== undefined) updateData.iva = data.iva;
+    if (data.deliveryStatus !== undefined) updateData.deliveryStatus = data.deliveryStatus;
 
     const order = await this.prisma.order.update({
       where: { id },

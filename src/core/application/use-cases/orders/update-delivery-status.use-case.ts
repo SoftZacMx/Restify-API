@@ -27,9 +27,16 @@ export class UpdateDeliveryStatusUseCase {
       throw new AppError('VALIDATION_ERROR', 'Delivery status can only be updated for online orders');
     }
 
+    if (order.delivered) {
+      throw new AppError('ORDER_ALREADY_DELIVERED');
+    }
+
     const delivered = input.status === 'DELIVERED';
 
-    await this.orderRepository.update(orderId, { delivered });
+    await this.orderRepository.update(orderId, {
+      delivered,
+      deliveryStatus: input.status,
+    });
 
     return {
       id: order.id,

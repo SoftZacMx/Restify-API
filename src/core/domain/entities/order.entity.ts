@@ -22,6 +22,7 @@ export class Order {
     public readonly deliveryAddress: string | null,
     public readonly scheduledAt: Date | null,
     public readonly trackingToken: string | null,
+    public readonly deliveryStatus: string | null,
     public readonly createdAt: Date,
     public readonly updatedAt: Date
   ) {}

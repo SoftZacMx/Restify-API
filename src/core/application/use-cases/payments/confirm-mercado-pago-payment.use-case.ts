@@ -93,10 +93,15 @@ export class ConfirmMercadoPagoPaymentUseCase {
       // Actualizar Order: status = true, paymentMethod = 4 (QR MP)
       const existingOrder = await this.orderRepository.findById(pendingPayment.orderId);
 
+      // Órdenes online: no marcar como entregada al pagar (el admin gestiona la entrega)
+      const isOnline = existingOrder &&
+        (existingOrder.origin === 'online-delivery' || existingOrder.origin === 'online-pickup');
+
       const order = await this.orderRepository.update(pendingPayment.orderId, {
         status: true,
         paymentMethod: 4, // 4 = QR Mercado Pago
-        delivered: true,
+        delivered: !isOnline,
+        ...(isOnline && { deliveryStatus: 'PAID' }),
       });
       updatedOrder = {
         id: order.id,

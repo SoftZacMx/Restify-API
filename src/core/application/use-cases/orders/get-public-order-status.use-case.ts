@@ -27,9 +27,11 @@ export class GetPublicOrderStatusUseCase {
       throw new AppError('ORDER_NOT_FOUND');
     }
 
-    // Determinar estado público
+    // Determinar estado público: usar deliveryStatus si existe, sino inferir
     let status: PublicOrderStatus['status'];
-    if (!order.status && !order.delivered) {
+    if (order.deliveryStatus) {
+      status = order.deliveryStatus as PublicOrderStatus['status'];
+    } else if (!order.status) {
       status = 'PENDING_PAYMENT';
     } else if (order.status && !order.delivered) {
       status = 'PAID';

@@ -27,7 +27,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
   const mockOrder = new Order(
     orderId, new Date(), false, null, 150.50, 129.74, 20.76,
-    false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, new Date(), new Date()
+    false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
   );
 
   beforeEach(() => {
@@ -42,6 +42,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
     mockOrderRepository = {
       findById: jest.fn(),
+      findByTrackingToken: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -114,7 +115,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
       const updatedOrder = new Order(
         orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
-        false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, new Date(), new Date()
+        false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
       );
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
 
@@ -338,7 +339,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
     it('should not release table for non-local orders', async () => {
       const deliveryOrder = new Order(
         orderId, new Date(), false, null, 150.50, 129.74, 20.76,
-        false, null, 0, 'Delivery', null, false, null, userId, null, null, null, null, null, null, null, new Date(), new Date()
+        false, null, 0, 'Delivery', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
       );
 
       mockMercadoPagoService.getPayment.mockResolvedValue({
@@ -365,13 +366,70 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
       const updatedOrder = new Order(
         orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
-        false, null, 0, 'Delivery', null, false, null, userId, null, null, null, null, null, null, null, new Date(), new Date()
+        false, null, 0, 'Delivery', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
       );
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
 
       const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
 
       expect(result!.tableReleased).toBe(false);
+      expect(mockTableRepository.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('online orders', () => {
+    it('should NOT mark as delivered and should set deliveryStatus PAID for online orders', async () => {
+      const onlineOrder = new Order(
+        orderId, new Date(), false, null, 150.50, 129.74, 20.76,
+        false, null, 0, 'online-delivery', null, false, null, null,
+        'Juan', '5512345678', 19.43, -99.13, 'Calle 1', null, 'token-abc', null,
+        new Date(), new Date()
+      );
+
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'approved',
+        statusDetail: 'accredited',
+        externalReference: orderId,
+        transactionAmount: 150.50,
+        currencyId: 'MXN',
+        paymentMethodId: 'account_money',
+        paymentTypeId: 'account_money',
+        dateApproved: '2026-04-12T12:00:00.000Z',
+      });
+
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+
+      const updatedPayment = new Payment(
+        paymentId, orderId, null, 150.50, 'MXN',
+        PaymentStatus.SUCCEEDED, PaymentMethod.QR_MERCADO_PAGO,
+        PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date()
+      );
+      mockPaymentRepository.update.mockResolvedValue(updatedPayment);
+      mockOrderRepository.findById.mockResolvedValue(onlineOrder);
+
+      const updatedOrder = new Order(
+        orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
+        false, null, 0, 'online-delivery', null, false, null, null,
+        'Juan', '5512345678', 19.43, -99.13, 'Calle 1', null, 'token-abc', 'PAID',
+        new Date(), new Date()
+      );
+      mockOrderRepository.update.mockResolvedValue(updatedOrder);
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
+
+      expect(result).not.toBeNull();
+      expect(result!.order?.status).toBe(true);
+
+      // Should NOT mark as delivered for online orders
+      expect(mockOrderRepository.update).toHaveBeenCalledWith(orderId, {
+        status: true,
+        paymentMethod: 4,
+        delivered: false,
+        deliveryStatus: 'PAID',
+      });
+
+      // Should NOT release table (online orders have no table)
       expect(mockTableRepository.update).not.toHaveBeenCalled();
     });
   });

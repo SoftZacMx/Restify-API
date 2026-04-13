@@ -40,6 +40,7 @@ model Order {
   deliveryAddress  String?   @db.Text  // Dirección de referencia
   scheduledAt      DateTime? // Hora programada de entrega/recolección
   trackingToken    String?   @unique   // Token UUID para link de seguimiento público
+  deliveryStatus   String?             // Estado de entrega: PENDING_PAYMENT, PAID, PREPARING, READY, ON_THE_WAY, DELIVERED
 
   @@map("orders")
 }
@@ -369,3 +370,139 @@ Fase 1 (Modelo de datos) → Campos en Order + usuario público
 - **El flujo de pago usa redirect a MP**, no QR. El cliente en su celular abre el link de MP, paga, y MP lo redirige de vuelta.
 - **Sin carrito persistente en servidor.** El carrito vive en localStorage del cliente. Solo se envía al backend al hacer checkout.
 - **Compatible con SaaS futuro.** Cuando se implemente multi-tenancy, la ruta cambia de `/menu` a `/r/:slug` y se agrega la capa de routing por tenant.
+
+---
+
+## Mejoras Pendientes
+
+### 1. Validación Zod en rutas públicas
+
+**Problema:** Las rutas `POST /api/public/orders` y `POST /api/public/orders/:orderId/pay` no tienen middleware `zodValidator`. El body llega sin sanitizar directo al use case. Un request malformado (campos faltantes, tipos incorrectos) genera errores internos en vez de un 400 limpio.
+
+**Solución:** Crear schemas Zod para los inputs públicos (`createPublicOrderSchema`, `payPublicOrderSchema`) y agregar `zodValidator` en `public.routes.ts`, igual que las rutas internas.
+
+### 2. Rate limiting en rutas públicas
+
+**Problema:** Las rutas públicas no tienen rate limiting. Un bot podría crear miles de órdenes o hacer polling masivo al endpoint de status.
+
+**Solución:** Agregar middleware de rate limiting específico para `/api/public` con límites más estrictos que las rutas internas. Ejemplo: 10 req/min para `POST /orders`, 30 req/min para `GET /menu`, 60 req/min para `GET /status`.
+
+### 3. Transacción atómica en CreatePublicOrderUseCase
+
+**Problema:** La creación de orden, items y extras se hace con llamadas separadas al repositorio. Si falla a mitad de crear items (ej. error de BD), la orden queda con items parciales sin forma de limpiar.
+
+**Solución:** Envolver la creación de orden + items + extras en una transacción de Prisma (`prisma.$transaction`), similar a como lo hace `CreateOrderUseCase` del POS. Si algo falla, se hace rollback completo.
+
+### 4. Validación de datos del cliente
+
+**Problema:** `customerName` y `customerPhone` no se validan en el use case. Pueden venir vacíos, con caracteres inválidos, o con formato de teléfono incorrecto. La validación debería estar en el schema Zod (punto 1), pero el use case tampoco valida como segunda capa.
+
+**Solución:** El schema Zod debería validar: `customerName` min 1 char, max 200; `customerPhone` regex de formato telefónico (10-13 dígitos). No es necesario validar en el use case si Zod lo cubre.
+
+### 5. Límite de cantidad por item
+
+**Problema:** No hay límite en la cantidad de un item. Un usuario podría pedir 999999 unidades de un producto, generando una orden con total absurdo.
+
+**Solución:** Validar en el schema Zod que `quantity` sea max 99 (o el límite que tenga sentido para el negocio). También se puede agregar un límite máximo de items por orden (ej. 50).
+
+### 6. Bloqueo de entrega después de DELIVERED
+
+**Problema:** Una vez que una orden se marca como DELIVERED, el `UpdateDeliveryStatusUseCase` permite cambiar el estado de vuelta (ej. a PREPARING). No hay validación que bloquee cambios post-entrega.
+
+**Solución:** Agregar validación en `UpdateDeliveryStatusUseCase`: si `order.delivered === true`, lanzar `AppError('ORDER_ALREADY_DELIVERED')`.
+
+### Prioridad sugerida
+
+| # | Mejora | Impacto | Esfuerzo | Estado |
+|---|--------|---------|----------|--------|
+| 1 | Validación Zod | Alto (seguridad) | Bajo | Hecho |
+| 2 | Rate limiting | Alto (abuso) | Bajo | Hecho |
+| 3 | Transacción atómica | Alto (integridad) | Medio | Hecho |
+| 6 | Bloqueo post-entrega | Medio (lógica) | Bajo | Hecho |
+| 4 | Validación cliente | Medio (UX) | Bajo | Cubierto por #1 |
+| 5 | Límite cantidad | Bajo (edge case) | Bajo | Cubierto por #1 |
+| 7 | Validación horario de operación | Alto (lógica) | Bajo | Hecho |
+
+---
+
+## Mejoras Críticas Pendientes (Post-Auditoría)
+
+Identificadas después de auditoría completa del flujo. Priorizadas para contexto de restaurante pequeño con BD y deploy propio.
+
+### 7. Race condition en checkout (Frontend)
+
+**Problema:** En `PublicCheckoutPage`, si `payOrder` falla después de guardar el `trackingToken` en localStorage, el token queda stale. Cuando MP redirige de vuelta, `PaymentResultPage` lee el token y redirige a una página de tracking de una orden que nunca se pagó.
+
+**Flujo actual:**
+```
+1. createOrder → OK, recibe trackingToken
+2. localStorage.setItem('publicOrderTrackingToken', token)  ← se guarda aquí
+3. payOrder → FALLA (error de MP, timeout, etc.)
+4. catch → muestra toast de error
+5. Token queda en localStorage sin limpiar
+```
+
+**Solución:**
+- En el `catch` del `handlePayWithMP`, limpiar el token: `localStorage.removeItem('publicOrderTrackingToken')`
+- Opcionalmente, mover el `setItem` después de `payOrder` y antes del redirect, usando un micro-delay para asegurar persistencia
+
+**Archivos:** `Restify-Frontend/src/presentation/pages/public-checkout/PublicCheckoutPage.tsx`
+**Esfuerzo:** Bajo (1 línea en el catch)
+
+### 8. Limpieza de órdenes huérfanas (Backend)
+
+**Problema:** Cuando un cliente crea una orden pero nunca completa el pago (abandona el checkout, cierra el navegador, etc.), la orden queda con `status: false` en la BD para siempre. Con el tiempo se acumulan y contaminan el listado de órdenes y los reportes del admin.
+
+**Impacto:** Órdenes fantasma en el panel del restaurante. Confusión al ver órdenes "pendientes" que nadie va a pagar.
+
+**Solución:** Crear un job/cron que periódicamente (cada hora) busque órdenes con:
+- `status = false` (no pagadas)
+- `origin IN ('online-delivery', 'online-pickup')` (solo públicas)
+- `createdAt < NOW() - INTERVAL 24 HOURS` (más de 24h sin pagar)
+
+Y las marque como canceladas o las elimine.
+
+**Alternativa simple:** No crear un cron — filtrar en el listado de órdenes del admin para excluir órdenes públicas no pagadas con más de 24h. Así no se ven en el panel pero quedan en la BD como historial.
+
+**Archivos:** Nuevo use case `CleanupStaleOrdersUseCase` + cron job o filtro en `ListOrdersUseCase`
+**Esfuerzo:** Medio
+
+### 9. Validación de `scheduledAt` en el pasado (Backend)
+
+**Problema:** El `CreatePublicOrderUseCase` valida que `scheduledAt` esté dentro del horario de operación, pero no valida que no sea una fecha pasada. Un cliente puede programar un pickup para ayer.
+
+**Solución:** Agregar validación antes de la verificación de horario:
+```typescript
+if (input.scheduledAt) {
+  const scheduled = new Date(input.scheduledAt);
+  if (scheduled < new Date()) {
+    throw new AppError('VALIDATION_ERROR', 'No se puede programar un pedido en el pasado');
+  }
+}
+```
+
+**Archivos:** `Restify-API/src/core/application/use-cases/orders/create-public-order.use-case.ts`
+**Esfuerzo:** Bajo (5 líneas)
+
+### 10. Polling no se detiene después de DELIVERED (Frontend)
+
+**Problema:** La página de tracking (`PublicOrderTrackingPage`) hace polling cada 15 segundos al endpoint de status, incluso después de que la orden fue entregada. Es tráfico innecesario al backend.
+
+**Solución:** Cambiar el `refetchInterval` para que sea condicional:
+```typescript
+refetchInterval: data?.status === 'DELIVERED' || data?.status === 'READY' && data?.orderType === 'PICKUP' ? false : 15000,
+```
+Para delivery: parar en DELIVERED.
+Para pickup: parar en READY (último estado visible).
+
+**Archivos:** `Restify-Frontend/src/presentation/pages/public-tracking/PublicOrderTrackingPage.tsx`
+**Esfuerzo:** Bajo (1 línea)
+
+### Prioridad de mejoras críticas
+
+| # | Mejora | Impacto | Esfuerzo |
+|---|--------|---------|----------|
+| 7 | Race condition checkout | Alto (UX rota) | Bajo |
+| 9 | scheduledAt en pasado | Alto (lógica) | Bajo |
+| 10 | Polling post-entrega | Medio (performance) | Bajo |
+| 8 | Órdenes huérfanas | Medio (datos basura) | Medio |

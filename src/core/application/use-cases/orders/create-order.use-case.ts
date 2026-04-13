@@ -7,23 +7,7 @@ import { ICompanyRepository } from '../../../domain/interfaces/company-repositor
 import { PrismaService } from '../../../infrastructure/config/prisma.config';
 import { CreateOrderInput } from '../../dto/order.dto';
 import { AppError } from '../../../../shared/errors';
-
-/** Convierte "HH:mm" a minutos desde medianoche (0-1439) */
-function timeToMinutes(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return h * 60 + m;
-}
-
-/** Indica si la hora actual (HH:mm) está dentro del rango [start, end]. Soporta cruce de medianoche (ej. 22:00 a 02:00). */
-function isWithinOperatingHours(nowHhmm: string, start: string, end: string): boolean {
-  const now = timeToMinutes(nowHhmm);
-  const startMin = timeToMinutes(start);
-  const endMin = timeToMinutes(end);
-  if (startMin <= endMin) {
-    return now >= startMin && now <= endMin;
-  }
-  return now >= startMin || now <= endMin;
-}
+import { isWithinOperatingHours } from '../../../../shared/utils/operating-hours.util';
 
 export interface CreateOrderResult {
   id: string;

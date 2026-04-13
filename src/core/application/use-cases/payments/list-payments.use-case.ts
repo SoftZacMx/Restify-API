@@ -6,7 +6,7 @@ import { PaymentStatus, PaymentMethod } from '@prisma/client';
 export interface ListPaymentsResult {
   id: string;
   orderId: string | null;
-  userId: string;
+  userId: string | null;
   amount: number;
   currency: string;
   status: PaymentStatus;

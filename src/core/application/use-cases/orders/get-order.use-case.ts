@@ -31,6 +31,14 @@ export interface GetOrderResult {
   paymentDiffer: boolean;
   note: string | null;
   userId: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  deliveryAddress: string | null;
+  scheduledAt: Date | null;
+  trackingToken: string | null;
+  deliveryStatus: string | null;
   createdAt: Date;
   updatedAt: Date;
   orderItems?: Array<{
@@ -134,6 +142,14 @@ export class GetOrderUseCase {
       paymentDiffer: order.paymentDiffer,
       note: order.note,
       userId: order.userId,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      latitude: order.latitude,
+      longitude: order.longitude,
+      deliveryAddress: order.deliveryAddress,
+      scheduledAt: order.scheduledAt,
+      trackingToken: order.trackingToken,
+      deliveryStatus: order.deliveryStatus,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       orderItems: orderItems.map((item) => {

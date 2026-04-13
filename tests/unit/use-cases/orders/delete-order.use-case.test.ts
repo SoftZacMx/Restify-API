@@ -12,6 +12,7 @@ describe('DeleteOrderUseCase', () => {
   beforeEach(() => {
     mockOrderRepository = {
       findById: jest.fn(),
+      findByTrackingToken: jest.fn(),
       findAll: jest.fn(),
       count: jest.fn(),
       create: jest.fn(),
@@ -70,7 +71,7 @@ describe('DeleteOrderUseCase', () => {
         false,
         null,
         'user-123',
-        null, null, null, null, null, null, null,
+        null, null, null, null, null, null, null, null,
         new Date(),
         new Date()
       );

@@ -85,6 +85,7 @@ model Order {
   deliveryAddress  String?   @db.Text // Dirección de referencia
   scheduledAt      DateTime?         // Hora programada de entrega/recolección
   trackingToken    String?   @unique  // Token UUID para seguimiento público
+  deliveryStatus   String?           // PENDING_PAYMENT, PAID, PREPARING, READY, ON_THE_WAY, DELIVERED
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -155,7 +156,7 @@ model OrderItemExtra {
 model Payment {
   id                   String          @id @default(uuid())
   orderId              String?
-  userId               String
+  userId               String?
   amount               Decimal         @db.Decimal(10, 2)
   currency             String          @default("USD")
   status               PaymentStatus
@@ -168,7 +169,7 @@ model Payment {
 
   // Relations
   order          Order?          @relation(fields: [orderId], references: [id])
-  user           User            @relation(fields: [userId], references: [id])
+  user           User?           @relation(fields: [userId], references: [id])
   refunds        Refund[]
   paymentSession PaymentSession?
 

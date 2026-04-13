@@ -53,6 +53,7 @@ export interface IOrderRepository {
     total?: number;
     subtotal?: number;
     iva?: number;
+    deliveryStatus?: string | null;
   }): Promise<Order>;
   delete(id: string): Promise<void>;
   
