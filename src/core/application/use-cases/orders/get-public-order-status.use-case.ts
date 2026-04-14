@@ -19,12 +19,16 @@ export class GetPublicOrderStatusUseCase {
   constructor(
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository
-  ) {}
+  ) { }
 
   async execute(trackingToken: string): Promise<PublicOrderStatus> {
     const order = await this.orderRepository.findByTrackingToken(trackingToken);
     if (!order) {
       throw new AppError('ORDER_NOT_FOUND');
+    }
+
+    if (order.deliveryStatus === 'DELIVERED') {
+      throw new AppError('ORDER_ALREADY_DELIVERED');
     }
 
     // Determinar estado público: usar deliveryStatus si existe, sino inferir
