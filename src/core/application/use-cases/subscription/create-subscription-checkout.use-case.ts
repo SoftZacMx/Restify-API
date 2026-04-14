@@ -65,7 +65,8 @@ export class CreateSubscriptionCheckoutUseCase {
     }
 
     // 6. Crear Checkout Session con el stripePriceId del plan
-    const successUrl = process.env.STRIPE_SUCCESS_URL || 'http://localhost:5173/subscription/success';
+    const baseSuccessUrl = process.env.STRIPE_SUCCESS_URL || 'http://localhost:5173/subscription/success';
+    const successUrl = `${baseSuccessUrl}?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = process.env.STRIPE_CANCEL_URL || 'http://localhost:5173/subscription/cancel';
 
     const session = await this.stripeSubscriptionService.createCheckoutSession({

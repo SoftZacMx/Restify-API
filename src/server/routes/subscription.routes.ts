@@ -6,6 +6,7 @@ import {
   reactivateSubscriptionController,
   stripeWebhookController,
   listSubscriptionPlansController,
+  verifySubscriptionCheckoutController,
 } from '../../controllers/subscription';
 import { AuthMiddleware } from '../middleware/auth.middleware';
 
@@ -29,6 +30,9 @@ router.use(AuthMiddleware.authorize('ADMIN'));
 
 /** POST /api/subscription/checkout */
 router.post('/checkout', createSubscriptionCheckoutController);
+
+/** POST /api/subscription/verify-checkout — Verifica y actualiza estado post-pago */
+router.post('/verify-checkout', verifySubscriptionCheckoutController);
 
 /** GET /api/subscription/status */
 router.get('/status', getSubscriptionStatusController);

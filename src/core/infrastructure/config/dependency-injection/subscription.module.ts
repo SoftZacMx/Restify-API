@@ -9,6 +9,7 @@ import { GetSubscriptionStatusUseCase } from '../../../application/use-cases/sub
 import { CancelSubscriptionUseCase } from '../../../application/use-cases/subscription/cancel-subscription.use-case';
 import { ReactivateSubscriptionUseCase } from '../../../application/use-cases/subscription/reactivate-subscription.use-case';
 import { ListSubscriptionPlansUseCase } from '../../../application/use-cases/subscription/list-subscription-plans.use-case';
+import { VerifySubscriptionCheckoutUseCase } from '../../../application/use-cases/subscription/verify-subscription-checkout.use-case';
 import { prismaClient } from './prisma.module';
 
 container.register<ISubscriptionRepository>('ISubscriptionRepository', {
@@ -25,3 +26,4 @@ container.register(GetSubscriptionStatusUseCase, GetSubscriptionStatusUseCase);
 container.register(CancelSubscriptionUseCase, CancelSubscriptionUseCase);
 container.register(ReactivateSubscriptionUseCase, ReactivateSubscriptionUseCase);
 container.register(ListSubscriptionPlansUseCase, ListSubscriptionPlansUseCase);
+container.register(VerifySubscriptionCheckoutUseCase, VerifySubscriptionCheckoutUseCase);

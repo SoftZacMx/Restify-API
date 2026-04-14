@@ -105,6 +105,21 @@ export class StripeSubscriptionService {
     };
   }
 
+  async getCheckoutSession(sessionId: string): Promise<{
+    id: string;
+    paymentStatus: string;
+    subscriptionId: string | null;
+    customerId: string | null;
+  }> {
+    const session = await this.stripe.checkout.sessions.retrieve(sessionId);
+    return {
+      id: session.id,
+      paymentStatus: session.payment_status,
+      subscriptionId: session.subscription as string | null,
+      customerId: session.customer as string | null,
+    };
+  }
+
   async cancelSubscription(subscriptionId: string): Promise<void> {
     await this.stripe.subscriptions.update(subscriptionId, {
       cancel_at_period_end: true,
