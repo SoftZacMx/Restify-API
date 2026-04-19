@@ -22,7 +22,7 @@ export class LoginUseCase {
     @inject('IUserRepository') private readonly userRepository: IUserRepository
   ) {}
 
-  async execute(input: LoginInput, userRol?: string): Promise<LoginResult> {
+  async execute(input: LoginInput): Promise<LoginResult> {
     const { email, password } = input;
 
     // Find user by email

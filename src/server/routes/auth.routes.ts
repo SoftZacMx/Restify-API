@@ -10,13 +10,13 @@ import { AuthMiddleware, AuthenticatedRequest } from '../middleware/auth.middlew
 const router = Router();
 
 /**
- * POST /api/auth/login/:rol
+ * POST /api/auth/login
  * Login endpoint
  * Protected with rate limiting: 5 attempts per 15 minutes
  * Sets HttpOnly cookie with JWT token for secure authentication
  */
 router.post(
-  '/login/:rol',
+  '/login',
   authRateLimiter,
   zodValidator({ schema: loginSchema, source: 'body' }),
   async (req: Request, res: Response, next: NextFunction) => {
@@ -25,7 +25,7 @@ router.post(
       const { LoginUseCase } = await import('../../core/application/use-cases/auth/login.use-case');
 
       const loginUseCase = container.resolve(LoginUseCase);
-      const result = await loginUseCase.execute(req.body, req.params.rol);
+      const result = await loginUseCase.execute(req.body);
 
       const isProduction = process.env.NODE_ENV === 'production';
       res.cookie('token', result.token, {

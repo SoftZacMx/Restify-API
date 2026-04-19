@@ -39,7 +39,7 @@ describe('Login Integration Test', () => {
       rol: 'ADMIN',
     };
 
-    const result = await loginUseCase.execute(input, 'ADMIN');
+    const result = await loginUseCase.execute(input);
     expect(result).toHaveProperty('token');
     expect(result).toHaveProperty('user');
     expect(result.user.id).toBeDefined();

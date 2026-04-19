@@ -6,7 +6,7 @@ import { sendSuccess } from '../../shared/middleware/response-formatter.middlewa
 export const loginController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const loginUseCase = container.resolve(LoginUseCase);
-    const result = await loginUseCase.execute(req.body, req.params.rol);
+    const result = await loginUseCase.execute(req.body);
     sendSuccess(res, result);
   } catch (error) {
     next(error);
