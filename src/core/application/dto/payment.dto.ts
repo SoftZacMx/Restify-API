@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dateFilterSchema } from '../../../shared/schemas/date-filter.schema';
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
 
 // Pay Order with Cash Schema
@@ -122,8 +123,8 @@ export const listPaymentsSchema = z.object({
   userId: z.string().uuid('Invalid user ID format').optional(),
   status: z.nativeEnum(PaymentStatus).optional(),
   paymentMethod: z.nativeEnum(PaymentMethod).optional(),
-  dateFrom: z.string().optional(), // ISO date string
-  dateTo: z.string().optional(), // ISO date string
+  dateFrom: dateFilterSchema.optional(),
+  dateTo: dateFilterSchema.optional(),
 });
 
 // Get Payment Session Schema

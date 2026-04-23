@@ -163,6 +163,29 @@ npm run test:coverage
 - [Tecnologías](./TECNOLOGIAS.md) - Stack tecnológico completo
 - [Resumen del Plan](./RESUMEN_PLAN.md) - Resumen ejecutivo
 
+## 🕐 Zona Horaria y Fechas
+
+### Convenciones
+
+- **Todas** las columnas `DateTime` en Prisma/MySQL se almacenan en **UTC**. Verificado en QA: `@@global.time_zone = SYSTEM` resuelto a UTC, `NOW() == UTC_TIMESTAMP()`.
+- La zona horaria de aplicacion es `America/Mexico_City`, expuesta como constante `APP_TIMEZONE` en `src/shared/constants/timezone.constants.ts`. Se usa en los bordes (display, agrupacion por dia, parseo de input date-only), **no** en las consultas a la DB.
+- Los rangos de fecha (`dateFrom`, `dateTo`) aceptan dos formatos:
+  - `YYYY-MM-DD` (legacy): se interpreta como inicio/fin de dia en `APP_TIMEZONE` via `parseReportRangeDateFrom/To` y `fromZonedTime`.
+  - ISO 8601 completo (preferido): `2026-04-22T06:00:00.000Z`. Se parsea con `new Date(iso)` sin conversion adicional.
+- Agrupacion por dia en reportes: se deriva `YYYY-MM-DD` con `formatInTimeZone(date, APP_TIMEZONE, 'yyyy-MM-dd')`. Nunca con `toISOString().slice(0,10)` (UTC) ni `getDate()/getMonth()` (server-local).
+
+### Verificacion
+
+```bash
+npx ts-node scripts/verify-timezone.ts
+```
+
+Imprime la TZ del servidor MySQL, `NOW()` vs `UTC_TIMESTAMP()` y las ultimas 3 ordenes. `NOW - UTC_TIMESTAMP = 0h` confirma que el servidor esta en UTC.
+
+### Variable de entorno `TZ`
+
+La TZ del proceso Node (`process.env.TZ`) afecta solo a `toString()`, `toLocaleString()` y formatos *locales*, **no** a `new Date()` ni `.toISOString()`. No es un sustituto del manejo explicito en codigo con `date-fns-tz`. En Railway puede quedarse en `America/Mexico_City` (util para logs) sin afectar la correctitud de la aplicacion, ya que todas las conversiones importantes usan `APP_TIMEZONE` directamente.
+
 ## 🔐 Seguridad
 
 - No commitear archivos `.env`

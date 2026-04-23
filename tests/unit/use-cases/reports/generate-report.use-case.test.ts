@@ -46,9 +46,12 @@ describe('GenerateReportUseCase', () => {
       expect(result.type).toBe(ReportType.CASH_FLOW);
       expect(result.data).toBeDefined();
       expect(mockReportFactory.create).toHaveBeenCalledWith(ReportType.CASH_FLOW);
+      // YMD inputs are interpreted as bounds in APP_TIMEZONE (America/Mexico_City, UTC-6).
       expect(mockGenerator.generate).toHaveBeenCalledWith({
-        dateFrom: new Date(Date.UTC(2024, 0, 1, 0, 0, 0, 0)),
-        dateTo: new Date(Date.UTC(2024, 0, 31, 23, 59, 59, 999)),
+        dateFrom: new Date('2024-01-01T06:00:00.000Z'),
+        dateTo: new Date('2024-02-01T05:59:59.999Z'),
+        page: undefined,
+        pageSize: undefined,
       });
     });
 

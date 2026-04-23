@@ -1,29 +1,25 @@
 /**
- * Parse YYYY-MM-DD from report filters into UTC day bounds (inclusive).
- * Fixes: new Date('2026-03-19') is midnight UTC only — "Hasta" must be end of day.
+ * Parse rangos de fecha de reportes. Acepta:
+ *  - YYYY-MM-DD (legacy): se interpreta como inicio/fin de dia en APP_TIMEZONE.
+ *  - ISO 8601 completo: se interpreta como instante absoluto (preferido desde frontend).
  */
-const YMD_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+import { fromZonedTime } from 'date-fns-tz';
+import { APP_TIMEZONE } from '../constants';
+
+const YMD_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 export function parseReportRangeDateFrom(input: string): Date {
   const s = input.trim();
-  const m = YMD_ONLY.exec(s);
-  if (m) {
-    const y = Number(m[1]);
-    const mo = Number(m[2]);
-    const d = Number(m[3]);
-    return new Date(Date.UTC(y, mo - 1, d, 0, 0, 0, 0));
+  if (YMD_ONLY.test(s)) {
+    return fromZonedTime(`${s} 00:00:00.000`, APP_TIMEZONE);
   }
   return new Date(s);
 }
 
 export function parseReportRangeDateTo(input: string): Date {
   const s = input.trim();
-  const m = YMD_ONLY.exec(s);
-  if (m) {
-    const y = Number(m[1]);
-    const mo = Number(m[2]);
-    const d = Number(m[3]);
-    return new Date(Date.UTC(y, mo - 1, d, 23, 59, 59, 999));
+  if (YMD_ONLY.test(s)) {
+    return fromZonedTime(`${s} 23:59:59.999`, APP_TIMEZONE);
   }
   return new Date(s);
 }

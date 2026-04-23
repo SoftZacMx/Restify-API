@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dateFilterSchema } from '../../../shared/schemas/date-filter.schema';
 import { ExpenseType, UnitOfMeasure } from '@prisma/client';
 
 // Expense Type enum validation
@@ -61,8 +62,8 @@ export const listExpensesSchema = z.object({
   type: expenseTypeEnum.optional(),
   userId: z.string().uuid('Invalid user ID format').optional(),
   paymentMethod: z.optional(z.coerce.number().int().min(1).max(3)),
-  dateFrom: z.string().optional(), // ISO date string
-  dateTo: z.string().optional(), // ISO date string
+  dateFrom: dateFilterSchema.optional(),
+  dateTo: dateFilterSchema.optional(),
   page: z.string().regex(/^\d+$/).optional().transform((val) => (val ? parseInt(val, 10) : undefined)),
   pageSize: z.string().regex(/^\d+$/).optional().transform((val) => (val ? parseInt(val, 10) : undefined)),
 });
