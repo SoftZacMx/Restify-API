@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dateFilterSchema } from '../../../shared/schemas/date-filter.schema';
 
 // Create Employee Salary Payment Schema
 export const createEmployeeSalaryPaymentSchema = z.object({
@@ -26,8 +27,8 @@ export const getEmployeeSalaryPaymentSchema = z.object({
 export const listEmployeeSalaryPaymentsSchema = z.object({
   userId: z.string().uuid('Invalid user ID format').optional(),
   paymentMethod: z.number().int().min(1).max(3).optional(),
-  dateFrom: z.string().optional(), // ISO date string
-  dateTo: z.string().optional(), // ISO date string
+  dateFrom: dateFilterSchema.optional(),
+  dateTo: dateFilterSchema.optional(),
   page: z
     .string()
     .regex(/^\d+$/)

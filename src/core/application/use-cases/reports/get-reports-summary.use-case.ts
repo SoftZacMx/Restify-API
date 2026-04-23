@@ -1,6 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import type { ReportsSummaryQuery, ReportsSummaryResponse } from '../../dto/reports-summary.dto';
 import type { IReportsSummaryRepository } from '../../../domain/interfaces/reports-summary-repository.interface';
+import { parseReportRangeDateFrom, parseReportRangeDateTo } from '../../../../shared/utils/report-date-range.util';
 
 @injectable()
 export class GetReportsSummaryUseCase {
@@ -12,9 +13,9 @@ export class GetReportsSummaryUseCase {
   async execute(query?: ReportsSummaryQuery): Promise<ReportsSummaryResponse> {
     const now = new Date();
     const defaultDays = 30;
-    const dateTo = query?.dateTo ? new Date(query.dateTo + 'T23:59:59.999Z') : now;
+    const dateTo = query?.dateTo ? parseReportRangeDateTo(query.dateTo) : now;
     const dateFrom = query?.dateFrom
-      ? new Date(query.dateFrom + 'T00:00:00.000Z')
+      ? parseReportRangeDateFrom(query.dateFrom)
       : new Date(dateTo.getTime() - (defaultDays - 1) * 24 * 60 * 60 * 1000);
 
     if (dateFrom > dateTo) {

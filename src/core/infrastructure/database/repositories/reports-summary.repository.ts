@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { ExpenseType } from '@prisma/client';
+import { formatInTimeZone } from 'date-fns-tz';
 import type {
   ReportsSummaryResponse,
   ReportsSummaryKpis,
@@ -10,6 +11,7 @@ import type {
   DailyTableRow,
 } from '../../../application/dto/reports-summary.dto';
 import type { IReportsSummaryRepository } from '../../../domain/interfaces/reports-summary-repository.interface';
+import { APP_TIMEZONE } from '../../../../shared/constants';
 
 const PAYMENT_LABELS: Record<number, string> = {
   1: 'Efectivo',
@@ -26,17 +28,14 @@ const EXPENSE_TYPE_LABELS: Record<ExpenseType, string> = {
   OTHER: 'Otros',
 };
 
-/** Key as YYYY-MM-DD in UTC (for dateFrom/dateTo from query). */
+/** Key as YYYY-MM-DD in the app timezone (APP_TIMEZONE). */
 function toDateKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return formatInTimeZone(d, APP_TIMEZONE, 'yyyy-MM-dd');
 }
 
-/** Key as YYYY-MM-DD in server local time - so order dates match the calendar day. */
+/** Alias de toDateKey. Se mantiene para compatibilidad con callers existentes. */
 function toDateKeyLocal(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return toDateKey(d);
 }
 
 function getWeekLabel(dateStr: string, start: Date): string {

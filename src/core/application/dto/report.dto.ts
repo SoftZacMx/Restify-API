@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dateFilterSchema } from '../../../shared/schemas/date-filter.schema';
 import { ReportType } from '../../domain/interfaces/report-generator.interface';
 
 // Report Type enum validation
@@ -7,8 +8,8 @@ const reportTypeEnum = z.nativeEnum(ReportType);
 // Generate Report Schema
 export const generateReportSchema = z.object({
   type: reportTypeEnum,
-  dateFrom: z.string().optional(), // ISO date string
-  dateTo: z.string().optional(), // ISO date string
+  dateFrom: dateFilterSchema.optional(),
+  dateTo: dateFilterSchema.optional(),
   page: z
     .string()
     .regex(/^\d+$/)
