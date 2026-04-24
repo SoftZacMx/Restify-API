@@ -1,28 +1,28 @@
 import { inject, injectable } from 'tsyringe';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
+import { APP_TIMEZONE } from '../../../../shared/constants';
 import {
   DashboardResponse,
   DashboardOrderSummary,
   DashboardSalesByDayItem,
 } from '../../dto/dashboard.dto';
 
-const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-function startOfDayUTC(d: Date): Date {
-  const out = new Date(d);
-  out.setUTCHours(0, 0, 0, 0);
-  return out;
+function dateKeyInAppTz(date: Date): string {
+  return formatInTimeZone(date, APP_TIMEZONE, 'yyyy-MM-dd');
 }
 
-function endOfDayUTC(d: Date): Date {
-  const out = new Date(d);
-  out.setUTCHours(23, 59, 59, 999);
-  return out;
+function startOfDayInAppTz(dateKey: string): Date {
+  return fromZonedTime(`${dateKey} 00:00:00.000`, APP_TIMEZONE);
 }
 
-function toDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
+function endOfDayInAppTz(dateKey: string): Date {
+  return fromZonedTime(`${dateKey} 23:59:59.999`, APP_TIMEZONE);
+}
+
+function weekdayNameInAppTz(date: Date): string {
+  return formatInTimeZone(date, APP_TIMEZONE, 'EEEE');
 }
 
 function orderToSummary(
@@ -50,9 +50,11 @@ export class GetDashboardUseCase {
 
   async execute(): Promise<DashboardResponse> {
     const now = new Date();
-    const todayStart = startOfDayUTC(now);
-    const todayEnd = endOfDayUTC(now);
-    const sevenDaysAgoStart = startOfDayUTC(new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000));
+    const todayKey = dateKeyInAppTz(now);
+    const todayStart = startOfDayInAppTz(todayKey);
+    const todayEnd = endOfDayInAppTz(todayKey);
+    const sevenDaysAgoKey = dateKeyInAppTz(new Date(todayStart.getTime() - 6 * 24 * 60 * 60 * 1000));
+    const sevenDaysAgoStart = startOfDayInAppTz(sevenDaysAgoKey);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     const [
@@ -75,16 +77,16 @@ export class GetDashboardUseCase {
 
     const byDayMap = new Map<string, number>();
     for (const order of paidOrdersLast7Days) {
-      const key = toDateKey(order.date);
+      const key = dateKeyInAppTz(order.date);
       byDayMap.set(key, (byDayMap.get(key) ?? 0) + order.total);
     }
     const salesLast7DaysTotal = paidOrdersLast7Days.reduce((sum, o) => sum + o.total, 0);
     const byDay: DashboardSalesByDayItem[] = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(sevenDaysAgoStart.getTime() + i * 24 * 60 * 60 * 1000);
-      const key = toDateKey(d);
+      const key = dateKeyInAppTz(d);
       const total = byDayMap.get(key) ?? 0;
-      const dayName = WEEKDAY_NAMES[d.getUTCDay()];
+      const dayName = weekdayNameInAppTz(d);
       byDay.push({ date: key, day: dayName, total });
     }
 
