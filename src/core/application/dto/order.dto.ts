@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dateFilterSchema } from '../../../shared/schemas/date-filter.schema';
 
 // Order Item Extra Schema
 export const orderItemExtraSchema = z.object({
@@ -101,8 +102,8 @@ export const listOrdersSchema = z.object({
     return isNaN(num) ? undefined : num;
   }).optional(),
   origin: z.string().optional(),
-  dateFrom: z.string().optional(), // ISO date string
-  dateTo: z.string().optional(), // ISO date string
+  dateFrom: dateFilterSchema.optional(),
+  dateTo: dateFilterSchema.optional(),
   // Pagination: frontend sends page & limit, query uses them for skip/take in DB
   page: z.string().transform((val) => {
     const num = parseInt(val, 10);
