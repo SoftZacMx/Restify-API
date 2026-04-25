@@ -27,6 +27,7 @@ const EXPENSE_TYPE_LABELS: Record<ExpenseType, string> = {
   MERCHANDISE: 'Insumos',
   SALARY: 'Nómina',
   OTHER: 'Otros',
+  MERCADO_PAGO_FEE: 'Comisión Mercado Pago',
 };
 
 /** Key as YYYY-MM-DD in the app timezone (APP_TIMEZONE). */

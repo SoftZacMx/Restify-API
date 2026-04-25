@@ -11,6 +11,7 @@ import { MercadoPagoService } from '../../payment-gateways/mercado-pago.service'
 import { PayOrderWithQRMercadoPagoUseCase } from '../../../application/use-cases/payments/pay-order-with-qr-mercado-pago.use-case';
 import { ConfirmMercadoPagoPaymentUseCase } from '../../../application/use-cases/payments/confirm-mercado-pago-payment.use-case';
 import { GetQRPaymentStatusUseCase } from '../../../application/use-cases/payments/get-qr-payment-status.use-case';
+import { CreateMercadoPagoFeeExpenseUseCase } from '../../../application/use-cases/expenses/create-mercado-pago-fee-expense.use-case';
 import { prismaClient } from './prisma.module';
 
 container.register<IPaymentRepository>('IPaymentRepository', {
@@ -30,6 +31,7 @@ container.registerSingleton(StripeSubscriptionService);
 container.registerSingleton(MercadoPagoService);
 container.register('MercadoPagoService', { useFactory: () => container.resolve(MercadoPagoService) });
 
+container.register(CreateMercadoPagoFeeExpenseUseCase, CreateMercadoPagoFeeExpenseUseCase);
 container.register(PayOrderWithQRMercadoPagoUseCase, PayOrderWithQRMercadoPagoUseCase);
 container.register(ConfirmMercadoPagoPaymentUseCase, ConfirmMercadoPagoPaymentUseCase);
 container.register(GetQRPaymentStatusUseCase, GetQRPaymentStatusUseCase);

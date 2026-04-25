@@ -4,6 +4,7 @@ import { IOrderRepository } from '../../../domain/interfaces/order-repository.in
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { PaymentStatus, PaymentGateway } from '@prisma/client';
 import { MercadoPagoService } from '../../../infrastructure/payment-gateways/mercado-pago.service';
+import { CreateMercadoPagoFeeExpenseUseCase } from '../expenses/create-mercado-pago-fee-expense.use-case';
 
 export interface ConfirmMPPaymentInput {
   mpPaymentId: number;
@@ -48,6 +49,8 @@ export class ConfirmMercadoPagoPaymentUseCase {
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
     @inject('MercadoPagoService') private readonly mercadoPagoService: MercadoPagoService,
+    @inject(CreateMercadoPagoFeeExpenseUseCase)
+    private readonly createMpFeeExpenseUseCase: CreateMercadoPagoFeeExpenseUseCase,
   ) {}
 
   async execute(input: ConfirmMPPaymentInput): Promise<ConfirmMPPaymentResult | null> {
@@ -115,6 +118,29 @@ export class ConfirmMercadoPagoPaymentUseCase {
           availabilityStatus: true,
         });
         tableReleased = true;
+      }
+
+      // Registrar la comisión cobrada por MP como expense de operación.
+      // Idempotente por paymentId: si el webhook se reenvía, no se duplica.
+      const totalFee = mpPayment.feeDetails.reduce((sum, fee) => sum + fee.amount, 0);
+      if (totalFee > 0) {
+        try {
+          await this.createMpFeeExpenseUseCase.execute({
+            paymentId: pendingPayment.id,
+            orderId: pendingPayment.orderId,
+            mpPaymentId: mpPayment.id,
+            feeAmount: totalFee,
+            date: mpPayment.dateApproved ? new Date(mpPayment.dateApproved) : undefined,
+          });
+        } catch (err) {
+          // No fallar la confirmación del pago si el registro del gasto falla;
+          // el pago ya fue procesado exitosamente. Se loguea para observabilidad.
+          console.error('[ConfirmMP] Failed to record MP fee expense', {
+            paymentId: pendingPayment.id,
+            mpPaymentId: mpPayment.id,
+            err,
+          });
+        }
       }
     }
 

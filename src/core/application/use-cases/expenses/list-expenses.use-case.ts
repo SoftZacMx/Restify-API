@@ -13,8 +13,9 @@ export interface ListExpensesResult {
     iva: number;
     description: string | null;
     paymentMethod: number;
-    userId: string;
-    /** Nombre completo del usuario (nombre + apellidos). Join con User. */
+    userId: string | null;
+    paymentId: string | null;
+    /** Nombre completo del usuario (nombre + apellidos), o "Sistema" para gastos creados automáticamente. */
     userName: string;
     createdAt: Date;
   }>;
@@ -72,7 +73,8 @@ export class ListExpensesUseCase {
         description: expense.description,
         paymentMethod: expense.paymentMethod,
         userId: expense.userId,
-        userName: fullName(expense.user),
+        paymentId: expense.paymentId,
+        userName: expense.user ? fullName(expense.user) : 'Sistema',
         createdAt: expense.createdAt,
       })),
       pagination: {

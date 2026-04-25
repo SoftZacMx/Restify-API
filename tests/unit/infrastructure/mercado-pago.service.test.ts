@@ -136,6 +136,7 @@ describe('MercadoPagoService', () => {
         paymentMethodId: 'visa',
         paymentTypeId: 'credit_card',
         dateApproved: '2026-03-27T12:00:00.000Z',
+        feeDetails: [],
       });
       expect(mockPaymentGet).toHaveBeenCalledWith({ id: '12345' });
     });
@@ -155,6 +156,32 @@ describe('MercadoPagoService', () => {
 
       const result = await service.getPayment('12345');
       expect(result.dateApproved).toBeNull();
+    });
+
+    it('should map fee_details from MP API response, filtering out zero/negative amounts', async () => {
+      mockPaymentGet.mockResolvedValue({
+        id: 12345,
+        status: 'approved',
+        status_detail: 'accredited',
+        external_reference: 'order-123',
+        transaction_amount: 150.50,
+        currency_id: 'MXN',
+        payment_method_id: 'visa',
+        payment_type_id: 'credit_card',
+        date_approved: '2026-04-24T12:00:00.000Z',
+        fee_details: [
+          { type: 'mercadopago_fee', amount: 5.25, fee_payer: 'collector' },
+          { type: 'financing_fee', amount: 0, fee_payer: 'collector' }, // se filtra
+          { type: 'shipping_fee', amount: 1.10, fee_payer: 'collector' },
+        ],
+      });
+
+      const result = await service.getPayment('12345');
+
+      expect(result.feeDetails).toEqual([
+        { type: 'mercadopago_fee', amount: 5.25, feePayer: 'collector' },
+        { type: 'shipping_fee', amount: 1.10, feePayer: 'collector' },
+      ]);
     });
   });
 

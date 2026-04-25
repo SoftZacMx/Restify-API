@@ -16,7 +16,8 @@ export interface CreateExpenseResult {
     iva: number;
     description: string | null;
     paymentMethod: number;
-    userId: string;
+    userId: string | null;
+    paymentId: string | null;
     createdAt: Date;
   };
   items?: Array<{
@@ -113,6 +114,7 @@ export class CreateExpenseUseCase {
           description: result.expense.description,
           paymentMethod: result.expense.paymentMethod,
           userId: result.expense.userId,
+          paymentId: result.expense.paymentId,
           createdAt: result.expense.createdAt,
         },
         items: result.items.map((item) => ({
@@ -155,6 +157,7 @@ export class CreateExpenseUseCase {
           description: expense.description,
           paymentMethod: expense.paymentMethod,
           userId: expense.userId,
+          paymentId: expense.paymentId,
           createdAt: expense.createdAt,
         },
       };

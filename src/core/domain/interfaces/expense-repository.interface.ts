@@ -21,14 +21,16 @@ export interface ExpenseWithUser {
   iva: number;
   description: string | null;
   paymentMethod: number;
-  userId: string;
+  userId: string | null;
+  paymentId: string | null;
   createdAt: Date;
   updatedAt: Date;
+  /** null cuando el gasto fue creado por el sistema (sin usuario asociado). */
   user: {
     name: string;
     last_name: string;
     second_last_name: string | null;
-  };
+  } | null;
 }
 
 export interface ExpenseItemInput {
@@ -41,6 +43,8 @@ export interface ExpenseItemInput {
 
 export interface IExpenseRepository {
   findById(id: string): Promise<Expense | null>;
+  /** Busca un gasto por el paymentId (idempotencia para gastos derivados de un Payment). */
+  findByPaymentId(paymentId: string): Promise<Expense | null>;
   findAll(
     filters?: ExpenseFilters,
     pagination?: { skip?: number; take?: number }
@@ -59,7 +63,8 @@ export interface IExpenseRepository {
     iva: number;
     description?: string | null;
     paymentMethod: number;
-    userId: string;
+    userId: string | null;
+    paymentId?: string | null;
   }): Promise<Expense>;
   createWithItems(data: {
     title: string;
@@ -70,7 +75,7 @@ export interface IExpenseRepository {
     iva: number;
     description?: string | null;
     paymentMethod: number;
-    userId: string;
+    userId: string | null;
     items: ExpenseItemInput[];
   }): Promise<{ expense: Expense; items: ExpenseItem[] }>;
   update(

@@ -28,6 +28,12 @@ export interface MPPreferenceResult {
   expirationDate: string | null;
 }
 
+export interface MPFeeDetail {
+  type: string;     // ej. "mercadopago_fee", "financing_fee", "shipping_fee"
+  amount: number;   // monto absoluto en la moneda del pago
+  feePayer?: string; // "collector" cuando lo paga el negocio
+}
+
 export interface MPPaymentResult {
   id: number;
   status: string;
@@ -38,6 +44,7 @@ export interface MPPaymentResult {
   paymentMethodId: string;
   paymentTypeId: string;
   dateApproved: string | null;
+  feeDetails: MPFeeDetail[];
 }
 
 export interface ValidateWebhookParams {
@@ -129,6 +136,15 @@ export class MercadoPagoService {
     await this.initClient();
     const payment = await this.paymentClient!.get({ id: paymentId });
 
+    const rawFees = (payment as { fee_details?: Array<{ type?: string; amount?: number; fee_payer?: string }> }).fee_details ?? [];
+    const feeDetails: MPFeeDetail[] = rawFees
+      .filter((f) => typeof f.amount === 'number' && f.amount > 0)
+      .map((f) => ({
+        type: f.type ?? 'unknown',
+        amount: f.amount as number,
+        feePayer: f.fee_payer,
+      }));
+
     return {
       id: payment.id!,
       status: payment.status!,
@@ -139,6 +155,7 @@ export class MercadoPagoService {
       paymentMethodId: payment.payment_method_id!,
       paymentTypeId: payment.payment_type_id!,
       dateApproved: payment.date_approved || null,
+      feeDetails,
     };
   }
 

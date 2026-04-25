@@ -13,7 +13,8 @@ export interface UpdateExpenseResult {
   iva: number;
   description: string | null;
   paymentMethod: number;
-  userId: string;
+  userId: string | null;
+  paymentId: string | null;
   updatedAt: Date;
 }
 
@@ -54,6 +55,7 @@ export class UpdateExpenseUseCase {
       description: updatedExpense.description,
       paymentMethod: updatedExpense.paymentMethod,
       userId: updatedExpense.userId,
+      paymentId: updatedExpense.paymentId,
       updatedAt: updatedExpense.updatedAt,
     };
   }

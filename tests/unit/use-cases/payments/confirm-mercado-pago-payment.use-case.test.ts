@@ -1,4 +1,5 @@
 import { ConfirmMercadoPagoPaymentUseCase } from '../../../../src/core/application/use-cases/payments/confirm-mercado-pago-payment.use-case';
+import { CreateMercadoPagoFeeExpenseUseCase } from '../../../../src/core/application/use-cases/expenses/create-mercado-pago-fee-expense.use-case';
 import { IPaymentRepository } from '../../../../src/core/domain/interfaces/payment-repository.interface';
 import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
 import { ITableRepository } from '../../../../src/core/domain/interfaces/table-repository.interface';
@@ -14,6 +15,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockTableRepository: jest.Mocked<ITableRepository>;
   let mockMercadoPagoService: jest.Mocked<MercadoPagoService>;
+  let mockCreateMpFeeExpenseUseCase: jest.Mocked<CreateMercadoPagoFeeExpenseUseCase>;
 
   const orderId = 'order-123';
   const userId = 'user-123';
@@ -76,11 +78,16 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       validateWebhookSignature: jest.fn(),
     } as any;
 
+    mockCreateMpFeeExpenseUseCase = {
+      execute: jest.fn().mockResolvedValue({ expenseId: null, created: false }),
+    } as any;
+
     useCase = new ConfirmMercadoPagoPaymentUseCase(
       mockPaymentRepository,
       mockOrderRepository,
       mockTableRepository,
       mockMercadoPagoService,
+      mockCreateMpFeeExpenseUseCase,
     );
   });
 
@@ -100,6 +107,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         paymentMethodId: 'visa',
         paymentTypeId: 'credit_card',
         dateApproved: '2026-03-27T12:00:00.000Z',
+        feeDetails: [],
       });
 
       mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
@@ -157,6 +165,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         paymentMethodId: 'visa',
         paymentTypeId: 'credit_card',
         dateApproved: null,
+        feeDetails: [],
       });
 
       mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
@@ -189,6 +198,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         paymentMethodId: 'bank_transfer',
         paymentTypeId: 'bank_transfer',
         dateApproved: null,
+        feeDetails: [],
       });
 
       mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
@@ -220,6 +230,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         paymentMethodId: 'visa',
         paymentTypeId: 'credit_card',
         dateApproved: null,
+        feeDetails: [],
       });
 
       mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
@@ -251,6 +262,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         paymentMethodId: 'visa',
         paymentTypeId: 'credit_card',
         dateApproved: null,
+        feeDetails: [],
       });
 
       mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
@@ -281,6 +293,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         paymentMethodId: 'visa',
         paymentTypeId: 'credit_card',
         dateApproved: '2026-03-27T12:00:00.000Z',
+        feeDetails: [],
       });
 
       mockPaymentRepository.findAll.mockResolvedValue([]);
@@ -303,6 +316,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         paymentMethodId: 'visa',
         paymentTypeId: 'credit_card',
         dateApproved: null,
+        feeDetails: [],
       });
 
       const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
@@ -323,6 +337,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         paymentMethodId: 'visa',
         paymentTypeId: 'credit_card',
         dateApproved: null,
+        feeDetails: [],
       });
 
       mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
@@ -352,6 +367,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         paymentMethodId: 'visa',
         paymentTypeId: 'credit_card',
         dateApproved: '2026-03-27T12:00:00.000Z',
+        feeDetails: [],
       });
 
       mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
@@ -396,6 +412,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         paymentMethodId: 'account_money',
         paymentTypeId: 'account_money',
         dateApproved: '2026-04-12T12:00:00.000Z',
+        feeDetails: [],
       });
 
       mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
@@ -431,6 +448,137 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
       // Should NOT release table (online orders have no table)
       expect(mockTableRepository.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Mercado Pago fee expense recording', () => {
+    it('should record fee expense when MP returns fee_details on a successful payment', async () => {
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'approved',
+        statusDetail: 'accredited',
+        externalReference: orderId,
+        transactionAmount: 150.50,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: '2026-04-24T12:00:00.000Z',
+        feeDetails: [
+          { type: 'mercadopago_fee', amount: 5.25, feePayer: 'collector' },
+          { type: 'financing_fee', amount: 1.10, feePayer: 'collector' },
+        ],
+      });
+
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+
+      const updatedPayment = new Payment(
+        paymentId, orderId, userId, 150.50, 'MXN',
+        PaymentStatus.SUCCEEDED, PaymentMethod.QR_MERCADO_PAGO,
+        PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date()
+      );
+      mockPaymentRepository.update.mockResolvedValue(updatedPayment);
+      mockOrderRepository.findById.mockResolvedValue(mockOrder);
+
+      const updatedOrder = new Order(
+        orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
+        false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
+      );
+      mockOrderRepository.update.mockResolvedValue(updatedOrder);
+
+      const mockTable = new Table('table-1', 'Mesa 1', userId, true, true, new Date(), new Date());
+      mockTableRepository.update.mockResolvedValue(mockTable);
+
+      await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
+
+      expect(mockCreateMpFeeExpenseUseCase.execute).toHaveBeenCalledTimes(1);
+      expect(mockCreateMpFeeExpenseUseCase.execute).toHaveBeenCalledWith({
+        paymentId,
+        orderId,
+        mpPaymentId: 99999,
+        feeAmount: 6.35, // 5.25 + 1.10
+        date: new Date('2026-04-24T12:00:00.000Z'),
+      });
+    });
+
+    it('should not record fee expense when feeDetails is empty', async () => {
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'approved',
+        statusDetail: 'accredited',
+        externalReference: orderId,
+        transactionAmount: 150.50,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: '2026-04-24T12:00:00.000Z',
+        feeDetails: [],
+      });
+
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+
+      const updatedPayment = new Payment(
+        paymentId, orderId, userId, 150.50, 'MXN',
+        PaymentStatus.SUCCEEDED, PaymentMethod.QR_MERCADO_PAGO,
+        PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date()
+      );
+      mockPaymentRepository.update.mockResolvedValue(updatedPayment);
+      mockOrderRepository.findById.mockResolvedValue(mockOrder);
+
+      const updatedOrder = new Order(
+        orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
+        false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
+      );
+      mockOrderRepository.update.mockResolvedValue(updatedOrder);
+      mockTableRepository.update.mockResolvedValue(
+        new Table('table-1', 'Mesa 1', userId, true, true, new Date(), new Date())
+      );
+
+      await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
+
+      expect(mockCreateMpFeeExpenseUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('should not fail the payment confirmation if fee expense recording throws', async () => {
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'approved',
+        statusDetail: 'accredited',
+        externalReference: orderId,
+        transactionAmount: 150.50,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: '2026-04-24T12:00:00.000Z',
+        feeDetails: [{ type: 'mercadopago_fee', amount: 5.25, feePayer: 'collector' }],
+      });
+
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+
+      const updatedPayment = new Payment(
+        paymentId, orderId, userId, 150.50, 'MXN',
+        PaymentStatus.SUCCEEDED, PaymentMethod.QR_MERCADO_PAGO,
+        PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date()
+      );
+      mockPaymentRepository.update.mockResolvedValue(updatedPayment);
+      mockOrderRepository.findById.mockResolvedValue(mockOrder);
+      mockOrderRepository.update.mockResolvedValue(
+        new Order(
+          orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
+          false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
+        )
+      );
+      mockTableRepository.update.mockResolvedValue(
+        new Table('table-1', 'Mesa 1', userId, true, true, new Date(), new Date())
+      );
+
+      mockCreateMpFeeExpenseUseCase.execute.mockRejectedValueOnce(new Error('DB unavailable'));
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
+
+      expect(result).not.toBeNull();
+      expect(result!.payment.status).toBe(PaymentStatus.SUCCEEDED);
+      consoleSpy.mockRestore();
     });
   });
 });

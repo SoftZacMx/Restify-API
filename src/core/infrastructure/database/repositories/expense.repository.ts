@@ -25,6 +25,18 @@ export class ExpenseRepository implements IExpenseRepository {
     return Expense.fromPrisma(expense);
   }
 
+  async findByPaymentId(paymentId: string): Promise<Expense | null> {
+    const expense = await this.prisma.expense.findFirst({
+      where: { paymentId },
+    });
+
+    if (!expense) {
+      return null;
+    }
+
+    return Expense.fromPrisma(expense);
+  }
+
   async findAll(
     filters?: ExpenseFilters,
     pagination?: { skip?: number; take?: number }
@@ -120,13 +132,16 @@ export class ExpenseRepository implements IExpenseRepository {
       description: expense.description,
       paymentMethod: expense.paymentMethod,
       userId: expense.userId,
+      paymentId: expense.paymentId,
       createdAt: expense.createdAt,
       updatedAt: expense.updatedAt,
-      user: {
-        name: expense.user.name,
-        last_name: expense.user.last_name,
-        second_last_name: expense.user.second_last_name,
-      },
+      user: expense.user
+        ? {
+            name: expense.user.name,
+            last_name: expense.user.last_name,
+            second_last_name: expense.user.second_last_name,
+          }
+        : null,
     }));
   }
 
@@ -167,7 +182,8 @@ export class ExpenseRepository implements IExpenseRepository {
     iva: number;
     description?: string | null;
     paymentMethod: number;
-    userId: string;
+    userId: string | null;
+    paymentId?: string | null;
   }): Promise<Expense> {
     const expense = await this.prisma.expense.create({
       data: {
@@ -180,6 +196,7 @@ export class ExpenseRepository implements IExpenseRepository {
         description: data.description || null,
         paymentMethod: data.paymentMethod,
         userId: data.userId,
+        paymentId: data.paymentId ?? null,
       },
     });
 
@@ -195,7 +212,7 @@ export class ExpenseRepository implements IExpenseRepository {
     iva: number;
     description?: string | null;
     paymentMethod: number;
-    userId: string;
+    userId: string | null;
     items: ExpenseItemInput[];
   }): Promise<{ expense: Expense; items: ExpenseItem[] }> {
     // Use transaction to ensure atomicity

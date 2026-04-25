@@ -43,6 +43,7 @@ describe('CashFlowReportGenerator', () => {
 
     mockExpenseRepository = {
       findById: jest.fn(),
+      findByPaymentId: jest.fn(),
       findAll: jest.fn(),
       findAllWithUser: jest.fn(),
       count: jest.fn(),
@@ -168,6 +169,7 @@ describe('CashFlowReportGenerator', () => {
           'Cleaning service',
           1,
           'user-1',
+          null,
           new Date(),
           new Date()
         ),
@@ -185,6 +187,7 @@ describe('CashFlowReportGenerator', () => {
           'Food supplies',
           2,
           'user-1',
+          null,
           new Date(),
           new Date()
         ),

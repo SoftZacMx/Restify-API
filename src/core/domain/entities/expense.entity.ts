@@ -10,8 +10,9 @@ export class Expense {
     public readonly subtotal: number,
     public readonly iva: number,
     public readonly description: string | null,
-    public readonly paymentMethod: number, // 1: Cash, 2: Transfer, 3: Card
-    public readonly userId: string,
+    public readonly paymentMethod: number, // 1: Cash, 2: Transfer, 3: Card, 4: QR Mercado Pago
+    public readonly userId: string | null,
+    public readonly paymentId: string | null,
     public readonly createdAt: Date,
     public readonly updatedAt: Date
   ) {}
@@ -28,6 +29,7 @@ export class Expense {
       data.description,
       data.paymentMethod,
       data.userId,
+      data.paymentId,
       data.createdAt,
       data.updatedAt
     );

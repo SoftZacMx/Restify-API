@@ -13,7 +13,8 @@ export interface GetExpenseResult {
   iva: number;
   description: string | null;
   paymentMethod: number;
-  userId: string;
+  userId: string | null;
+  paymentId: string | null;
   createdAt: Date;
   updatedAt: Date;
   items?: Array<{
@@ -55,6 +56,7 @@ export class GetExpenseUseCase {
       description: expense.description,
       paymentMethod: expense.paymentMethod,
       userId: expense.userId,
+      paymentId: expense.paymentId,
       createdAt: expense.createdAt,
       updatedAt: expense.updatedAt,
       items: items.map((item) => ({
