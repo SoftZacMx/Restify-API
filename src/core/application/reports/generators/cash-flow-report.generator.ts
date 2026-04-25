@@ -41,6 +41,19 @@ function addIncomeToPaymentBuckets(
   }
 }
 
+interface ExpenseBucketItem {
+  id: string;
+  date: Date;
+  total: number;
+  type: string;
+  description: string | null;
+}
+
+interface ExpenseBucket {
+  items: ExpenseBucketItem[];
+  total: number;
+}
+
 export interface CashFlowReportData {
   incomes: {
     orders: Array<{
@@ -58,25 +71,21 @@ export interface CashFlowReportData {
     };
   };
   expenses: {
-    businessServices: {
-      items: Array<{
-        id: string;
-        date: Date;
-        total: number;
-        type: string;
-        description: string | null;
-      }>;
-      total: number;
-    };
-    merchandise: {
-      items: Array<{
-        id: string;
-        date: Date;
-        total: number;
-        description: string | null;
-      }>;
-      total: number;
-    };
+    /** Servicios del negocio (ExpenseType.SERVICE_BUSINESS) */
+    businessServices: ExpenseBucket;
+    /** Servicios públicos (ExpenseType.UTILITY) */
+    utility: ExpenseBucket;
+    /** Renta (ExpenseType.RENT) */
+    rent: ExpenseBucket;
+    /** Compras de mercancía (ExpenseType.MERCHANDISE) */
+    merchandise: ExpenseBucket;
+    /** Pagos de salario registrados como Expense (ExpenseType.SALARY) */
+    salary: ExpenseBucket;
+    /** Otros gastos (ExpenseType.OTHER) */
+    other: ExpenseBucket;
+    /** Comisiones cobradas por Mercado Pago (ExpenseType.MERCADO_PAGO_FEE) */
+    mercadoPagoFee: ExpenseBucket;
+    /** Pagos de salario desde la tabla employee_salary_payments (fuente independiente). */
     employeeSalaries: {
       items: Array<{
         id: string;
@@ -120,8 +129,12 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
   }
 
   protected async fetchData(filters: BaseReportFilters): Promise<any> {
-    // Fetch all data in parallel
-    const [orders, businessServices, merchandise, employeeSalaries] = await Promise.all([
+    // Fetch all data in parallel.
+    // Para gastos: una sola query sin filtro por tipo. La agrupación por tipo
+    // se hace en transformData. Antes se filtraba por SERVICE_BUSINESS y MERCHANDISE
+    // exclusivamente, omitiendo UTILITY, RENT, SALARY, OTHER y MERCADO_PAGO_FEE
+    // del cálculo de totalExpenses.
+    const [orders, allExpenses, employeeSalaries] = await Promise.all([
       // Fetch orders (only completed/delivered orders count as income)
       this.orderRepository.findAll({
         status: true, // Only paid orders
@@ -129,16 +142,8 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
         dateTo: filters.dateTo,
       }),
 
-      // Fetch business service expenses
+      // Fetch every expense in the period (all types)
       this.expenseRepository.findAll({
-        type: ExpenseType.SERVICE_BUSINESS,
-        dateFrom: filters.dateFrom,
-        dateTo: filters.dateTo,
-      }),
-
-      // Fetch merchandise expenses
-      this.expenseRepository.findAll({
-        type: ExpenseType.MERCHANDISE,
         dateFrom: filters.dateFrom,
         dateTo: filters.dateTo,
       }),
@@ -149,6 +154,21 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
         dateTo: filters.dateTo,
       }),
     ]);
+
+    // Group expenses by type
+    const expensesByType: Record<ExpenseType, any[]> = {
+      [ExpenseType.SERVICE_BUSINESS]: [],
+      [ExpenseType.UTILITY]: [],
+      [ExpenseType.RENT]: [],
+      [ExpenseType.MERCHANDISE]: [],
+      [ExpenseType.SALARY]: [],
+      [ExpenseType.OTHER]: [],
+      [ExpenseType.MERCADO_PAGO_FEE]: [],
+    };
+    for (const expense of allExpenses) {
+      const bucket = expensesByType[expense.type as ExpenseType];
+      if (bucket) bucket.push(expense);
+    }
 
     // 1) Todos los pagos SUCCEEDED de las órdenes del período.
     // 2) Todas las PaymentDifferentiation de esas órdenes.
@@ -183,8 +203,7 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
 
     return {
       orders,
-      businessServices,
-      merchandise,
+      expensesByType,
       employeeSalaries,
       ordersWithTips,
       paidOrderIds,
@@ -197,8 +216,7 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
   protected transformData(rawData: any, filters: BaseReportFilters): CashFlowReportData {
     const {
       orders,
-      businessServices,
-      merchandise,
+      expensesByType,
       employeeSalaries,
       ordersWithTips,
       paidOrderIds: rawPaidOrderIds,
@@ -206,6 +224,30 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       paymentsByOrderId,
       paymentDiffByOrderId,
     } = rawData;
+    const expensesByTypeMap: Record<ExpenseType, any[]> = expensesByType ?? {
+      [ExpenseType.SERVICE_BUSINESS]: [],
+      [ExpenseType.UTILITY]: [],
+      [ExpenseType.RENT]: [],
+      [ExpenseType.MERCHANDISE]: [],
+      [ExpenseType.SALARY]: [],
+      [ExpenseType.OTHER]: [],
+      [ExpenseType.MERCADO_PAGO_FEE]: [],
+    };
+    const buildBucket = (type: ExpenseType) => {
+      const items = expensesByTypeMap[type] ?? [];
+      let total = 0;
+      const mapped = items.map((expense: any) => {
+        total += expense.total;
+        return {
+          id: expense.id,
+          date: expense.date,
+          total: expense.total,
+          type: expense.type,
+          description: expense.description,
+        };
+      });
+      return { items: mapped, total };
+    };
     const paymentLinesByOrder: Map<string, Payment[]> =
       paymentsByOrderId instanceof Map ? paymentsByOrderId : new Map<string, Payment[]>();
     const diffByOrder: Map<string, PaymentDifferentiation> =
@@ -252,16 +294,14 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       }
     });
 
-    // Calculate expenses
-    let totalBusinessServices = 0;
-    businessServices.forEach((expense: any) => {
-      totalBusinessServices += expense.total;
-    });
-
-    let totalMerchandise = 0;
-    merchandise.forEach((expense: any) => {
-      totalMerchandise += expense.total;
-    });
+    // Calculate expenses: buckets per ExpenseType + employeeSalaries (tabla aparte) + tips (de las órdenes)
+    const businessServices = buildBucket(ExpenseType.SERVICE_BUSINESS);
+    const utility = buildBucket(ExpenseType.UTILITY);
+    const rent = buildBucket(ExpenseType.RENT);
+    const merchandise = buildBucket(ExpenseType.MERCHANDISE);
+    const salary = buildBucket(ExpenseType.SALARY);
+    const other = buildBucket(ExpenseType.OTHER);
+    const mercadoPagoFee = buildBucket(ExpenseType.MERCADO_PAGO_FEE);
 
     let totalEmployeeSalaries = 0;
     employeeSalaries.forEach((payment: any) => {
@@ -273,7 +313,16 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
       totalTips += order.tip;
     });
 
-    const totalExpenses = totalBusinessServices + totalMerchandise + totalEmployeeSalaries + totalTips;
+    const totalExpenses =
+      businessServices.total +
+      utility.total +
+      rent.total +
+      merchandise.total +
+      salary.total +
+      other.total +
+      mercadoPagoFee.total +
+      totalEmployeeSalaries +
+      totalTips;
 
     // Calculate cash flow
     const balance = totalIncomes - totalExpenses;
@@ -292,25 +341,13 @@ export class CashFlowReportGenerator extends BaseReportGenerator {
         byPaymentMethod: incomesByPaymentMethod,
       },
       expenses: {
-        businessServices: {
-          items: businessServices.map((expense: any) => ({
-            id: expense.id,
-            date: expense.date,
-            total: expense.total,
-            type: expense.type,
-            description: expense.description,
-          })),
-          total: totalBusinessServices,
-        },
-        merchandise: {
-          items: merchandise.map((expense: any) => ({
-            id: expense.id,
-            date: expense.date,
-            total: expense.total,
-            description: expense.description,
-          })),
-          total: totalMerchandise,
-        },
+        businessServices,
+        utility,
+        rent,
+        merchandise,
+        salary,
+        other,
+        mercadoPagoFee,
         employeeSalaries: {
           items: employeeSalaries.map((payment: any) => ({
             id: payment.id,

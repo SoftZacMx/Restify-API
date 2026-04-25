@@ -206,9 +206,8 @@ describe('CashFlowReportGenerator', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
-      mockExpenseRepository.findAll
-        .mockResolvedValueOnce(mockBusinessServices) // First call for business services
-        .mockResolvedValueOnce(mockMerchandise); // Second call for merchandise
+      // El generator hace una sola query sin filtro y agrupa por tipo en memoria.
+      mockExpenseRepository.findAll.mockResolvedValue([...mockBusinessServices, ...mockMerchandise]);
       mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue(mockEmployeeSalaries);
 
       const result = await generator.generate(baseFilters);
@@ -250,9 +249,7 @@ describe('CashFlowReportGenerator', () => {
       const mockEmployeeSalaries: EmployeeSalaryPayment[] = [];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
-      mockExpenseRepository.findAll
-        .mockResolvedValueOnce(mockBusinessServices)
-        .mockResolvedValueOnce(mockMerchandise);
+      mockExpenseRepository.findAll.mockResolvedValue([...mockBusinessServices, ...mockMerchandise]);
       mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue(mockEmployeeSalaries);
 
       const result = await generator.generate(baseFilters);
@@ -269,9 +266,7 @@ describe('CashFlowReportGenerator', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
-      mockExpenseRepository.findAll
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
+      mockExpenseRepository.findAll.mockResolvedValue([]);
       mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
 
       const result = await generator.generate(baseFilters);
@@ -338,7 +333,7 @@ describe('CashFlowReportGenerator', () => {
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
       mockPaymentRepository.findAll.mockResolvedValue(mockPayments);
       mockPaymentDifferentiationRepository.findByOrderIds.mockResolvedValue([]);
-      mockExpenseRepository.findAll.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      mockExpenseRepository.findAll.mockResolvedValue([]);
       mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
 
       const result = await generator.generate(baseFilters);
@@ -391,7 +386,7 @@ describe('CashFlowReportGenerator', () => {
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
       mockPaymentRepository.findAll.mockResolvedValue([]);
       mockPaymentDifferentiationRepository.findByOrderIds.mockResolvedValue([mockDiff]);
-      mockExpenseRepository.findAll.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      mockExpenseRepository.findAll.mockResolvedValue([]);
       mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
 
       const result = await generator.generate(baseFilters);
@@ -471,7 +466,7 @@ describe('CashFlowReportGenerator', () => {
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
       mockPaymentRepository.findAll.mockResolvedValue(mockPayments);
       mockPaymentDifferentiationRepository.findByOrderIds.mockResolvedValue([mockDiff]);
-      mockExpenseRepository.findAll.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      mockExpenseRepository.findAll.mockResolvedValue([]);
       mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
 
       const result = await generator.generate(baseFilters);
@@ -507,9 +502,7 @@ describe('CashFlowReportGenerator', () => {
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
-      mockExpenseRepository.findAll
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
+      mockExpenseRepository.findAll.mockResolvedValue([]);
       mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
 
       const result = await generator.generate(baseFilters);
@@ -520,9 +513,7 @@ describe('CashFlowReportGenerator', () => {
 
     it('should handle empty data correctly', async () => {
       mockOrderRepository.findAll.mockResolvedValue([]);
-      mockExpenseRepository.findAll
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
+      mockExpenseRepository.findAll.mockResolvedValue([]);
       mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
 
       const result = await generator.generate(baseFilters);
@@ -540,6 +531,57 @@ describe('CashFlowReportGenerator', () => {
       };
 
       await expect(generator.generate(invalidFilters)).rejects.toThrow();
+    });
+
+    it('should count all ExpenseType values in totalExpenses (no más agujero por tipos no filtrados)', async () => {
+      const buildExpense = (id: string, type: ExpenseType, total: number) =>
+        new Expense(
+          id, `${type} - ${id}`, type, new Date('2024-01-15'),
+          total, total, 0, null, 1, 'user-1', null, new Date(), new Date()
+        );
+
+      const mockExpenses = [
+        buildExpense('e1', ExpenseType.SERVICE_BUSINESS, 100),
+        buildExpense('e2', ExpenseType.UTILITY, 200),
+        buildExpense('e3', ExpenseType.RENT, 5000),
+        buildExpense('e4', ExpenseType.MERCHANDISE, 800),
+        buildExpense('e5', ExpenseType.SALARY, 1500),
+        buildExpense('e6', ExpenseType.OTHER, 50),
+        buildExpense('e7', ExpenseType.MERCADO_PAGO_FEE, 25.75),
+      ];
+
+      mockOrderRepository.findAll.mockResolvedValue([]);
+      mockExpenseRepository.findAll.mockResolvedValue(mockExpenses);
+      mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
+
+      const result = await generator.generate(baseFilters);
+
+      expect(result.data.expenses.businessServices.total).toBe(100);
+      expect(result.data.expenses.utility.total).toBe(200);
+      expect(result.data.expenses.rent.total).toBe(5000);
+      expect(result.data.expenses.merchandise.total).toBe(800);
+      expect(result.data.expenses.salary.total).toBe(1500);
+      expect(result.data.expenses.other.total).toBe(50);
+      expect(result.data.expenses.mercadoPagoFee.total).toBe(25.75);
+      expect(result.data.expenses.totalExpenses).toBe(7675.75);
+    });
+
+    it('should include MERCADO_PAGO_FEE in totalExpenses balance (regression: prev report ignored it)', async () => {
+      const mpFeeExpense = new Expense(
+        'fee-1', 'Comisión Mercado Pago - Orden xyz', ExpenseType.MERCADO_PAGO_FEE,
+        new Date('2024-01-15'), 6.35, 6.35, 0, null, 2, null, null, new Date(), new Date()
+      );
+
+      mockOrderRepository.findAll.mockResolvedValue([]);
+      mockExpenseRepository.findAll.mockResolvedValue([mpFeeExpense]);
+      mockEmployeeSalaryPaymentRepository.findAll.mockResolvedValue([]);
+
+      const result = await generator.generate(baseFilters);
+
+      expect(result.data.expenses.mercadoPagoFee.total).toBe(6.35);
+      expect(result.data.expenses.mercadoPagoFee.items).toHaveLength(1);
+      expect(result.data.expenses.totalExpenses).toBe(6.35);
+      expect(result.data.cashFlow.balance).toBe(-6.35);
     });
   });
 });
