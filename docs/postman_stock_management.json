@@ -1,0 +1,295 @@
+{
+  "info": {
+    "name": "Restify — Stock Management (Fase 5)",
+    "description": "Endpoints de stock, recetas y reportes implementados en la Fase 5 del plan de Stock Management. Incluye los 15 endpoints nuevos. Usa la variable {{baseUrl}} (ej. http://localhost:3000) y {{token}} (JWT del login).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{token}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "token", "value": "" },
+    { "key": "productId", "value": "00000000-0000-0000-0000-000000000000", "description": "UUID de un producto para los endpoints :product_id" },
+    { "key": "menuItemId", "value": "00000000-0000-0000-0000-000000000000", "description": "UUID de un menu item para los endpoints :menu_item_id" }
+  ],
+  "item": [
+    {
+      "name": "Stock — 5.1",
+      "item": [
+        {
+          "name": "GET /api/products/stock — Lista de productos con stock",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/stock?lowStock=false&search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "stock"],
+              "query": [
+                { "key": "lowStock", "value": "false", "description": "true para filtrar solo bajo mínimo" },
+                { "key": "search", "value": "", "description": "Búsqueda parcial por nombre" }
+              ]
+            },
+            "description": "Lista productos con `track_stock=true`, su stock actual, unidad, costo promedio y flag de alerta."
+          }
+        },
+        {
+          "name": "GET /api/products/:product_id/movements — Historial por producto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/movements?from=&to=&type=&limit=100&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}", "movements"],
+              "query": [
+                { "key": "from", "value": "", "description": "ISO date" },
+                { "key": "to", "value": "", "description": "ISO date" },
+                { "key": "type", "value": "", "description": "PURCHASE | SALE | WASTE | ADJUSTMENT | SALE_REVERSAL" },
+                { "key": "limit", "value": "100" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "Historial de movimientos del producto, filtrable por rango y tipo."
+          }
+        },
+        {
+          "name": "PATCH /api/products/:product_id/stock-config — Configurar stock (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/stock-config",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products", "{{productId}}", "stock-config"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trackStock\": true,\n  \"unitOfMeasure\": \"KG\",\n  \"minStockAlert\": 5\n}"
+            },
+            "description": "Activa/desactiva trackeo de stock y configura unidad de medida y mínimo de alerta. `unitOfMeasure`: KG | G | L | ML | PCS | OTHER. Cualquier campo es opcional."
+          }
+        },
+        {
+          "name": "GET /api/stock/movements — Historial general filtrable",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stock/movements?from=&to=&type=&productId=&limit=100&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stock", "movements"],
+              "query": [
+                { "key": "from", "value": "", "description": "ISO date" },
+                { "key": "to", "value": "", "description": "ISO date" },
+                { "key": "type", "value": "", "description": "PURCHASE | SALE | WASTE | ADJUSTMENT | SALE_REVERSAL" },
+                { "key": "productId", "value": "", "description": "UUID opcional para filtrar por producto" },
+                { "key": "limit", "value": "100" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "Historial completo de movimientos con filtros opcionales."
+          }
+        },
+        {
+          "name": "GET /api/stock/alerts — Productos bajo mínimo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stock/alerts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stock", "alerts"]
+            },
+            "description": "Productos cuyo stock actual cayó por debajo de `min_stock_alert`."
+          }
+        },
+        {
+          "name": "POST /api/stock/waste — Registrar merma (MANAGER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/stock/waste",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stock", "waste"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"quantity\": 0.5,\n  \"reason\": \"EXPIRED\",\n  \"notes\": \"Pollo vencido en cámara fría\"\n}"
+            },
+            "description": "Registra merma. `reason`: EXPIRED | BROKEN | THEFT | OTHER. `quantity` siempre positiva (el servicio la convierte en negativa)."
+          }
+        },
+        {
+          "name": "POST /api/stock/adjust — Ajuste por conteo físico (MANAGER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/stock/adjust",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stock", "adjust"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"newStock\": 4.5,\n  \"reason\": \"Conteo físico — viernes\",\n  \"notes\": null\n}"
+            },
+            "description": "Ajusta el stock a un valor absoluto. El movement se calcula como diferencia entre `newStock` y el stock actual."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recetas — 5.2",
+      "item": [
+        {
+          "name": "GET /api/menu-items/:menu_item_id/recipe — Ver receta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-items/{{menuItemId}}/recipe",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "menu-items", "{{menuItemId}}", "recipe"]
+            },
+            "description": "Devuelve los ingredientes (con cantidad y unidad) de la receta del MenuItem."
+          }
+        },
+        {
+          "name": "PUT /api/menu-items/:menu_item_id/recipe — Reemplazar receta (ADMIN)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-items/{{menuItemId}}/recipe",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "menu-items", "{{menuItemId}}", "recipe"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ingredients\": [\n    { \"productId\": \"00000000-0000-0000-0000-000000000001\", \"quantity\": 1 },\n    { \"productId\": \"00000000-0000-0000-0000-000000000002\", \"quantity\": 0.15 },\n    { \"productId\": \"00000000-0000-0000-0000-000000000003\", \"quantity\": 30 }\n  ]\n}"
+            },
+            "description": "Reemplaza completamente la receta. Mínimo 1 ingrediente; productos no se pueden duplicar; el MenuItem no debe ser ítem directo (`productId` set)."
+          }
+        },
+        {
+          "name": "POST /api/menu-items/:menu_item_id/recipe/items — Agregar ingrediente (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-items/{{menuItemId}}/recipe/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "menu-items", "{{menuItemId}}", "recipe", "items"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"quantity\": 0.05\n}"
+            },
+            "description": "Agrega un ingrediente nuevo. 409 si el producto ya está en la receta."
+          }
+        },
+        {
+          "name": "PATCH /api/menu-items/:menu_item_id/recipe/items/:product_id — Cambiar cantidad (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-items/{{menuItemId}}/recipe/items/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "menu-items", "{{menuItemId}}", "recipe", "items", "{{productId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 0.2\n}"
+            },
+            "description": "Modifica la cantidad de un ingrediente existente."
+          }
+        },
+        {
+          "name": "DELETE /api/menu-items/:menu_item_id/recipe/items/:product_id — Quitar ingrediente (ADMIN)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-items/{{menuItemId}}/recipe/items/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "menu-items", "{{menuItemId}}", "recipe", "items", "{{productId}}"]
+            },
+            "description": "Quita un ingrediente de la receta."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reportes — 5.3",
+      "item": [
+        {
+          "name": "GET /api/reports/waste — Merma por periodo (MANAGER)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/waste?from=2026-01-01&to=2026-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "waste"],
+              "query": [
+                { "key": "from", "value": "2026-01-01", "description": "ISO date — inicio del rango" },
+                { "key": "to", "value": "2026-12-31", "description": "ISO date — fin del rango" }
+              ]
+            },
+            "description": "Devuelve totales de merma agrupados por motivo (`EXPIRED`, `BROKEN`, `THEFT`, `OTHER`) en el rango."
+          }
+        },
+        {
+          "name": "GET /api/reports/products/consumption — Top productos consumidos (MANAGER)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/products/consumption?from=2026-01-01&to=2026-12-31&top=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "products", "consumption"],
+              "query": [
+                { "key": "from", "value": "2026-01-01" },
+                { "key": "to", "value": "2026-12-31" },
+                { "key": "top", "value": "10", "description": "Cantidad de productos a devolver (default 10)" }
+              ]
+            },
+            "description": "Top N productos con mayor cantidad descontada por SALE en el rango. Incluye cantidad consumida, valor (cantidad × averageCost) y participación %."
+          }
+        },
+        {
+          "name": "GET /api/reports/menu-items/cost — Costo y margen por platillo (MANAGER)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/menu-items/cost",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "menu-items", "cost"]
+            },
+            "description": "Para cada MenuItem con receta: costo teórico (Σ ingrediente.quantity × producto.averageCost), margen y margen %. Marca como `lowMargin: true` los menores a 30%."
+          }
+        }
+      ]
+    }
+  ]
+}

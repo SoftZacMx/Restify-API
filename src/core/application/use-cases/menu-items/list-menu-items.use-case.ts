@@ -12,6 +12,9 @@ export interface ListMenuItemsResult {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+  // Stock integration (Fase 7 — Bloque D)
+  productId: string | null;
+  hasRecipe: boolean;
 }
 
 @injectable()
@@ -43,6 +46,8 @@ export class ListMenuItemsUseCase {
       userId: menuItem.userId,
       createdAt: menuItem.createdAt,
       updatedAt: menuItem.updatedAt,
+      productId: menuItem.productId,
+      hasRecipe: menuItem.hasRecipe,
     }));
   }
 }

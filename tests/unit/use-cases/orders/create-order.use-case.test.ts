@@ -154,6 +154,11 @@ describe('CreateOrderUseCase', () => {
 
     mockPrismaService = createMockPrismaService();
 
+    const mockStockService = {
+      recordSaleForOrderItem: jest.fn().mockResolvedValue([]),
+      reverseSaleForOrderItem: jest.fn().mockResolvedValue([]),
+    } as any;
+
     createOrderUseCase = new CreateOrderUseCase(
       mockUserRepository,
       mockTableRepository,
@@ -161,6 +166,7 @@ describe('CreateOrderUseCase', () => {
       mockMenuItemRepository,
       mockCompanyRepository,
       mockPrismaService as any,
+      mockStockService,
     );
   });
 
@@ -223,6 +229,11 @@ describe('CreateOrderUseCase', () => {
         order: { tableId: 'table-123' },
       });
 
+      const mockStockServiceLocal = {
+        recordSaleForOrderItem: jest.fn().mockResolvedValue([]),
+        reverseSaleForOrderItem: jest.fn().mockResolvedValue([]),
+      } as any;
+
       const useCaseWithTable = new CreateOrderUseCase(
         mockUserRepository,
         mockTableRepository,
@@ -230,6 +241,7 @@ describe('CreateOrderUseCase', () => {
         mockMenuItemRepository,
         mockCompanyRepository,
         mockPrismaWithTable as any,
+        mockStockServiceLocal,
       );
 
       const validInput = {

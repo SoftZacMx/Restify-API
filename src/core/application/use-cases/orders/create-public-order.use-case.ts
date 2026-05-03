@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
 import { ICompanyRepository } from '../../../domain/interfaces/company-repository.interface';
 import { PrismaService } from '../../../infrastructure/config/prisma.config';
+import { StockService } from '../../services/stock.service';
 import { AppError } from '../../../../shared/errors';
 import { isWithinOperatingHours } from '../../../../shared/utils/operating-hours.util';
 
@@ -38,7 +39,8 @@ export class CreatePublicOrderUseCase {
   constructor(
     @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
     @inject('ICompanyRepository') private readonly companyRepository: ICompanyRepository,
-    @inject(PrismaService) private readonly prismaService: PrismaService
+    @inject(PrismaService) private readonly prismaService: PrismaService,
+    @inject(StockService) private readonly stockService: StockService,
   ) {}
 
   async execute(input: CreatePublicOrderInput): Promise<CreatePublicOrderResult> {
@@ -159,6 +161,9 @@ export class CreatePublicOrderUseCase {
             });
           }
         }
+
+        // Descontar stock por venta — userId=null (movement del sistema, sin user humano).
+        await this.stockService.recordSaleForOrderItem(createdItem.id, null, tx);
       }
 
       return order;

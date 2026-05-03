@@ -6,6 +6,8 @@ import { IMenuItemRepository } from '../../../../src/core/domain/interfaces/menu
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { OrderItem } from '../../../../src/core/domain/entities/order-item.entity';
 import { Table } from '../../../../src/core/domain/entities/table.entity';
+import { StockService } from '../../../../src/core/application/services/stock.service';
+import { PrismaService } from '../../../../src/core/infrastructure/config/prisma.config';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('UpdateOrderUseCase', () => {
@@ -63,11 +65,36 @@ describe('UpdateOrderUseCase', () => {
       delete: jest.fn(),
     };
 
+    const mockStockService = {
+      recordSaleForOrderItem: jest.fn().mockResolvedValue([]),
+      reverseSaleForOrderItem: jest.fn().mockResolvedValue([]),
+    } as any;
+
+    const mockTx = {
+      orderItem: {
+        findMany: jest.fn().mockResolvedValue([]),
+        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'new-oi', ...data })),
+        deleteMany: jest.fn().mockResolvedValue({}),
+      },
+      orderItemExtra: {
+        create: jest.fn().mockResolvedValue({}),
+        deleteMany: jest.fn().mockResolvedValue({}),
+      },
+    };
+
+    const mockPrismaService = {
+      getClient: jest.fn().mockReturnValue({
+        $transaction: jest.fn().mockImplementation((cb: Function) => cb(mockTx)),
+      }),
+    } as unknown as PrismaService;
+
     updateOrderUseCase = new UpdateOrderUseCase(
       mockOrderRepository,
       mockTableRepository,
       mockProductRepository,
       mockMenuItemRepository,
+      mockPrismaService,
+      mockStockService as unknown as StockService,
     );
   });
 

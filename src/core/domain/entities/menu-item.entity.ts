@@ -8,7 +8,11 @@ export class MenuItem {
     public readonly categoryId: string | null,
     public readonly userId: string,
     public readonly createdAt: Date,
-    public readonly updatedAt: Date
+    public readonly updatedAt: Date,
+    // Stock integration (Fase 7 — Bloque D): permite al UI mostrar el indicador
+    // "directo / receta / sin tracking" sin pegar el endpoint de receta por cada item.
+    public readonly productId: string | null = null,
+    public readonly hasRecipe: boolean = false
   ) {}
 }
 

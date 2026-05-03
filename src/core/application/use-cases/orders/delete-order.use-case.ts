@@ -1,29 +1,56 @@
 import { inject, injectable } from 'tsyringe';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
-import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
-import { DeleteOrderInput } from '../../dto/order.dto';
+import { PrismaService } from '../../../infrastructure/config/prisma.config';
+import { StockService } from '../../services/stock.service';
 import { AppError } from '../../../../shared/errors';
+
+export interface DeleteOrderUseCaseInput {
+  order_id: string;
+  /** Usuario que ejecuta el borrado — autoría de los SALE_REVERSAL. Null si el delete es del sistema. */
+  userId: string | null;
+}
 
 @injectable()
 export class DeleteOrderUseCase {
   constructor(
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
-    @inject('ITableRepository') private readonly tableRepository: ITableRepository,
+    @inject(PrismaService) private readonly prismaService: PrismaService,
+    @inject(StockService) private readonly stockService: StockService,
   ) {}
 
-  async execute(input: DeleteOrderInput): Promise<void> {
-    // Check if order exists
+  async execute(input: DeleteOrderUseCaseInput): Promise<void> {
     const order = await this.orderRepository.findById(input.order_id);
     if (!order) {
       throw new AppError('ORDER_NOT_FOUND');
     }
 
-    // Si la orden tiene mesa asignada y es Local, liberar la mesa antes de eliminar
-    if (order.tableId && order.origin.toLowerCase() === 'local') {
-      await this.tableRepository.update(order.tableId, { availabilityStatus: true });
-    }
+    // Lookup de items fuera de la transacción — solo lectura, no necesita locking.
+    const items = await this.orderRepository.findOrderItemsByOrderId(input.order_id);
 
-    // Delete order (cascade will delete order items and order item extras)
-    await this.orderRepository.delete(input.order_id);
+    const prisma = this.prismaService.getClient();
+    await prisma.$transaction(async (tx) => {
+      // Revertir stock por cada OrderItem antes del delete (Fase 4.2).
+      // Mientras los OrderItems siguen vivos, los SALE originales tienen orderItemId válido.
+      // Tras el cascade de delete, la FK queda en null pero el ledger persiste.
+      for (const item of items) {
+        await this.stockService.reverseSaleForOrderItem(
+          item.id,
+          input.userId,
+          'order cancelled',
+          tx
+        );
+      }
+
+      // Liberar mesa si aplica.
+      if (order.tableId && order.origin.toLowerCase() === 'local') {
+        await tx.table.update({
+          where: { id: order.tableId },
+          data: { availabilityStatus: true },
+        });
+      }
+
+      // Cascade DB borra orderItems + orderItemExtras.
+      await tx.order.delete({ where: { id: input.order_id } });
+    });
   }
 }

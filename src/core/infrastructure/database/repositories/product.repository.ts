@@ -22,7 +22,10 @@ export class ProductRepository implements IProductRepository {
       product.status,
       product.userId,
       product.createdAt,
-      product.updatedAt
+      product.updatedAt,
+      product.trackStock,
+      product.unitOfMeasure,
+      product.minStockAlert != null ? Number(product.minStockAlert) : null
     );
   }
 
@@ -45,7 +48,10 @@ export class ProductRepository implements IProductRepository {
           product.status,
           product.userId,
           product.createdAt,
-          product.updatedAt
+          product.updatedAt,
+          product.trackStock,
+          product.unitOfMeasure,
+          product.minStockAlert != null ? Number(product.minStockAlert) : null
         )
     );
   }
@@ -84,7 +90,10 @@ export class ProductRepository implements IProductRepository {
           product.status,
           product.userId,
           product.createdAt,
-          product.updatedAt
+          product.updatedAt,
+          product.trackStock,
+          product.unitOfMeasure,
+          product.minStockAlert != null ? Number(product.minStockAlert) : null
         )
     );
   }
@@ -112,7 +121,10 @@ export class ProductRepository implements IProductRepository {
       product.status,
       product.userId,
       product.createdAt,
-      product.updatedAt
+      product.updatedAt,
+      product.trackStock,
+      product.unitOfMeasure,
+      product.minStockAlert != null ? Number(product.minStockAlert) : null
     );
   }
 
@@ -143,7 +155,10 @@ export class ProductRepository implements IProductRepository {
       product.status,
       product.userId,
       product.createdAt,
-      product.updatedAt
+      product.updatedAt,
+      product.trackStock,
+      product.unitOfMeasure,
+      product.minStockAlert != null ? Number(product.minStockAlert) : null
     );
   }
 

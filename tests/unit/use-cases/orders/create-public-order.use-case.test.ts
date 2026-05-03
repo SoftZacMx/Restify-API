@@ -93,10 +93,16 @@ describe('CreatePublicOrderUseCase', () => {
 
     mockPrismaService = createMockPrismaService();
 
+    const mockStockService = {
+      recordSaleForOrderItem: jest.fn().mockResolvedValue([]),
+      reverseSaleForOrderItem: jest.fn().mockResolvedValue([]),
+    } as any;
+
     useCase = new CreatePublicOrderUseCase(
       mockMenuItemRepository,
       mockCompanyRepository,
       mockPrismaService as any,
+      mockStockService,
     );
   });
 

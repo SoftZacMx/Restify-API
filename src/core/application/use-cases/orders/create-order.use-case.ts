@@ -5,6 +5,7 @@ import { IProductRepository } from '../../../domain/interfaces/product-repositor
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
 import { ICompanyRepository } from '../../../domain/interfaces/company-repository.interface';
 import { PrismaService } from '../../../infrastructure/config/prisma.config';
+import { StockService } from '../../services/stock.service';
 import { CreateOrderInput } from '../../dto/order.dto';
 import { AppError } from '../../../../shared/errors';
 import { isWithinOperatingHours } from '../../../../shared/utils/operating-hours.util';
@@ -56,6 +57,7 @@ export class CreateOrderUseCase {
     @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
     @inject('ICompanyRepository') private readonly companyRepository: ICompanyRepository,
     @inject(PrismaService) private readonly prismaService: PrismaService,
+    @inject(StockService) private readonly stockService: StockService,
   ) {}
 
   async execute(input: CreateOrderInput): Promise<CreateOrderResult> {
@@ -189,6 +191,15 @@ export class CreateOrderUseCase {
               });
             }
           }
+
+          // Descontar stock por venta — receta o item directo (Fase 4.1).
+          // userId puede ser null (orden sin usuario asignado): el movement queda
+          // como "sistema". Stock se descuenta igual porque el producto se consume.
+          await this.stockService.recordSaleForOrderItem(
+            createdOrderItem.id,
+            input.userId ?? null,
+            tx
+          );
         }
       }
 

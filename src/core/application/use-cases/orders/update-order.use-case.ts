@@ -3,6 +3,8 @@ import { IOrderRepository } from '../../../domain/interfaces/order-repository.in
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { IProductRepository } from '../../../domain/interfaces/product-repository.interface';
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
+import { PrismaService } from '../../../infrastructure/config/prisma.config';
+import { StockService } from '../../services/stock.service';
 import { UpdateOrderInput } from '../../dto/order.dto';
 import { AppError } from '../../../../shared/errors';
 
@@ -51,9 +53,19 @@ export class UpdateOrderUseCase {
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
     @inject('IProductRepository') private readonly productRepository: IProductRepository,
     @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
+    @inject(PrismaService) private readonly prismaService: PrismaService,
+    @inject(StockService) private readonly stockService: StockService,
   ) {}
 
-  async execute(orderId: string, input: UpdateOrderInput): Promise<UpdateOrderResult> {
+  /**
+   * @param actorUserId Usuario que ejecuta la edición (para autoría de movements de stock).
+   *                    Null si la edición es del sistema.
+   */
+  async execute(
+    orderId: string,
+    input: UpdateOrderInput,
+    actorUserId: string | null = null
+  ): Promise<UpdateOrderResult> {
     // Check if order exists
     const existingOrder = await this.orderRepository.findById(orderId);
     if (!existingOrder) {
@@ -124,34 +136,55 @@ export class UpdateOrderUseCase {
         }
       }
 
-      // Delete existing items and extras (cascade will handle extras via DB)
-      await this.orderRepository.deleteOrderItemExtrasByOrderId(orderId);
-      await this.orderRepository.deleteOrderItemsByOrderId(orderId);
-
-      // Create new items
-      for (const item of input.orderItems) {
-        const createdItem = await this.orderRepository.createOrderItem({
-          quantity: item.quantity,
-          price: item.price,
-          orderId: orderId,
-          productId: item.productId || null,
-          menuItemId: item.menuItemId || null,
-          note: item.note || null,
-        });
-
-        // Create extras for this item
-        if (item.extras && item.extras.length > 0) {
-          for (const extra of item.extras) {
-            await this.orderRepository.createOrderItemExtra({
-              orderId: orderId,
-              orderItemId: createdItem.id,
-              extraId: extra.extraId,
-              quantity: extra.quantity,
-              price: extra.price,
-            });
-          }
+      // Reemplazo de items + reajuste de stock — todo atómico (Fase 4.3).
+      // Estrategia "reversal + resale": mantiene el ledger limpio sin movements diferenciales.
+      const prisma = this.prismaService.getClient();
+      await prisma.$transaction(async (tx) => {
+        // 1. Snapshot de items actuales para reversar sus ventas.
+        const existingItems = await tx.orderItem.findMany({ where: { orderId } });
+        for (const item of existingItems) {
+          await this.stockService.reverseSaleForOrderItem(
+            item.id,
+            actorUserId,
+            'order edited',
+            tx
+          );
         }
-      }
+
+        // 2. Borrar items + extras viejos (cascade DB también hace extras, pero somos explícitos).
+        await tx.orderItemExtra.deleteMany({ where: { orderId } });
+        await tx.orderItem.deleteMany({ where: { orderId } });
+
+        // 3. Crear los items + extras nuevos y registrar la venta correspondiente.
+        for (const item of input.orderItems!) {
+          const createdItem = await tx.orderItem.create({
+            data: {
+              quantity: item.quantity,
+              price: item.price,
+              orderId,
+              productId: item.productId || null,
+              menuItemId: item.menuItemId || null,
+              note: item.note || null,
+            },
+          });
+
+          if (item.extras && item.extras.length > 0) {
+            for (const extra of item.extras) {
+              await tx.orderItemExtra.create({
+                data: {
+                  orderId,
+                  orderItemId: createdItem.id,
+                  extraId: extra.extraId,
+                  quantity: extra.quantity,
+                  price: extra.price,
+                },
+              });
+            }
+          }
+
+          await this.stockService.recordSaleForOrderItem(createdItem.id, actorUserId, tx);
+        }
+      });
 
       // Calculate new totals (no IVA aplicado automáticamente)
       const tip = input.tip !== undefined ? input.tip : existingOrder.tip;
