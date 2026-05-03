@@ -212,7 +212,7 @@ export class RecipeService {
       if (!unitsCompatible(ing.unit, productUnit)) {
         throw new AppError(
           'INCOMPATIBLE_UNIT',
-          `Unit ${ing.unit} is not compatible with product unit ${productUnit}`
+          `La unidad ${ing.unit} no es compatible con la unidad del producto (${productUnit}). Solo se pueden mezclar unidades de la misma familia (KG↔G, L↔ML).`
         );
       }
     }

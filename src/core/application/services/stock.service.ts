@@ -2,7 +2,7 @@ import { inject, injectable } from 'tsyringe';
 import { Prisma, PrismaClient, StockMovement, StockMovementType, UnitOfMeasure } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/config/prisma.config';
 import { AppError } from '../../../shared/errors';
-import { convertQuantity } from '../../../shared/utils/unit-conversion.util';
+import { convertQuantity, unitsCompatible } from '../../../shared/utils/unit-conversion.util';
 
 const Decimal = Prisma.Decimal;
 type DecimalLike = Prisma.Decimal | number | string;
@@ -14,6 +14,14 @@ export interface RecordPurchaseInput {
   productId: string;
   quantity: DecimalLike;
   unitCost: DecimalLike;
+  /**
+   * Unidad en la que se expresa `quantity` y `unitCost`.
+   * Si difiere de la unidad base del producto, el servicio convierte ambos
+   * antes de persistir (cantidad al unit base, costo escalado inversamente
+   * para preservar el total de la compra).
+   * Si null/undefined, se asume que ya viene en la unidad del producto.
+   */
+  unitOfMeasure?: UnitOfMeasure | null;
   expenseItemId?: string | null;
   userId: string;
   notes?: string | null;
@@ -106,13 +114,13 @@ export class StockService {
     input: RecordPurchaseInput,
     tx?: Prisma.TransactionClient
   ): Promise<StockMovement | null> {
-    const quantity = new Decimal(input.quantity);
-    const unitCost = new Decimal(input.unitCost);
+    const inputQuantity = new Decimal(input.quantity);
+    const inputUnitCost = new Decimal(input.unitCost);
 
-    if (quantity.lessThanOrEqualTo(0)) {
+    if (inputQuantity.lessThanOrEqualTo(0)) {
       throw new AppError('STOCK_INVALID_QUANTITY', 'quantity must be positive for purchases');
     }
-    if (unitCost.lessThan(0)) {
+    if (inputUnitCost.lessThan(0)) {
       throw new AppError('VALIDATION_ERROR', 'unitCost cannot be negative');
     }
 
@@ -121,6 +129,29 @@ export class StockService {
       if (!product) {
         throw new AppError('PRODUCT_NOT_FOUND', `Product ${input.productId} not found`);
       }
+
+      // ── Conversión a la unidad base del producto ──────────────────────────
+      // Si la compra trae `unitOfMeasure` distinto al del producto, convertimos
+      // tanto cantidad como costo unitario para preservar el total ($total fijo).
+      // Ej: comprar 100 G a $0.50/G → almacenar 0.1 KG a $500/KG (total = $50).
+      const purchaseUnit = input.unitOfMeasure ?? product.unitOfMeasure;
+      if (
+        purchaseUnit &&
+        product.unitOfMeasure &&
+        purchaseUnit !== product.unitOfMeasure &&
+        !unitsCompatible(purchaseUnit, product.unitOfMeasure)
+      ) {
+        throw new AppError(
+          'INCOMPATIBLE_UNIT',
+          `La unidad de la compra (${purchaseUnit}) no es compatible con la unidad del producto "${product.name}" (${product.unitOfMeasure}). Cambiá la unidad del item o ajustá la unidad del producto antes de registrar la compra.`
+        );
+      }
+
+      const quantity = convertQuantity(inputQuantity, purchaseUnit, product.unitOfMeasure);
+      // Total = inputQuantity * inputUnitCost (no cambia con la conversión).
+      // unitCost en unidad del producto = total / quantity.
+      const total = inputQuantity.times(inputUnitCost);
+      const unitCost = quantity.equals(0) ? inputUnitCost : total.dividedBy(quantity);
 
       const newStock = product.stockActual.plus(quantity);
       const newAverageCost = newStock.equals(0)
@@ -614,7 +645,13 @@ export class StockService {
     await this.prisma.product.update({ where: { id: productId }, data });
   }
 
-  async getMovements(filters: MovementsFilters = {}): Promise<StockMovement[]> {
+  async getMovements(
+    filters: MovementsFilters = {}
+  ): Promise<
+    (StockMovement & {
+      user: { name: string; last_name: string; second_last_name: string | null } | null;
+    })[]
+  > {
     const where: Prisma.StockMovementWhereInput = {};
     if (filters.productId) where.productId = filters.productId;
     if (filters.type) where.type = filters.type;
@@ -627,6 +664,11 @@ export class StockService {
 
     return this.prisma.stockMovement.findMany({
       where,
+      include: {
+        user: {
+          select: { name: true, last_name: true, second_last_name: true },
+        },
+      },
       orderBy: { createdAt: 'desc' },
       take: filters.limit ?? 100,
       skip: filters.offset ?? 0,

@@ -27,6 +27,11 @@ export class ListMovementsUseCase {
       expenseItemId: m.expenseItemId,
       orderItemId: m.orderItemId,
       userId: m.userId,
+      // Nombre legible del usuario (Nombre + Apellido). null si el movement
+      // fue del sistema (ej. venta de orden pública).
+      userName: m.user
+        ? `${m.user.name} ${m.user.last_name}`.trim()
+        : null,
       createdAt: m.createdAt,
     }));
   }

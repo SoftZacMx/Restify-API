@@ -3,7 +3,7 @@ import { IExpenseRepository } from '../../../domain/interfaces/expense-repositor
 import { IProductRepository } from '../../../domain/interfaces/product-repository.interface';
 import { CreateExpenseInput } from '../../dto/expense.dto';
 import { AppError } from '../../../../shared/errors';
-import { ExpenseType } from '@prisma/client';
+import { ExpenseType, type UnitOfMeasure } from '@prisma/client';
 import { PrismaService } from '../../../infrastructure/config/prisma.config';
 import { StockService } from '../../services/stock.service';
 
@@ -116,11 +116,14 @@ export class CreateExpenseUseCase {
         for (const item of created.items) {
           // unitCost = subtotal del renglón / cantidad. Validamos amount > 0 antes (zod).
           const unitCost = item.subtotal / item.amount;
+          // Si el item declara una unidad distinta a la del producto, StockService convierte
+          // tanto cantidad como costo unitario antes de persistir (preserva el total).
           await this.stockService.recordPurchase(
             {
               productId: item.productId,
               quantity: item.amount,
               unitCost,
+              unitOfMeasure: item.unitOfMeasure as UnitOfMeasure | null | undefined,
               expenseItemId: item.id,
               userId: input.userId,
             },
