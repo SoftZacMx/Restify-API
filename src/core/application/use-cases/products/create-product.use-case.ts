@@ -1,4 +1,5 @@
 import { inject, injectable } from 'tsyringe';
+import type { UnitOfMeasure } from '@prisma/client';
 import { IProductRepository } from '../../../domain/interfaces/product-repository.interface';
 import { IUserRepository } from '../../../domain/interfaces/user-repository.interface';
 import { CreateProductInput } from '../../dto/product.dto';
@@ -13,6 +14,9 @@ export interface CreateProductResult {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+  trackStock: boolean;
+  unitOfMeasure: UnitOfMeasure | null;
+  minStockAlert: number | null;
 }
 
 @injectable()
@@ -29,12 +33,15 @@ export class CreateProductUseCase {
       throw new AppError('USER_NOT_FOUND');
     }
 
-    // Create product
+    // Create product (con stock config opcional desde la creación)
     const product = await this.productRepository.create({
       name: input.name,
       description: input.description || null,
       status: input.status ?? true,
       userId: input.userId,
+      trackStock: input.trackStock,
+      unitOfMeasure: input.unitOfMeasure,
+      minStockAlert: input.minStockAlert,
     });
 
     return {
@@ -46,6 +53,9 @@ export class CreateProductUseCase {
       userId: product.userId,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
+      trackStock: product.trackStock,
+      unitOfMeasure: product.unitOfMeasure,
+      minStockAlert: product.minStockAlert,
     };
   }
 }

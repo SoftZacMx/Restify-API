@@ -1,3 +1,4 @@
+import { UnitOfMeasure } from '@prisma/client';
 import { Product } from '../entities/product.entity';
 
 export interface ProductFilters {
@@ -15,6 +16,9 @@ export interface IProductRepository {
     description: string | null;
     status: boolean;
     userId: string;
+    trackStock?: boolean;
+    unitOfMeasure?: UnitOfMeasure | null;
+    minStockAlert?: number | null;
   }): Promise<Product>;
   update(id: string, data: {
     name?: string;

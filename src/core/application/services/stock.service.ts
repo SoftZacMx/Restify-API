@@ -188,6 +188,13 @@ export class StockService {
           menuItem: {
             include: { ingredients: true },
           },
+          extras: {
+            include: {
+              extra: {
+                include: { ingredients: true },
+              },
+            },
+          },
         },
       });
 
@@ -195,78 +202,145 @@ export class StockService {
         throw new AppError('ORDER_ITEM_NOT_FOUND', `OrderItem ${orderItemId} not found`);
       }
 
-      const sold = new Decimal(orderItem.quantity);
       const movements: StockMovement[] = [];
 
-      // Caso A — MenuItem con receta: descontar cada ingrediente trackeado.
-      if (orderItem.menuItem && orderItem.menuItem.ingredients.length > 0) {
-        for (const ing of orderItem.menuItem.ingredients) {
-          const product = await client.product.findUnique({ where: { id: ing.productId } });
-          if (!product || !product.trackStock) continue;
-
-          // Convertir la cantidad del ingrediente a la unidad base del producto si difieren.
-          // Ej: receta dice "50 G" pero el producto se trackea en "KG" → 0.05.
-          const ingUnit = ing.unit ?? product.unitOfMeasure;
-          const qtyInProductUnit = convertQuantity(
-            ing.quantity,
-            ingUnit,
-            product.unitOfMeasure
-          );
-          const movementQty = qtyInProductUnit.times(sold).negated();
-
-          const movement = await client.stockMovement.create({
-            data: {
-              productId: ing.productId,
-              quantity: movementQty,
-              type: StockMovementType.SALE,
-              orderItemId,
-              userId,
-            },
-          });
-
-          await client.product.update({
-            where: { id: ing.productId },
-            data: { stockActual: { increment: movementQty } },
-          });
-
-          this.warnIfNegative(product.stockActual.plus(movementQty), ing.productId);
-          movements.push(movement);
-        }
-        return movements;
+      // 1. Descontar lo del MenuItem principal.
+      const sold = new Decimal(orderItem.quantity);
+      if (orderItem.menuItem) {
+        const main = await this.discountForMenuItem(client, {
+          menuItem: orderItem.menuItem,
+          quantity: sold,
+          orderItemId,
+          userId,
+        });
+        movements.push(...main);
+      } else if (orderItem.productId) {
+        // OrderItem sin menuItem pero con productId directo (caso histórico).
+        const direct = await this.discountDirectProduct(client, {
+          productId: orderItem.productId,
+          quantity: sold,
+          orderItemId,
+          userId,
+        });
+        if (direct) movements.push(direct);
       }
 
-      // Caso B — Item directo: MenuItem.productId o OrderItem.productId.
-      const directProductId = orderItem.menuItem?.productId ?? orderItem.productId;
-      if (directProductId) {
-        const product = await client.product.findUnique({ where: { id: directProductId } });
-        if (!product || !product.trackStock) return movements;
-
-        const movementQty = sold.negated();
-
-        const movement = await client.stockMovement.create({
-          data: {
-            productId: directProductId,
-            quantity: movementQty,
-            type: StockMovementType.SALE,
-            orderItemId,
-            userId,
-          },
+      // 2. Descontar lo de cada extra. La cantidad de cada extra es absoluta
+      //    (consistente con el cálculo del precio: extra.price * extra.quantity).
+      for (const oie of orderItem.extras) {
+        const extraQty = new Decimal(oie.quantity);
+        const extraMovements = await this.discountForMenuItem(client, {
+          menuItem: oie.extra,
+          quantity: extraQty,
+          orderItemId, // los movements del extra se linkean al orderItem padre para reversal idempotente
+          userId,
         });
-
-        await client.product.update({
-          where: { id: directProductId },
-          data: { stockActual: { increment: movementQty } },
-        });
-
-        this.warnIfNegative(product.stockActual.plus(movementQty), directProductId);
-        movements.push(movement);
+        movements.push(...extraMovements);
       }
 
-      // Caso C — sin receta ni productId: no genera movements (silencioso).
       return movements;
     };
 
     return tx ? run(tx) : this.prisma.$transaction(run);
+  }
+
+  /**
+   * Descuenta el stock correspondiente a un MenuItem (con receta o producto directo).
+   * Si tiene `ingredients`, descuenta cada uno; si no pero tiene `productId`, descuenta
+   * 1 unidad del producto por cada `quantity`. Si nada aplica, devuelve [].
+   */
+  private async discountForMenuItem(
+    client: Prisma.TransactionClient,
+    params: {
+      menuItem: {
+        productId: string | null;
+        ingredients: { productId: string; quantity: Prisma.Decimal; unit: UnitOfMeasure | null }[];
+      };
+      quantity: Prisma.Decimal;
+      orderItemId: string;
+      userId: string | null;
+    }
+  ): Promise<StockMovement[]> {
+    const movements: StockMovement[] = [];
+
+    // Caso A — MenuItem con receta.
+    if (params.menuItem.ingredients.length > 0) {
+      for (const ing of params.menuItem.ingredients) {
+        const product = await client.product.findUnique({ where: { id: ing.productId } });
+        if (!product || !product.trackStock) continue;
+
+        const ingUnit = ing.unit ?? product.unitOfMeasure;
+        const qtyInProductUnit = convertQuantity(ing.quantity, ingUnit, product.unitOfMeasure);
+        const movementQty = qtyInProductUnit.times(params.quantity).negated();
+
+        const movement = await client.stockMovement.create({
+          data: {
+            productId: ing.productId,
+            quantity: movementQty,
+            type: StockMovementType.SALE,
+            orderItemId: params.orderItemId,
+            userId: params.userId,
+          },
+        });
+
+        await client.product.update({
+          where: { id: ing.productId },
+          data: { stockActual: { increment: movementQty } },
+        });
+
+        this.warnIfNegative(product.stockActual.plus(movementQty), ing.productId);
+        movements.push(movement);
+      }
+      return movements;
+    }
+
+    // Caso B — MenuItem directo (vinculado a un Product 1:1).
+    if (params.menuItem.productId) {
+      const direct = await this.discountDirectProduct(client, {
+        productId: params.menuItem.productId,
+        quantity: params.quantity,
+        orderItemId: params.orderItemId,
+        userId: params.userId,
+      });
+      if (direct) movements.push(direct);
+    }
+
+    // Caso C — sin receta ni productId: no genera movements (silencioso).
+    return movements;
+  }
+
+  /** Descuenta `quantity` unidades del producto y registra el SALE. Devuelve null si trackStock=false. */
+  private async discountDirectProduct(
+    client: Prisma.TransactionClient,
+    params: {
+      productId: string;
+      quantity: Prisma.Decimal;
+      orderItemId: string;
+      userId: string | null;
+    }
+  ): Promise<StockMovement | null> {
+    const product = await client.product.findUnique({ where: { id: params.productId } });
+    if (!product || !product.trackStock) return null;
+
+    const movementQty = params.quantity.negated();
+
+    const movement = await client.stockMovement.create({
+      data: {
+        productId: params.productId,
+        quantity: movementQty,
+        type: StockMovementType.SALE,
+        orderItemId: params.orderItemId,
+        userId: params.userId,
+      },
+    });
+
+    await client.product.update({
+      where: { id: params.productId },
+      data: { stockActual: { increment: movementQty } },
+    });
+
+    this.warnIfNegative(product.stockActual.plus(movementQty), params.productId);
+    return movement;
   }
 
   /**
