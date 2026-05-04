@@ -551,6 +551,75 @@ export class StockService {
     return tx ? run(tx) : this.prisma.$transaction(run);
   }
 
+  /**
+   * Versión batch de `reverseSaleForOrderItem` para flujos que afectan N items
+   * (eliminar orden, editar items). Idéntica semántica idempotente: filtra los
+   * orderItemIds que ya tienen un SALE_REVERSAL, revierte el resto en bulk con
+   * `createMany` + un único `update` por producto (deltas acumulados).
+   *
+   * Requiere correr dentro de una transacción (no abre $transaction propio).
+   */
+  async reverseSalesBatch(
+    orderItemIds: string[],
+    userId: string | null,
+    reason: string,
+    tx: Prisma.TransactionClient
+  ): Promise<void> {
+    if (orderItemIds.length === 0) return;
+
+    // Idempotencia: descartar los items que ya tienen reversal previo.
+    const alreadyReversed = await tx.stockMovement.findMany({
+      where: {
+        orderItemId: { in: orderItemIds },
+        type: StockMovementType.SALE_REVERSAL,
+      },
+      select: { orderItemId: true },
+    });
+    const reversedSet = new Set(alreadyReversed.map((r) => r.orderItemId).filter((id): id is string => id != null));
+    const targetIds = orderItemIds.filter((id) => !reversedSet.has(id));
+    if (targetIds.length === 0) return;
+
+    // Cargar TODAS las ventas originales en una sola query.
+    const sales = await tx.stockMovement.findMany({
+      where: { orderItemId: { in: targetIds }, type: StockMovementType.SALE },
+    });
+    if (sales.length === 0) return;
+
+    const reversalRows: {
+      productId: string;
+      quantity: Prisma.Decimal;
+      type: StockMovementType;
+      orderItemId: string;
+      userId: string | null;
+      reason: string;
+    }[] = [];
+    const deltaByProduct = new Map<string, Prisma.Decimal>();
+
+    for (const sale of sales) {
+      const reverseQty = sale.quantity.negated();
+      reversalRows.push({
+        productId: sale.productId,
+        quantity: reverseQty,
+        type: StockMovementType.SALE_REVERSAL,
+        orderItemId: sale.orderItemId!,
+        userId,
+        reason,
+      });
+      const prev = deltaByProduct.get(sale.productId) ?? new Decimal(0);
+      deltaByProduct.set(sale.productId, prev.plus(reverseQty));
+    }
+
+    await tx.stockMovement.createMany({ data: reversalRows });
+
+    for (const [productId, delta] of deltaByProduct) {
+      if (delta.isZero()) continue;
+      await tx.product.update({
+        where: { id: productId },
+        data: { stockActual: { increment: delta } },
+      });
+    }
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // Reversa de compra (edición / eliminación de Expense — Fase 3.2)
   // ──────────────────────────────────────────────────────────────────────────

@@ -1,9 +1,8 @@
 import { inject, injectable } from 'tsyringe';
 import { randomUUID } from 'crypto';
-import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
 import { ICompanyRepository } from '../../../domain/interfaces/company-repository.interface';
 import { PrismaService } from '../../../infrastructure/config/prisma.config';
-import { StockService } from '../../services/stock.service';
+import { StockService, StockBatchSaleItem } from '../../services/stock.service';
 import { AppError } from '../../../../shared/errors';
 import { isWithinOperatingHours } from '../../../../shared/utils/operating-hours.util';
 
@@ -37,7 +36,6 @@ export interface CreatePublicOrderResult {
 @injectable()
 export class CreatePublicOrderUseCase {
   constructor(
-    @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
     @inject('ICompanyRepository') private readonly companyRepository: ICompanyRepository,
     @inject(PrismaService) private readonly prismaService: PrismaService,
     @inject(StockService) private readonly stockService: StockService,
@@ -65,12 +63,37 @@ export class CreatePublicOrderUseCase {
       throw new AppError('VALIDATION_ERROR', 'At least one item is required');
     }
 
-    // 3. Validar items y extras (lecturas fuera de transacción), cachear precios
-    let subtotal = 0;
-    const itemPrices: Map<string, number> = new Map();
+    // 3. Bulk-load menuItems con ingredientes y productos asociados.
+    const prisma = this.prismaService.getClient();
 
+    const menuItemIds = new Set<string>();
     for (const item of input.items) {
-      const menuItem = await this.menuItemRepository.findById(item.menuItemId);
+      menuItemIds.add(item.menuItemId);
+      for (const extra of item.extras ?? []) {
+        menuItemIds.add(extra.extraId);
+      }
+    }
+
+    const menuItems = await prisma.menuItem.findMany({
+      where: { id: { in: [...menuItemIds] } },
+      include: { ingredients: true },
+    });
+    const menuItemMap = new Map(menuItems.map((m) => [m.id, m]));
+
+    const stockProductIds = new Set<string>();
+    for (const mi of menuItems) {
+      if (mi.productId) stockProductIds.add(mi.productId);
+      for (const ing of mi.ingredients) stockProductIds.add(ing.productId);
+    }
+    const products = stockProductIds.size > 0
+      ? await prisma.product.findMany({ where: { id: { in: [...stockProductIds] } } })
+      : [];
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    // 4. Validar y calcular subtotal usando los maps.
+    let subtotal = 0;
+    for (const item of input.items) {
+      const menuItem = menuItemMap.get(item.menuItemId);
       if (!menuItem) {
         throw new AppError('MENU_ITEM_NOT_FOUND', `Menu item with ID ${item.menuItemId} not found`);
       }
@@ -81,12 +104,11 @@ export class CreatePublicOrderUseCase {
         throw new AppError('INVALID_MENU_ITEM', `Menu item "${menuItem.name}" is an extra and should be in the extras array`);
       }
 
-      itemPrices.set(menuItem.id, menuItem.price);
-      subtotal += menuItem.price * item.quantity;
+      subtotal += Number(menuItem.price) * item.quantity;
 
       if (item.extras && item.extras.length > 0) {
         for (const extra of item.extras) {
-          const extraMenuItem = await this.menuItemRepository.findById(extra.extraId);
+          const extraMenuItem = menuItemMap.get(extra.extraId);
           if (!extraMenuItem) {
             throw new AppError('MENU_ITEM_NOT_FOUND', `Extra with ID ${extra.extraId} not found`);
           }
@@ -97,8 +119,7 @@ export class CreatePublicOrderUseCase {
             throw new AppError('INVALID_EXTRA', `Menu item "${extraMenuItem.name}" is not an extra`);
           }
 
-          itemPrices.set(extraMenuItem.id, extraMenuItem.price);
-          subtotal += extraMenuItem.price * extra.quantity;
+          subtotal += Number(extraMenuItem.price) * extra.quantity;
         }
       }
     }
@@ -107,9 +128,17 @@ export class CreatePublicOrderUseCase {
     const trackingToken = randomUUID();
     const origin = input.orderType === 'DELIVERY' ? 'online-delivery' : 'online-pickup';
 
-    // 4. Escrituras dentro de transacción
-    const prisma = this.prismaService.getClient();
+    // Pre-generar IDs para createMany.
+    const prepared = input.items.map((item) => ({
+      id: randomUUID(),
+      input: item,
+      extras: (item.extras ?? []).map((extra) => ({
+        id: randomUUID(),
+        input: extra,
+      })),
+    }));
 
+    // 5. Escrituras dentro de transacción.
     const result = await prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
@@ -136,35 +165,65 @@ export class CreatePublicOrderUseCase {
         },
       });
 
-      for (const item of input.items) {
-        const createdItem = await tx.orderItem.create({
-          data: {
-            quantity: item.quantity,
-            price: itemPrices.get(item.menuItemId)!,
-            orderId: order.id,
-            productId: null,
-            menuItemId: item.menuItemId,
-            note: item.note ?? null,
-          },
-        });
+      await tx.orderItem.createMany({
+        data: prepared.map((p) => ({
+          id: p.id,
+          quantity: p.input.quantity,
+          price: Number(menuItemMap.get(p.input.menuItemId)!.price),
+          orderId: order.id,
+          productId: null,
+          menuItemId: p.input.menuItemId,
+          note: p.input.note ?? null,
+        })),
+      });
 
-        if (item.extras && item.extras.length > 0) {
-          for (const extra of item.extras) {
-            await tx.orderItemExtra.create({
-              data: {
-                orderId: order.id,
-                orderItemId: createdItem.id,
-                extraId: extra.extraId,
-                quantity: extra.quantity,
-                price: itemPrices.get(extra.extraId)!,
-              },
-            });
-          }
-        }
-
-        // Descontar stock por venta — userId=null (movement del sistema, sin user humano).
-        await this.stockService.recordSaleForOrderItem(createdItem.id, null, tx);
+      const extraRows = prepared.flatMap((p) =>
+        p.extras.map((e) => ({
+          id: e.id,
+          orderId: order.id,
+          orderItemId: p.id,
+          extraId: e.input.extraId,
+          quantity: e.input.quantity,
+          price: Number(menuItemMap.get(e.input.extraId)!.price),
+        }))
+      );
+      if (extraRows.length > 0) {
+        await tx.orderItemExtra.createMany({ data: extraRows });
       }
+
+      // Stock batch — userId=null (movement del sistema, sin user humano).
+      const saleBatch: StockBatchSaleItem[] = prepared.map((p) => {
+        const menuItem = menuItemMap.get(p.input.menuItemId)!;
+        return {
+          orderItemId: p.id,
+          quantity: p.input.quantity,
+          menuItem: {
+            productId: menuItem.productId,
+            ingredients: menuItem.ingredients.map((i) => ({
+              productId: i.productId,
+              quantity: i.quantity,
+              unit: i.unit,
+            })),
+          },
+          productId: null,
+          extras: p.extras.map((e) => {
+            const extraMI = menuItemMap.get(e.input.extraId)!;
+            return {
+              quantity: e.input.quantity,
+              menuItem: {
+                productId: extraMI.productId,
+                ingredients: extraMI.ingredients.map((i) => ({
+                  productId: i.productId,
+                  quantity: i.quantity,
+                  unit: i.unit,
+                })),
+              },
+            };
+          }),
+        };
+      });
+
+      await this.stockService.recordSalesBatch(saleBatch, productMap, null, tx);
 
       return order;
     });

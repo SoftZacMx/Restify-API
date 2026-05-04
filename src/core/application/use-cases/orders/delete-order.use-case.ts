@@ -29,17 +29,15 @@ export class DeleteOrderUseCase {
 
     const prisma = this.prismaService.getClient();
     await prisma.$transaction(async (tx) => {
-      // Revertir stock por cada OrderItem antes del delete (Fase 4.2).
+      // Revertir stock por TODOS los OrderItems en una sola pasada (Fase 4.2).
       // Mientras los OrderItems siguen vivos, los SALE originales tienen orderItemId válido.
       // Tras el cascade de delete, la FK queda en null pero el ledger persiste.
-      for (const item of items) {
-        await this.stockService.reverseSaleForOrderItem(
-          item.id,
-          input.userId,
-          'order cancelled',
-          tx
-        );
-      }
+      await this.stockService.reverseSalesBatch(
+        items.map((i) => i.id),
+        input.userId,
+        'order cancelled',
+        tx
+      );
 
       // Liberar mesa si aplica.
       if (order.tableId && order.origin.toLowerCase() === 'local') {

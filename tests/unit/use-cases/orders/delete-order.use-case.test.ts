@@ -9,7 +9,7 @@ import { AppError } from '../../../../src/shared/errors';
 describe('DeleteOrderUseCase', () => {
   let deleteOrderUseCase: DeleteOrderUseCase;
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
-  let mockStockService: jest.Mocked<Pick<StockService, 'recordSaleForOrderItem' | 'reverseSaleForOrderItem'>>;
+  let mockStockService: jest.Mocked<Pick<StockService, 'recordSaleForOrderItem' | 'reverseSaleForOrderItem' | 'reverseSalesBatch'>>;
   let mockPrismaService: jest.Mocked<PrismaService>;
   const mockTx = {
     table: { update: jest.fn().mockResolvedValue({}) },
@@ -40,6 +40,7 @@ describe('DeleteOrderUseCase', () => {
     mockStockService = {
       recordSaleForOrderItem: jest.fn().mockResolvedValue([]),
       reverseSaleForOrderItem: jest.fn().mockResolvedValue([]),
+      reverseSalesBatch: jest.fn().mockResolvedValue(undefined),
     };
 
     mockPrismaService = {
@@ -83,12 +84,9 @@ describe('DeleteOrderUseCase', () => {
 
       await deleteOrderUseCase.execute(validInput);
 
-      expect(mockStockService.reverseSaleForOrderItem).toHaveBeenCalledTimes(2);
-      expect(mockStockService.reverseSaleForOrderItem).toHaveBeenNthCalledWith(
-        1, 'oi-1', 'user-1', 'order cancelled', mockTx
-      );
-      expect(mockStockService.reverseSaleForOrderItem).toHaveBeenNthCalledWith(
-        2, 'oi-2', 'user-1', 'order cancelled', mockTx
+      expect(mockStockService.reverseSalesBatch).toHaveBeenCalledTimes(1);
+      expect(mockStockService.reverseSalesBatch).toHaveBeenCalledWith(
+        ['oi-1', 'oi-2'], 'user-1', 'order cancelled', mockTx
       );
       expect(mockTx.order.delete).toHaveBeenCalledWith({ where: { id: 'order-123' } });
     });
@@ -113,8 +111,8 @@ describe('DeleteOrderUseCase', () => {
 
       await deleteOrderUseCase.execute({ order_id: 'order-123', userId: null });
 
-      expect(mockStockService.reverseSaleForOrderItem).toHaveBeenCalledWith(
-        'oi-1', null, 'order cancelled', mockTx
+      expect(mockStockService.reverseSalesBatch).toHaveBeenCalledWith(
+        ['oi-1'], null, 'order cancelled', mockTx
       );
     });
 
@@ -124,7 +122,7 @@ describe('DeleteOrderUseCase', () => {
       await expect(deleteOrderUseCase.execute(validInput)).rejects.toMatchObject({
         code: 'ORDER_NOT_FOUND',
       });
-      expect(mockStockService.reverseSaleForOrderItem).not.toHaveBeenCalled();
+      expect(mockStockService.reverseSalesBatch).not.toHaveBeenCalled();
       expect(mockTx.order.delete).not.toHaveBeenCalled();
     });
   });
