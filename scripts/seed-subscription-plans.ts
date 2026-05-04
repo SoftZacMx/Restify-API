@@ -1,7 +1,7 @@
 #!/usr/bin/env ts-node
 
 /**
- * Seed: Subscription Plans (Mensual y Anual).
+ * Seed: Subscription Plans (Mensual y Anual) + suscripción activa anual.
  *
  * Uso: npx ts-node scripts/seed-subscription-plans.ts
  * Requiere: DATABASE_URL en .env
@@ -10,7 +10,7 @@
  * Actualiza los valores antes de ejecutar en producción.
  */
 
-import { PrismaClient, BillingPeriod } from '@prisma/client';
+import { PrismaClient, BillingPeriod, SubscriptionStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -29,6 +29,9 @@ const plans = [
   },
 ];
 
+const SEED_STRIPE_CUSTOMER_ID = 'cus_seed_local';
+const SEED_STRIPE_SUBSCRIPTION_ID = 'sub_seed_local';
+
 async function main(): Promise<void> {
   console.log('🌱 Seed: Subscription Plans\n');
 
@@ -46,7 +49,43 @@ async function main(): Promise<void> {
     console.log(`   ✅ ${plan.name} — ${plan.billingPeriod} — $${(plan.price / 100).toLocaleString()} MXN`);
   }
 
-  console.log('\n✨ Seed de planes terminado.');
+  console.log('\n🌱 Seed: Suscripción activa (Anual)\n');
+
+  const annualPlan = await prisma.subscriptionPlan.findUnique({
+    where: { stripePriceId: plans[1].stripePriceId },
+  });
+
+  if (!annualPlan) {
+    throw new Error('Plan Anual no encontrado tras el seed de planes.');
+  }
+
+  const existingSubscription = await prisma.subscription.findUnique({
+    where: { stripeCustomerId: SEED_STRIPE_CUSTOMER_ID },
+  });
+
+  if (existingSubscription) {
+    console.log(`   ⏭️  Suscripción ya existe (${SEED_STRIPE_CUSTOMER_ID})`);
+  } else {
+    const now = new Date();
+    const oneYearFromNow = new Date(now);
+    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+
+    await prisma.subscription.create({
+      data: {
+        stripeCustomerId: SEED_STRIPE_CUSTOMER_ID,
+        stripeSubscriptionId: SEED_STRIPE_SUBSCRIPTION_ID,
+        status: SubscriptionStatus.ACTIVE,
+        currentPeriodStart: now,
+        currentPeriodEnd: oneYearFromNow,
+        cancelAtPeriodEnd: false,
+        planId: annualPlan.id,
+      },
+    });
+
+    console.log(`   ✅ Suscripción ACTIVE — vence ${oneYearFromNow.toISOString().slice(0, 10)} — plan ${annualPlan.name}`);
+  }
+
+  console.log('\n✨ Seed terminado.');
 }
 
 main()
