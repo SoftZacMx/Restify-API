@@ -1,5 +1,5 @@
 import { inject, injectable } from 'tsyringe';
-import { Prisma, PrismaClient, StockMovement, StockMovementType, UnitOfMeasure } from '@prisma/client';
+import { Prisma, PrismaClient, Product, StockMovement, StockMovementType, UnitOfMeasure } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/config/prisma.config';
 import { AppError } from '../../../shared/errors';
 import { convertQuantity, unitsCompatible } from '../../../shared/utils/unit-conversion.util';
@@ -77,6 +77,37 @@ export interface MovementsFilters {
   limit?: number;
   offset?: number;
 }
+
+/**
+ * Snapshot mínimo de un MenuItem para el cálculo batch de stock.
+ * Mutuamente exclusivo: si `ingredients` tiene filas, se descuenta cada una;
+ * si no pero hay `productId`, se descuenta el producto directo 1:1.
+ */
+export interface StockBatchMenuItem {
+  productId: string | null;
+  ingredients: {
+    productId: string;
+    quantity: Prisma.Decimal | number | string;
+    unit: UnitOfMeasure | null;
+  }[];
+}
+
+/**
+ * Item de venta batch. Replica la lógica de `recordSaleForOrderItem` pero recibe
+ * los datos pre-cargados (sin queries internas).
+ */
+export interface StockBatchSaleItem {
+  orderItemId: string;
+  /** Multiplicador del OrderItem (cantidad vendida). */
+  quantity: number;
+  /** Si el OrderItem está ligado a un MenuItem, su snapshot. */
+  menuItem: StockBatchMenuItem | null;
+  /** OrderItem sin menuItem pero con productId directo (caso histórico). */
+  productId: string | null;
+  extras: { quantity: number; menuItem: StockBatchMenuItem }[];
+}
+
+type StockBatchProduct = Pick<Product, 'id' | 'unitOfMeasure' | 'trackStock' | 'stockActual'>;
 
 /**
  * Único punto del código que muta `products.stockActual` y escribe en `stock_movements`.
@@ -273,6 +304,101 @@ export class StockService {
     };
 
     return tx ? run(tx) : this.prisma.$transaction(run);
+  }
+
+  /**
+   * Versión batch de `recordSaleForOrderItem` para crear órdenes con N items en
+   * una sola transacción rápida. Recibe los datos ya pre-cargados (productMap +
+   * snapshot de menuItems) — no hace queries de lectura adentro. Usa `createMany`
+   * para los movements y un único `update` por producto (deltas acumulados).
+   *
+   * Pensado para el flujo de creación de orden, donde la unidad atómica es la
+   * orden completa. Para flujos de a un item (update/cancel/edit), seguir usando
+   * `recordSaleForOrderItem`.
+   *
+   * Reglas idénticas al singular:
+   * - Productos con `trackStock=false` se ignoran silenciosamente.
+   * - Stock negativo se permite (warning).
+   * - Las unidades de receta se convierten a la unidad base del producto.
+   */
+  async recordSalesBatch(
+    items: StockBatchSaleItem[],
+    productMap: Map<string, StockBatchProduct>,
+    userId: string | null,
+    tx: Prisma.TransactionClient
+  ): Promise<void> {
+    if (items.length === 0) return;
+
+    const movementRows: {
+      productId: string;
+      quantity: Prisma.Decimal;
+      type: StockMovementType;
+      orderItemId: string;
+      userId: string | null;
+    }[] = [];
+
+    // Delta firmado acumulado por producto (negativo = salida).
+    const deltaByProduct = new Map<string, Prisma.Decimal>();
+
+    const pushMovement = (productId: string, qty: Prisma.Decimal, orderItemId: string): void => {
+      const product = productMap.get(productId);
+      if (!product || !product.trackStock) return;
+      movementRows.push({
+        productId,
+        quantity: qty,
+        type: StockMovementType.SALE,
+        orderItemId,
+        userId,
+      });
+      const prev = deltaByProduct.get(productId) ?? new Decimal(0);
+      deltaByProduct.set(productId, prev.plus(qty));
+    };
+
+    const discountMenuItem = (
+      menuItem: StockBatchMenuItem,
+      multiplier: number,
+      orderItemId: string
+    ): void => {
+      if (menuItem.ingredients.length > 0) {
+        for (const ing of menuItem.ingredients) {
+          const product = productMap.get(ing.productId);
+          if (!product || !product.trackStock) continue;
+          const ingUnit = ing.unit ?? product.unitOfMeasure;
+          const qtyInProductUnit = convertQuantity(ing.quantity, ingUnit, product.unitOfMeasure);
+          const movementQty = qtyInProductUnit.times(multiplier).negated();
+          pushMovement(ing.productId, movementQty, orderItemId);
+        }
+        return;
+      }
+      if (menuItem.productId) {
+        pushMovement(menuItem.productId, new Decimal(multiplier).negated(), orderItemId);
+      }
+    };
+
+    for (const item of items) {
+      if (item.menuItem) {
+        discountMenuItem(item.menuItem, item.quantity, item.orderItemId);
+      } else if (item.productId) {
+        pushMovement(item.productId, new Decimal(item.quantity).negated(), item.orderItemId);
+      }
+      for (const extra of item.extras) {
+        discountMenuItem(extra.menuItem, extra.quantity, item.orderItemId);
+      }
+    }
+
+    if (movementRows.length === 0) return;
+
+    await tx.stockMovement.createMany({ data: movementRows });
+
+    for (const [productId, delta] of deltaByProduct) {
+      if (delta.isZero()) continue;
+      await tx.product.update({
+        where: { id: productId },
+        data: { stockActual: { increment: delta } },
+      });
+      const product = productMap.get(productId)!;
+      this.warnIfNegative(product.stockActual.plus(delta), productId);
+    }
   }
 
   /**
