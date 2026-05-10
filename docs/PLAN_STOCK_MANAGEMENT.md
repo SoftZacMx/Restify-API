@@ -356,7 +356,7 @@ Más simple que generar movements diferenciales y mantiene el ledger limpio (un 
 - Item "Stock" en el menú lateral, visible para `ADMIN`, `MANAGER`, `OWNER`. Oculto para `WAITER`, `CHEF`.
 - Ícono: `Package` o `Boxes` (lucide-react).
 
-### 6.2 Página principal `/stock`
+### 6.2 Página principal `/stock`+
 
 - Tabla: nombre, categoría, stock actual, unidad, mínimo, costo promedio, indicador visual (verde / amarillo / rojo).
 - Filtros: búsqueda, "solo bajo mínimo", por categoría.
