@@ -1,14 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
-import { container } from 'tsyringe';
 import { LoginUseCase } from '../../core/application/use-cases/auth/login.use-case';
-import { sendSuccess } from '../../shared/middleware/response-formatter.middleware';
+import { makeController } from '../../shared/utils/make-controller';
 
-export const loginController = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const loginUseCase = container.resolve(LoginUseCase);
-    const result = await loginUseCase.execute(req.body);
-    sendSuccess(res, result);
-  } catch (error) {
-    next(error);
-  }
-};
+export const loginController = makeController(LoginUseCase);

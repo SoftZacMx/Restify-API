@@ -146,6 +146,7 @@ const publicOrderItemSchema = z.object({
 
 // Create Public Order Schema
 export const createPublicOrderSchema = z.object({
+  branchId: z.string().uuid('Invalid branch ID format'),
   customerName: z.string().min(1, 'Customer name is required').max(200, 'Customer name is too long'),
   customerPhone: z.string().min(10, 'Phone must be at least 10 digits').max(13, 'Phone must be at most 13 digits'),
   orderType: z.enum(['DELIVERY', 'PICKUP']),

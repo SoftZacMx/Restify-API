@@ -1,4 +1,6 @@
 import { UpdateOrderUseCase } from '../../core/application/use-cases/orders/update-order.use-case';
-import { makeParamBodyController } from '../../shared/utils/make-controller';
+import { makeController } from '../../shared/utils/make-controller';
 
-export const updateOrderController = makeParamBodyController(UpdateOrderUseCase, 'order_id');
+export const updateOrderController = makeController(UpdateOrderUseCase, {
+  mapper: (req) => [req.params.order_id, req.body],
+});

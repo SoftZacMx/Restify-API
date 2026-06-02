@@ -2,7 +2,7 @@ import { VerifyUserUseCase } from '../../../../src/core/application/use-cases/au
 import { IUserRepository } from '../../../../src/core/domain/interfaces/user-repository.interface';
 import { User } from '../../../../src/core/domain/entities/user.entity';
 import { JwtUtil } from '../../../../src/shared/utils/jwt.util';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 
 jest.mock('../../../../src/shared/utils/jwt.util');
@@ -35,18 +35,24 @@ describe('VerifyUserUseCase', () => {
     };
 
     it('should return user data with token when user exists', async () => {
+      // Create mock user with all multi-tenant fields required for JWT payload
       const mockUser = new User(
-        '123',
-        'John',
-        'Doe',
-        null,
-        'john@example.com',
-        'hashed_password',
-        null,
-        true,
-        UserRole.WAITER,
-        new Date(),
-        new Date()
+        '123', // id
+        'John', // name
+        'Doe', // last_name
+        null, // second_last_name
+        'john@example.com', // email
+        'hashed_password', // password
+        null, // phone
+        true, // status
+        UserRole.WAITER, // rol
+        'org-123', // organizationId
+        UserAccountStatus.ACTIVE, // accountStatus
+        0, // tokenVersion
+        new Date(), // emailVerifiedAt
+        false, // mustChangePassword
+        new Date(), // createdAt
+        new Date() // updatedAt
       );
 
       mockUserRepository.findByEmail.mockResolvedValue(mockUser);
@@ -57,8 +63,19 @@ describe('VerifyUserUseCase', () => {
       expect(result).toHaveProperty('token');
       expect(result.email).toBe('john@example.com');
       expect(result.token).toBe('reset_token_here');
+
+      // Verify JWT payload includes all required multi-tenant fields
       expect(JwtUtil.generateToken).toHaveBeenCalledWith(
-        { email: 'john@example.com', userId: '123' },
+        {
+          sub: '123',
+          email: 'john@example.com',
+          rol: UserRole.WAITER,
+          org: 'org-123',
+          branch: undefined, // Password reset is org-level, no branch required
+          tokenVersion: 0,
+          emailVerified: true,
+          mustChangePassword: false,
+        },
         '1h'
       );
     });

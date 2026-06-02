@@ -1,0 +1,38 @@
+meta {
+  name: Replace Recipe
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/menu-items/{{menuItemId}}/recipe
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{login-token}}
+}
+
+body:json {
+  {
+    "ingredients": [
+      { "productId": "00000000-0000-0000-0000-000000000001", "quantity": 1 },
+      { "productId": "00000000-0000-0000-0000-000000000002", "quantity": 0.15 },
+      { "productId": "00000000-0000-0000-0000-000000000003", "quantity": 30 }
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Reemplaza completamente la receta. Mínimo 1 ingrediente; productos no se pueden duplicar; el MenuItem no debe ser ítem directo (`productId` set).
+}

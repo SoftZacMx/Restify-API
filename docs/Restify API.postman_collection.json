@@ -1,0 +1,2911 @@
+{
+  "info": {
+    "_postman_id": "b9dd0711-d0a3-402a-a419-82ca63fa0deb",
+    "name": "Restify API",
+    "description": "Restify API - Collection generated from route files",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "39152894",
+    "_collection_link": "https://go.postman.co/collection/39152894-b9dd0711-d0a3-402a-a419-82ca63fa0deb?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Recetas — 5.2",
+      "item": [
+        {
+          "name": "Get Recipe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-items/{{menuItemId}}/recipe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-items",
+                "{{menuItemId}}",
+                "recipe"
+              ]
+            },
+            "description": "Devuelve los ingredientes (con cantidad y unidad) de la receta del MenuItem."
+          },
+          "response": []
+        },
+        {
+          "name": "Replace Recipe",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ingredients\": [\n    { \"productId\": \"00000000-0000-0000-0000-000000000001\", \"quantity\": 1 },\n    { \"productId\": \"00000000-0000-0000-0000-000000000002\", \"quantity\": 0.15 },\n    { \"productId\": \"00000000-0000-0000-0000-000000000003\", \"quantity\": 30 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-items/{{menuItemId}}/recipe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-items",
+                "{{menuItemId}}",
+                "recipe"
+              ]
+            },
+            "description": "Reemplaza completamente la receta. Mínimo 1 ingrediente; productos no se pueden duplicar; el MenuItem no debe ser ítem directo (`productId` set)."
+          },
+          "response": []
+        },
+        {
+          "name": "Add Recipe Ingredient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"quantity\": 0.05\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-items/{{menuItemId}}/recipe/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-items",
+                "{{menuItemId}}",
+                "recipe",
+                "items"
+              ]
+            },
+            "description": "Agrega un ingrediente nuevo. 409 si el producto ya está en la receta."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Ingredient Quantity",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 0.2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-items/{{menuItemId}}/recipe/items/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-items",
+                "{{menuItemId}}",
+                "recipe",
+                "items",
+                "{{productId}}"
+              ]
+            },
+            "description": "Modifica la cantidad de un ingrediente existente."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Recipe Ingredient",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-items/{{menuItemId}}/recipe/items/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-items",
+                "{{menuItemId}}",
+                "recipe",
+                "items",
+                "{{productId}}"
+              ]
+            },
+            "description": "Quita un ingrediente de la receta."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"meserotest@gmail.com\",\n  \"password\": \"Test123.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "POST /api/auth/login/:rol Login endpoint Protected with rate limiting: 5 attempts per 15 minutes"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-user",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify-user"
+              ]
+            },
+            "description": "POST /api/auth/verify-user Verify user endpoint Protected with rate limiting: 3 attempts per 15 minutes (prevents email enumeration)"
+          },
+          "response": []
+        },
+        {
+          "name": "Set password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"NewPassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/set-password/:user_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "set-password",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "{{user_id}}",
+                  "description": "user_id parameter"
+                }
+              ]
+            },
+            "description": "POST /api/auth/set-password/:user_id Set password endpoint Protected with rate limiting: 3 attempts per 15 minutes"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Employee Salaries",
+      "item": [
+        {
+          "name": "Create Employee Salary",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employee-salary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employee-salary"
+              ]
+            },
+            "description": "POST /api/employee-salary/"
+          },
+          "response": []
+        },
+        {
+          "name": "List Employee Salaries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employee-salary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "employee-salary"
+              ]
+            },
+            "description": "GET /api/employee-salary/"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Expenses",
+      "item": [
+        {
+          "name": "Create Expense",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/expense",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expense"
+              ]
+            },
+            "description": "POST /api/expense/"
+          },
+          "response": []
+        },
+        {
+          "name": "List Expenses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/expense",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expense"
+              ]
+            },
+            "description": "GET /api/expense/"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Expense",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/expense/:expense_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expense",
+                ":expense_id"
+              ],
+              "variable": [
+                {
+                  "key": "expense_id",
+                  "value": "{{expense_id}}",
+                  "description": "expense_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/expense/:expense_id"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Expense",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/expense/:expense_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expense",
+                ":expense_id"
+              ],
+              "variable": [
+                {
+                  "key": "expense_id",
+                  "value": "{{expense_id}}",
+                  "description": "expense_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/expense/:expense_id"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Expense",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/expense/:expense_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expense",
+                ":expense_id"
+              ],
+              "variable": [
+                {
+                  "key": "expense_id",
+                  "value": "{{expense_id}}",
+                  "description": "expense_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/expense/:expense_id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "GET /api/health Health check endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Menu Categories",
+      "item": [
+        {
+          "name": "Create Menu Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-category"
+              ]
+            },
+            "description": "POST /api/menu-categories Create menu category endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "List Menu Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-category"
+              ]
+            },
+            "description": "GET /api/menu-categories List menu categories endpoint (with optional filters) NOTE: This must come before /:category_id route"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Menu Category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-category/:category_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-category",
+                ":category_id"
+              ],
+              "variable": [
+                {
+                  "key": "category_id",
+                  "value": "{{category_id}}",
+                  "description": "category_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/menu-categories/:category_id Get menu category by ID endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Menu Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-category/:category_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-category",
+                ":category_id"
+              ],
+              "variable": [
+                {
+                  "key": "category_id",
+                  "value": "{{category_id}}",
+                  "description": "category_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/menu-categories/:category_id Update menu category endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Menu Category",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-category/:category_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-category",
+                ":category_id"
+              ],
+              "variable": [
+                {
+                  "key": "category_id",
+                  "value": "{{category_id}}",
+                  "description": "category_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/menu-categories/:category_id Delete menu category endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Menu Items",
+      "item": [
+        {
+          "name": "Create Menu Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-item",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-item"
+              ]
+            },
+            "description": "POST /api/menu-items Create menu item endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "List Menu Items",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-item",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-item"
+              ]
+            },
+            "description": "GET /api/menu-items List menu items endpoint (with optional filters) NOTE: This must come before /:menu_item_id route"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Menu Item",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-item/:menu_item_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-item",
+                ":menu_item_id"
+              ],
+              "variable": [
+                {
+                  "key": "menu_item_id",
+                  "value": "{{menu_item_id}}",
+                  "description": "menu_item_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/menu-items/:menu_item_id Get menu item by ID endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Menu Item",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-item/:menu_item_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-item",
+                ":menu_item_id"
+              ],
+              "variable": [
+                {
+                  "key": "menu_item_id",
+                  "value": "{{menu_item_id}}",
+                  "description": "menu_item_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/menu-items/:menu_item_id Update menu item endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Menu Item",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu-item/:menu_item_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu-item",
+                ":menu_item_id"
+              ],
+              "variable": [
+                {
+                  "key": "menu_item_id",
+                  "value": "{{menu_item_id}}",
+                  "description": "menu_item_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/menu-items/:menu_item_id Delete menu item endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/order",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "order"
+              ]
+            },
+            "description": "POST /api/orders Create order endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "List Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/order",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "order"
+              ]
+            },
+            "description": "GET /api/orders List orders endpoint (with optional filters) NOTE: This must come before /:order_id route"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/order/:order_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "order",
+                ":order_id"
+              ],
+              "variable": [
+                {
+                  "key": "order_id",
+                  "value": "{{order_id}}",
+                  "description": "order_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/orders/:order_id Get order by ID endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Order",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/order/:order_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "order",
+                ":order_id"
+              ],
+              "variable": [
+                {
+                  "key": "order_id",
+                  "value": "{{order_id}}",
+                  "description": "order_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/orders/:order_id Update order endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Order",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/order/:order_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "order",
+                ":order_id"
+              ],
+              "variable": [
+                {
+                  "key": "order_id",
+                  "value": "{{order_id}}",
+                  "description": "order_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/orders/:order_id Delete order endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Pay With Cash",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/cash",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "cash"
+              ]
+            },
+            "description": "POST /api/payment/cash"
+          },
+          "response": []
+        },
+        {
+          "name": "Pay With Transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "transfer"
+              ]
+            },
+            "description": "POST /api/payment/transfer"
+          },
+          "response": []
+        },
+        {
+          "name": "Pay With Physical Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/card-physical",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "card-physical"
+              ]
+            },
+            "description": "POST /api/payment/card-physical"
+          },
+          "response": []
+        },
+        {
+          "name": "Pay With Stripe Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/card-stripe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "card-stripe"
+              ]
+            },
+            "description": "POST /api/payment/card-stripe"
+          },
+          "response": []
+        },
+        {
+          "name": "Pay With Split",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/split",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "split"
+              ]
+            },
+            "description": "POST /api/payment/split"
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm Stripe Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/stripe/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "stripe",
+                "confirm"
+              ]
+            },
+            "description": "POST /api/payment/stripe/confirm"
+          },
+          "response": []
+        },
+        {
+          "name": "List Payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment"
+              ]
+            },
+            "description": "GET /api/payment/"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/:payment_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                ":payment_id"
+              ],
+              "variable": [
+                {
+                  "key": "payment_id",
+                  "value": "{{payment_id}}",
+                  "description": "payment_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/payment/:payment_id"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payment Session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment/:payment_id/session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                ":payment_id",
+                "session"
+              ],
+              "variable": [
+                {
+                  "key": "payment_id",
+                  "value": "{{payment_id}}",
+                  "description": "payment_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/payment/:payment_id/session"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "product"
+              ]
+            },
+            "description": "POST /api/products Create product endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "product"
+              ]
+            },
+            "description": "GET /api/products List products endpoint (with optional filters) NOTE: This must come before /:product_id route"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/:product_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "product",
+                ":product_id"
+              ],
+              "variable": [
+                {
+                  "key": "product_id",
+                  "value": "{{product_id}}",
+                  "description": "product_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/products/:product_id Get product by ID endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/:product_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "product",
+                ":product_id"
+              ],
+              "variable": [
+                {
+                  "key": "product_id",
+                  "value": "{{product_id}}",
+                  "description": "product_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/products/:product_id Update product endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product/:product_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "product",
+                ":product_id"
+              ],
+              "variable": [
+                {
+                  "key": "product_id",
+                  "value": "{{product_id}}",
+                  "description": "product_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/products/:product_id Delete product endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Refunds",
+      "item": [
+        {
+          "name": "Create Refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/refund",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "refund"
+              ]
+            },
+            "description": "POST /api/refund/"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Stripe Refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/refund/stripe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "refund",
+                "stripe"
+              ]
+            },
+            "description": "POST /api/refund/stripe"
+          },
+          "response": []
+        },
+        {
+          "name": "Process Stripe Refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/refund/stripe/process",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "refund",
+                "stripe",
+                "process"
+              ]
+            },
+            "description": "POST /api/refund/stripe/process"
+          },
+          "response": []
+        },
+        {
+          "name": "List Refunds",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/refund",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "refund"
+              ]
+            },
+            "description": "GET /api/refund/"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Refund",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/refund/:refund_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "refund",
+                ":refund_id"
+              ],
+              "variable": [
+                {
+                  "key": "refund_id",
+                  "value": "{{refund_id}}",
+                  "description": "refund_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/refund/:refund_id"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Generate Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/report",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "report"
+              ]
+            },
+            "description": "GET /api/report/"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tables",
+      "item": [
+        {
+          "name": "Create Table",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/table",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "table"
+              ]
+            },
+            "description": "POST /api/tables Create table endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "List Tables",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/table",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "table"
+              ]
+            },
+            "description": "GET /api/tables List tables endpoint (with optional filters) NOTE: This must come before /:table_id route"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Table",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/table/:table_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "table",
+                ":table_id"
+              ],
+              "variable": [
+                {
+                  "key": "table_id",
+                  "value": "{{table_id}}",
+                  "description": "table_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/tables/:table_id Get table by ID endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Table",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/table/:table_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "table",
+                ":table_id"
+              ],
+              "variable": [
+                {
+                  "key": "table_id",
+                  "value": "{{table_id}}",
+                  "description": "table_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/tables/:table_id Update table endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Table",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/table/:table_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "table",
+                ":table_id"
+              ],
+              "variable": [
+                {
+                  "key": "table_id",
+                  "value": "{{table_id}}",
+                  "description": "table_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/tables/:table_id Delete table endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "user"
+              ]
+            },
+            "description": "POST /api/users Create user endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "user"
+              ]
+            },
+            "description": "GET /api/users List users endpoint (with optional filters) NOTE: This must come before /:user_id route"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/:user_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "{{user_id}}",
+                  "description": "user_id parameter"
+                }
+              ]
+            },
+            "description": "GET /api/users/:user_id Get user by ID endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/:user_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "{{user_id}}",
+                  "description": "user_id parameter"
+                }
+              ]
+            },
+            "description": "PUT /api/users/:user_id Update user endpoint"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/:user_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "key": "user_id",
+                  "value": "{{user_id}}",
+                  "description": "user_id parameter"
+                }
+              ]
+            },
+            "description": "DELETE /api/users/:user_id Delete user endpoint"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Subscriptions",
+      "item": [
+        {
+          "name": "Checkout Session",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"karinaorlaz1@hotmail.com\",\n    \"businessName\": \"Restify\"\n  }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/subscription/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "subscription",
+                "checkout"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Subscription",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"karinaorlaz1@hotmail.com\",\n    \"businessName\": \"Restify\"\n  }"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/subscription/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "subscription",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Subscription Plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "plans"
+              ]
+            },
+            "description": "Ruta pública — devuelve los planes activos (Mensual/Anual) con id, name, billingPeriod y price."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Subscription Checkout",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Im1lc2Vyb3Rlc3RAZ21haWwuY29tIiwidXNlcklkIjoiMTE0NmFjOWYtMjI1Yy00N2RhLTkxYmMtMmIxN2VhMTgxNjdkIiwicm9sIjoiV0FJVEVSIiwiaWF0IjoxNzc2NjM0MDAxLCJleHAiOjE3NzY2NjI4MDF9.ie01qnH3JP7CXeFxwhLbBjzlaM4anL-Oq9gvihxF9UE\",",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"e046119c-489c-493f-bbbc-37286df95b5d\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subscription/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "checkout"
+              ]
+            },
+            "description": "Crea una Stripe Checkout Session para el plan seleccionado. Requiere auth ADMIN. Devuelve checkoutUrl y sessionId."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Subscription Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "status"
+              ]
+            },
+            "description": "Devuelve el estado de la suscripción: exists, status, isActive, daysRemaining, cancelAtPeriodEnd y plan info. Requiere auth ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "cancel"
+              ]
+            },
+            "description": "Cancela la suscripción al final del período actual (cancel_at_period_end). Requiere auth ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Reactivate Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/subscription/reactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "reactivate"
+              ]
+            },
+            "description": "Revierte la cancelación pendiente. Solo funciona si cancelAtPeriodEnd es true. Requiere auth ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Stripe Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "stripe-signature",
+                "value": "<stripe-webhook-signature>"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subscription/webhooks/stripe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "subscription",
+                "webhooks",
+                "stripe"
+              ]
+            },
+            "description": "Endpoint para webhooks de Stripe. Sin autenticación. Eventos: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.updated, customer.subscription.deleted."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Mercado Pago",
+      "item": [
+        {
+          "name": "New Request",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        },
+        {
+          "name": "Create test users",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "APP_USR-7090573704590413-032717-ded38d72382cbae0e6e2710907c2c4b2-3296134323",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"site_id\":\"MLM\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.mercadopago.com/users/test",
+              "protocol": "https",
+              "host": [
+                "api",
+                "mercadopago",
+                "com"
+              ],
+              "path": [
+                "users",
+                "test"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Stock — 5.1",
+      "item": [
+        {
+          "name": "List Stock Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/stock?lowStock=false&search=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "stock"
+              ],
+              "query": [
+                {
+                  "key": "lowStock",
+                  "value": "false",
+                  "description": "true para filtrar solo bajo mínimo"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Búsqueda parcial por nombre"
+                }
+              ]
+            },
+            "description": "Lista productos con `track_stock=true`, su stock actual, unidad, costo promedio y flag de alerta."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product Movements",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/movements?from=&to=&type=&limit=100&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{productId}}",
+                "movements"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "",
+                  "description": "ISO date"
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "description": "ISO date"
+                },
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "PURCHASE | SALE | WASTE | ADJUSTMENT | SALE_REVERSAL"
+                },
+                {
+                  "key": "limit",
+                  "value": "100"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Historial de movimientos del producto, filtrable por rango y tipo."
+          },
+          "response": []
+        },
+        {
+          "name": "Configure Product Stock",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trackStock\": true,\n  \"unitOfMeasure\": \"KG\",\n  \"minStockAlert\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{productId}}/stock-config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{productId}}",
+                "stock-config"
+              ]
+            },
+            "description": "Activa/desactiva trackeo de stock y configura unidad de medida y mínimo de alerta. `unitOfMeasure`: KG | G | L | ML | PCS | OTHER. Cualquier campo es opcional."
+          },
+          "response": []
+        },
+        {
+          "name": "List Stock Movements",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stock/movements?from=&to=&type=&productId=&limit=100&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stock",
+                "movements"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "",
+                  "description": "ISO date"
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "description": "ISO date"
+                },
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "PURCHASE | SALE | WASTE | ADJUSTMENT | SALE_REVERSAL"
+                },
+                {
+                  "key": "productId",
+                  "value": "",
+                  "description": "UUID opcional para filtrar por producto"
+                },
+                {
+                  "key": "limit",
+                  "value": "100"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Historial completo de movimientos con filtros opcionales."
+          },
+          "response": []
+        },
+        {
+          "name": "List Stock Alerts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stock/alerts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stock",
+                "alerts"
+              ]
+            },
+            "description": "Productos cuyo stock actual cayó por debajo de `min_stock_alert`."
+          },
+          "response": []
+        },
+        {
+          "name": "Register Waste",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"quantity\": 0.5,\n  \"reason\": \"EXPIRED\",\n  \"notes\": \"Pollo vencido en cámara fría\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/stock/waste",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stock",
+                "waste"
+              ]
+            },
+            "description": "Registra merma. `reason`: EXPIRED | BROKEN | THEFT | OTHER. `quantity` siempre positiva (el servicio la convierte en negativa)."
+          },
+          "response": []
+        },
+        {
+          "name": "Adjust Stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"newStock\": 4.5,\n  \"reason\": \"Conteo físico — viernes\",\n  \"notes\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/stock/adjust",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stock",
+                "adjust"
+              ]
+            },
+            "description": "Ajusta el stock a un valor absoluto. El movement se calcula como diferencia entre `newStock` y el stock actual."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reportes — 5.3",
+      "item": [
+        {
+          "name": "Get Waste Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/waste?from=2026-01-01&to=2026-12-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "waste"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-01-01",
+                  "description": "ISO date — inicio del rango"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-12-31",
+                  "description": "ISO date — fin del rango"
+                }
+              ]
+            },
+            "description": "Devuelve totales de merma agrupados por motivo (`EXPIRED`, `BROKEN`, `THEFT`, `OTHER`) en el rango."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Top Products Consumption",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/products/consumption?from=2026-01-01&to=2026-12-31&top=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "products",
+                "consumption"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-12-31"
+                },
+                {
+                  "key": "top",
+                  "value": "10",
+                  "description": "Cantidad de productos a devolver (default 10)"
+                }
+              ]
+            },
+            "description": "Top N productos con mayor cantidad descontada por SALE en el rango. Incluye cantidad consumida, valor (cantidad × averageCost) y participación %."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Menu Items Cost",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/menu-items/cost",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "menu-items",
+                "cost"
+              ]
+            },
+            "description": "Para cada MenuItem con receta: costo teórico (Σ ingrediente.quantity × producto.averageCost), margen y margen %. Marca como `lowMargin: true` los menores a 30%."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Endpoints Faltantes (auditoría 2026-05)",
+      "description": "Endpoints presentes en el backend que no estaban documentados en la colección.",
+      "item": [
+        {
+          "name": "Recover Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"NuevaPass123.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/recover-password/:user_id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "recover-password",
+                ":user_id"
+              ]
+            },
+            "description": "Flujo de recuperación sin sesión: el frontend primero verifica el email con /verify-user (obtiene user_id) y luego llama acá para setear la nueva contraseña. Rate-limited."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Limpia la cookie HttpOnly que contiene el JWT."
+          },
+          "response": []
+        },
+        {
+          "name": "Pay Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"CASH\",\n  \"amount\": 100,\n  \"tip\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/:order_id/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                ":order_id",
+                "pay"
+              ]
+            },
+            "description": "Procesa el cobro de una orden. Acepta pago único o split (ver payOrderSchema en payment.dto.ts: union entre payOrderSplitPayload y payOrderSinglePayload)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Kitchen Ticket",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/:order_id/ticket/kitchen-ticket",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                ":order_id",
+                "ticket",
+                "kitchen-ticket"
+              ]
+            },
+            "description": "Devuelve el ticket de cocina (impresión térmica) de la orden."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Sale Ticket",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/:order_id/ticket/sale-ticket",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                ":order_id",
+                "ticket",
+                "sale-ticket"
+              ]
+            },
+            "description": "Devuelve el ticket de venta para el cliente."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Delivery Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"READY\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/:order_id/delivery-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                ":order_id",
+                "delivery-status"
+              ]
+            },
+            "description": "Status válidos: PREPARING | READY | ON_THE_WAY | DELIVERED. Solo ADMIN o MANAGER."
+          },
+          "response": []
+        },
+        {
+          "name": "Pay With QR Mercado Pago",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{orderId}}\",\n  \"userId\": \"{{userId}}\",\n  \"connectionId\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/qr-mercado-pago",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "qr-mercado-pago"
+              ]
+            },
+            "description": "Crea una sesión de pago QR con Mercado Pago. La sesión expira en 5 minutos. connectionId es opcional (WebSocket para notificación en vivo)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get QR Payment Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/qr-mercado-pago/:orderId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "qr-mercado-pago",
+                ":orderId"
+              ]
+            },
+            "description": "Devuelve el estado actual de la sesión de pago QR (pending/approved/expired/cancelled)."
+          },
+          "response": []
+        },
+        {
+          "name": "Mercado Pago Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"payment.updated\",\n  \"api_version\": \"v1\",\n  \"data\": { \"id\": \"123456789\" },\n  \"date_created\": \"2026-05-10T12:00:00.000-04:00\",\n  \"id\": 1,\n  \"live_mode\": false,\n  \"type\": \"payment\",\n  \"user_id\": \"3296134323\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/webhooks/mercado-pago",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "webhooks",
+                "mercado-pago"
+              ]
+            },
+            "description": "Endpoint público (sin autenticación) que recibe los webhooks de Mercado Pago. La validación de firma está deshabilitada (bug conocido del lado de MP). Usado para confirmar pagos QR."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Subscription Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": \"cs_test_xxx\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/subscription/verify-checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "subscription",
+                "verify-checkout"
+              ]
+            },
+            "description": "Verifica el resultado del checkout de Stripe y actualiza el estado de la suscripción (sin esperar al webhook). Solo ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Reports Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reports",
+                "summary"
+              ]
+            },
+            "description": "Devuelve el resumen agregado para el dashboard de reportes (totales, comparativos, etc)."
+          },
+          "response": []
+        },
+        {
+          "name": "Ping Company",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/company/ping",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "company",
+                "ping"
+              ]
+            },
+            "description": "Healthcheck público del router de company. No requiere autenticación."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Company",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/company",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "company"
+              ]
+            },
+            "description": "Devuelve los datos de la compañía (nombre, dirección, RFC, logo, horarios)."
+          },
+          "response": []
+        },
+        {
+          "name": "Upsert Company",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mi Restaurante\",\n  \"state\": \"CDMX\",\n  \"city\": \"Ciudad de México\",\n  \"street\": \"Av. Insurgentes\",\n  \"exteriorNumber\": \"123\",\n  \"phone\": \"5512345678\",\n  \"rfc\": \"XAXX010101000\",\n  \"logoUrl\": null,\n  \"startOperations\": \"08:00\",\n  \"endOperations\": \"22:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/company",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "company"
+              ]
+            },
+            "description": "Upsert de los datos de la compañía. Campos opcionales: rfc, logoUrl, startOperations, endOperations (formato HH:mm)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dashboard"
+              ]
+            },
+            "description": "Devuelve la data agregada para la home del dashboard (ventas del día, órdenes activas, etc)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payment Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/settings/payment-config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "settings",
+                "payment-config"
+              ]
+            },
+            "description": "Devuelve la configuración de pagos (credenciales MP/Stripe enmascaradas, métodos habilitados). Solo ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Save Payment Config",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mercadoPagoAccessToken\": \"APP_USR-xxx\",\n  \"mercadoPagoPublicKey\": \"APP_USR-xxx\",\n  \"mercadoPagoUserId\": \"3296134323\",\n  \"stripeSecretKey\": null,\n  \"stripePublishableKey\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/settings/payment-config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "settings",
+                "payment-config"
+              ]
+            },
+            "description": "Guarda credenciales de las pasarelas de pago. Las credenciales se almacenan encriptadas (AES-256-GCM). Solo ADMIN."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

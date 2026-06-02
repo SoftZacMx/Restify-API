@@ -1,0 +1,23 @@
+meta {
+  name: Create test users
+  type: http
+  seq: 2
+}
+
+post {
+  url: https://api.mercadopago.com/users/test
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: APP_USR-7090573704590413-032717-ded38d72382cbae0e6e2710907c2c4b2-3296134323
+}
+
+body:json {
+  {"site_id":"MLM"}
+}
+
+settings {
+  encodeUrl: true
+}

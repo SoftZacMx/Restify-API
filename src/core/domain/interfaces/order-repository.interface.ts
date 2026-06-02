@@ -56,7 +56,36 @@ export interface IOrderRepository {
     deliveryStatus?: string | null;
   }): Promise<Order>;
   delete(id: string): Promise<void>;
-  
+
+  // Crea la orden, sus items y extras de forma atómica (una sola transacción).
+  // El branchId se asigna automáticamente vía tenant extension.
+  createWithItems(data: {
+    order: {
+      status: boolean;
+      paymentMethod: number | null;
+      total: number;
+      subtotal: number;
+      iva: number;
+      delivered: boolean;
+      tableId: string | null;
+      tip: number;
+      origin: string;
+      client: string | null;
+      paymentDiffer: boolean;
+      note: string | null;
+      userId: string | null;
+    };
+    items: {
+      quantity: number;
+      price: number;
+      productId: string | null;
+      menuItemId: string | null;
+      note: string | null;
+      extras: { extraId: string; quantity: number; price: number }[];
+    }[];
+    lockTable: boolean;
+  }): Promise<{ order: Order; items: OrderItem[]; extras: OrderItemExtra[] }>;
+
   // Order Items
   createOrderItem(data: {
     quantity: number;

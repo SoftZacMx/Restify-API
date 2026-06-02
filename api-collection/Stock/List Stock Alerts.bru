@@ -1,0 +1,19 @@
+meta {
+  name: List Stock Alerts
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/stock/alerts
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Productos cuyo stock actual cayó por debajo de `min_stock_alert`.
+}

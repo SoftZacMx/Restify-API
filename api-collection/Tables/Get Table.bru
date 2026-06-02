@@ -1,0 +1,27 @@
+meta {
+  name: Get Table
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/table/:table_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  table_id: {{table_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/tables/:table_id Get table by ID endpoint
+}

@@ -1,0 +1,27 @@
+meta {
+  name: List Branches
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/branches
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~includeDisabled: false
+}
+
+auth:bearer {
+  token: {{login-token}}
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Lista todas las sucursales accesibles por el usuario. Owner/Admin ven todas; otros roles solo las asignadas.
+}

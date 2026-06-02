@@ -1,0 +1,27 @@
+meta {
+  name: Get Expense
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/expense/:expense_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  expense_id: {{expense_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/expense/:expense_id
+}

@@ -10,11 +10,12 @@ import {
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
 import { createUserSchema, getUserSchema, listUsersSchema, updateUserSchema, deleteUserSchema, reactivateUserSchema } from '../../core/application/dto/user.dto';
 import { AuthMiddleware } from '../middleware/auth.middleware';
+import { MANAGER_AND_UP } from '../../shared/constants/roles.constants';
 
 const router = Router();
 
 router.use(AuthMiddleware.authenticate);
-router.use(AuthMiddleware.authorize('ADMIN', 'MANAGER'));
+router.use(AuthMiddleware.authorize(...MANAGER_AND_UP));
 
 router.post('/', zodValidator({ schema: createUserSchema, source: 'body' }), createUserController);
 router.get('/', zodValidator({ schema: listUsersSchema, source: 'query' }), listUsersController);

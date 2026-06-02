@@ -1,0 +1,23 @@
+meta {
+  name: Cancel Subscription
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/subscription/cancel
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Cancela la suscripción al final del período actual (cancel_at_period_end). Requiere auth ADMIN.
+}

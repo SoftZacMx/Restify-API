@@ -1,0 +1,27 @@
+meta {
+  name: Update User
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/user/:user_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  user_id: {{user_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  PUT /api/users/:user_id Update user endpoint
+}

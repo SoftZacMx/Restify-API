@@ -8,6 +8,7 @@ import { AppError } from '../../../shared/errors';
 
 export interface CreateMPPreferenceParams {
   orderId: string;
+  branchId?: string;
   title: string;
   description?: string;
   amount: number; // Total en MXN (decimales, no centavos)
@@ -93,7 +94,9 @@ export class MercadoPagoService {
           },
         ],
         metadata: params.metadata,
-        external_reference: params.orderId,
+        external_reference: params.branchId
+          ? `${params.orderId}:${params.branchId}`
+          : params.orderId,
         notification_url: params.notificationUrl,
         back_urls: {
           success: `${backUrl}/payment/success`,

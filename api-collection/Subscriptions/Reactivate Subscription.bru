@@ -1,0 +1,23 @@
+meta {
+  name: Reactivate Subscription
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/subscription/reactivate
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Revierte la cancelación pendiente. Solo funciona si cancelAtPeriodEnd es true. Requiere auth ADMIN.
+}

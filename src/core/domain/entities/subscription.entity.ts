@@ -3,7 +3,8 @@ import { SubscriptionStatus } from '@prisma/client';
 export class Subscription {
   constructor(
     public readonly id: string,
-    public readonly stripeCustomerId: string,
+    public readonly organizationId: string,
+    public readonly stripeCustomerId: string | null,
     public readonly stripeSubscriptionId: string | null,
     public readonly status: SubscriptionStatus,
     public readonly currentPeriodStart: Date | null,

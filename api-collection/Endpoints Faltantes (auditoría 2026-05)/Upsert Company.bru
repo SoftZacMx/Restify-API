@@ -1,0 +1,38 @@
+meta {
+  name: Upsert Company
+  type: http
+  seq: 14
+}
+
+put {
+  url: {{baseUrl}}/api/company
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Mi Restaurante",
+    "state": "CDMX",
+    "city": "Ciudad de México",
+    "street": "Av. Insurgentes",
+    "exteriorNumber": "123",
+    "phone": "5512345678",
+    "rfc": "XAXX010101000",
+    "logoUrl": null,
+    "startOperations": "08:00",
+    "endOperations": "22:00"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Upsert de los datos de la compañía. Campos opcionales: rfc, logoUrl, startOperations, endOperations (formato HH:mm).
+}

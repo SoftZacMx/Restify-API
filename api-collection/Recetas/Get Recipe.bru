@@ -1,0 +1,28 @@
+meta {
+  name: Get Recipe
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/menu-items/{{menuItemId}}/recipe
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{login-token}}
+}
+
+vars:pre-request {
+  menuItemId: ee3ef90f-da37-4c1a-ae87-d08dc7725996
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Devuelve los ingredientes (con cantidad y unidad) de la receta del MenuItem.
+}

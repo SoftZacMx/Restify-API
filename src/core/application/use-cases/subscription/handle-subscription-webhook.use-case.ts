@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { ISubscriptionRepository } from '../../../domain/interfaces/subscription-repository.interface';
 import { StripeSubscriptionService } from '../../../infrastructure/payment-gateways/stripe-subscription.service';
 import { SubscriptionStatus } from '@prisma/client';
+import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 
 export interface HandleSubscriptionWebhookInput {
   event: Stripe.Event;
@@ -18,23 +19,26 @@ export class HandleSubscriptionWebhookUseCase {
   async execute(input: HandleSubscriptionWebhookInput): Promise<void> {
     const { event } = input;
 
-    switch (event.type) {
-      case 'checkout.session.completed':
-        await this.handleCheckoutCompleted(event);
-        break;
-      case 'invoice.paid':
-        await this.handleInvoicePaid(event);
-        break;
-      case 'invoice.payment_failed':
-        await this.handleInvoicePaymentFailed(event);
-        break;
-      case 'customer.subscription.updated':
-        await this.handleSubscriptionUpdated(event);
-        break;
-      case 'customer.subscription.deleted':
-        await this.handleSubscriptionDeleted(event);
-        break;
-    }
+    // Webhooks de Stripe no tienen JWT — operar sin tenant context
+    await withoutTenant(async () => {
+      switch (event.type) {
+        case 'checkout.session.completed':
+          await this.handleCheckoutCompleted(event);
+          break;
+        case 'invoice.paid':
+          await this.handleInvoicePaid(event);
+          break;
+        case 'invoice.payment_failed':
+          await this.handleInvoicePaymentFailed(event);
+          break;
+        case 'customer.subscription.updated':
+          await this.handleSubscriptionUpdated(event);
+          break;
+        case 'customer.subscription.deleted':
+          await this.handleSubscriptionDeleted(event);
+          break;
+      }
+    });
   }
 
   private async handleCheckoutCompleted(event: Stripe.Event): Promise<void> {
@@ -46,8 +50,12 @@ export class HandleSubscriptionWebhookUseCase {
     // Obtener detalles de la suscripción de Stripe
     const stripeSub = await this.stripeSubscriptionService.getSubscription(stripeSubscriptionId);
 
-    // Buscar registro local por customerId
-    const subscription = await this.subscriptionRepository.find();
+    // Buscar registro local — checkout es el primer evento, puede que aún no tenga stripeSubscriptionId
+    // Intentar por stripeSubscriptionId primero, fallback a find() para el caso de primera asociación
+    let subscription = await this.subscriptionRepository.findByStripeSubscriptionId(stripeSubscriptionId);
+    if (!subscription) {
+      subscription = await this.subscriptionRepository.find();
+    }
     if (!subscription) return;
 
     // Obtener planId desde metadata de la suscripción de Stripe
@@ -71,8 +79,8 @@ export class HandleSubscriptionWebhookUseCase {
 
     const stripeSub = await this.stripeSubscriptionService.getSubscription(stripeSubscriptionId);
 
-    const subscription = await this.subscriptionRepository.find();
-    if (!subscription || subscription.stripeSubscriptionId !== stripeSubscriptionId) return;
+    const subscription = await this.subscriptionRepository.findByStripeSubscriptionId(stripeSubscriptionId);
+    if (!subscription) return;
 
     await this.subscriptionRepository.update(subscription.id, {
       status: SubscriptionStatus.ACTIVE,
@@ -87,8 +95,8 @@ export class HandleSubscriptionWebhookUseCase {
 
     if (!stripeSubscriptionId) return;
 
-    const subscription = await this.subscriptionRepository.find();
-    if (!subscription || subscription.stripeSubscriptionId !== stripeSubscriptionId) return;
+    const subscription = await this.subscriptionRepository.findByStripeSubscriptionId(stripeSubscriptionId);
+    if (!subscription) return;
 
     await this.subscriptionRepository.update(subscription.id, {
       status: SubscriptionStatus.PAST_DUE,
@@ -98,8 +106,8 @@ export class HandleSubscriptionWebhookUseCase {
   private async handleSubscriptionUpdated(event: Stripe.Event): Promise<void> {
     const stripeSub = event.data.object as Stripe.Subscription;
 
-    const subscription = await this.subscriptionRepository.find();
-    if (!subscription || subscription.stripeSubscriptionId !== stripeSub.id) return;
+    const subscription = await this.subscriptionRepository.findByStripeSubscriptionId(stripeSub.id);
+    if (!subscription) return;
 
     const statusMap: Record<string, SubscriptionStatus> = {
       active: SubscriptionStatus.ACTIVE,
@@ -119,8 +127,8 @@ export class HandleSubscriptionWebhookUseCase {
   private async handleSubscriptionDeleted(event: Stripe.Event): Promise<void> {
     const stripeSub = event.data.object as Stripe.Subscription;
 
-    const subscription = await this.subscriptionRepository.find();
-    if (!subscription || subscription.stripeSubscriptionId !== stripeSub.id) return;
+    const subscription = await this.subscriptionRepository.findByStripeSubscriptionId(stripeSub.id);
+    if (!subscription) return;
 
     await this.subscriptionRepository.update(subscription.id, {
       status: SubscriptionStatus.CANCELED,

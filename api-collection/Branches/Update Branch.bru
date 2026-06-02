@@ -1,0 +1,40 @@
+meta {
+  name: Update Branch
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/branches/{{branchId}}
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Sucursal Norte - Actualizada",
+    "phone": "8112345679",
+    "startOperations": "08:00",
+    "logoUrl": "https://example.com/logo.png",
+    "ticketConfig": {
+      "header": "Sucursal Norte - Actualizada",
+      "footer": "Vuelva pronto",
+      "showLogo": true,
+      "showAddress": true,
+      "showRFC": true,
+      "showPhone": true
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Actualiza una sucursal existente. Todos los campos son opcionales. Requiere rol OWNER o ADMIN.
+}

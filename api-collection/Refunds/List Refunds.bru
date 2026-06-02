@@ -1,0 +1,23 @@
+meta {
+  name: List Refunds
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/refund
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/refund/
+}

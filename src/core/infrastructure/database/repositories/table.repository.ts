@@ -26,7 +26,7 @@ export class TableRepository implements ITableRepository {
   }
 
   async findByName(name: string): Promise<Table | null> {
-    const table = await this.prisma.table.findUnique({
+    const table = await this.prisma.table.findFirst({
       where: { name },
     });
 

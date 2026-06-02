@@ -1,19 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
-import { container } from 'tsyringe';
 import { GetDashboardUseCase } from '../../core/application/use-cases/dashboard/get-dashboard.use-case';
-import { sendSuccess } from '../../shared/middleware/response-formatter.middleware';
+import { makeController } from '../../shared/utils/make-controller';
 
-export const getDashboardController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const getDashboardUseCase = container.resolve(GetDashboardUseCase);
-    const result = await getDashboardUseCase.execute();
-
-    sendSuccess(res, result);
-  } catch (error) {
-    next(error);
-  }
-};
+export const getDashboardController = makeController(GetDashboardUseCase, { mapper: () => ({}) });

@@ -11,11 +11,7 @@ export class AppError extends Error {
   public readonly metadata?: Record<string, any>;
   public readonly timestamp: Date;
 
-  constructor(
-    code: ErrorCode,
-    customMessage?: string,
-    metadata?: Record<string, any>
-  ) {
+  constructor(code: ErrorCode, customMessage?: string, metadata?: Record<string, any>) {
     const config = ERROR_CONFIG[code];
     const message = customMessage || config.message;
 
@@ -37,11 +33,7 @@ export class AppError extends Error {
    * Static factory method for creating errors
    * Provides a cleaner API: AppError.create('USER_NOT_FOUND')
    */
-  static create(
-    code: ErrorCode,
-    customMessage?: string,
-    metadata?: Record<string, any>
-  ): AppError {
+  static create(code: ErrorCode, customMessage?: string, metadata?: Record<string, any>): AppError {
     return new AppError(code, customMessage, metadata);
   }
 
@@ -87,4 +79,3 @@ export class AppError extends Error {
     return this.statusCode >= 500;
   }
 }
-

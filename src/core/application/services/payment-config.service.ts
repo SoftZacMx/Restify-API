@@ -1,40 +1,52 @@
 import { inject, injectable } from 'tsyringe';
-import { ICompanyRepository } from '../../domain/interfaces/company-repository.interface';
+import { IBranchRepository } from '../../domain/interfaces/branch-repository.interface';
 import { PaymentConfig } from '../../domain/types/payment-config.types';
 import { encrypt, decrypt } from '../../../shared/utils/crypto.util';
+import { getBranchId } from '../../infrastructure/tenant/tenant-context';
 
 @injectable()
 export class PaymentConfigService {
-  private cache: PaymentConfig | null = null;
+  private cache: Map<string, PaymentConfig> = new Map();
 
   constructor(
-    @inject('ICompanyRepository') private readonly companyRepository: ICompanyRepository
+    @inject('IBranchRepository') private readonly branchRepository: IBranchRepository
   ) {}
 
   async get(): Promise<PaymentConfig> {
-    if (this.cache) return this.cache;
+    const branchId = getBranchId();
+    if (!branchId) return this.getFromEnv();
 
-    const company = await this.companyRepository.findFirst();
-    if (company?.paymentConfig) {
-      const json = decrypt(company.paymentConfig);
-      this.cache = JSON.parse(json) as PaymentConfig;
-      return this.cache;
+    if (this.cache.has(branchId)) return this.cache.get(branchId)!;
+
+    const branch = await this.branchRepository.findById(branchId);
+    if (branch?.paymentConfig) {
+      const json = decrypt(branch.paymentConfig);
+      const config = JSON.parse(json) as PaymentConfig;
+      this.cache.set(branchId, config);
+      return config;
     }
 
     return this.getFromEnv();
   }
 
   async save(config: PaymentConfig): Promise<void> {
-    const company = await this.companyRepository.findFirst();
-    if (!company) throw new Error('Company not found');
+    const branchId = getBranchId();
+    if (!branchId) throw new Error('Branch context not available');
+
+    const branch = await this.branchRepository.findById(branchId);
+    if (!branch) throw new Error('Branch not found');
 
     const encrypted = encrypt(JSON.stringify(config));
-    await this.companyRepository.update(company.id, { paymentConfig: encrypted });
-    this.cache = config;
+    await this.branchRepository.update(branch.id, { paymentConfig: encrypted });
+    this.cache.set(branchId, config);
   }
 
-  clearCache(): void {
-    this.cache = null;
+  clearCache(branchId?: string): void {
+    if (branchId) {
+      this.cache.delete(branchId);
+    } else {
+      this.cache.clear();
+    }
   }
 
   private getFromEnv(): PaymentConfig {

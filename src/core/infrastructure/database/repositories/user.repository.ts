@@ -34,6 +34,7 @@ export class UserRepository implements IUserRepository {
         phone: userData.phone || null,
         status: userData.status ?? true,
         rol: userData.rol! as UserRole,
+        organizationId: userData.organizationId!,
       },
     });
 

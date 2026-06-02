@@ -1,0 +1,32 @@
+meta {
+  name: Register Waste
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/stock/waste
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "productId": "{{productId}}",
+    "quantity": 0.5,
+    "reason": "EXPIRED",
+    "notes": "Pollo vencido en cámara fría"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Registra merma. `reason`: EXPIRED | BROKEN | THEFT | OTHER. `quantity` siempre positiva (el servicio la convierte en negativa).
+}

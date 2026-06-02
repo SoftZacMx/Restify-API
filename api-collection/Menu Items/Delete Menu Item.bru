@@ -1,0 +1,28 @@
+meta {
+  name: Delete Menu Item
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/menu-items/:menu_item_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  menu_item_id: {{menu_item_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  DELETE /api/menu-items/:menu_item_id Delete menu item endpoint
+}

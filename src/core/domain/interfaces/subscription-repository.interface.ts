@@ -2,7 +2,8 @@ import { Subscription } from '../entities/subscription.entity';
 import { SubscriptionStatus } from '@prisma/client';
 
 export interface CreateSubscriptionData {
-  stripeCustomerId: string;
+  organizationId: string;
+  stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   status?: SubscriptionStatus;
   currentPeriodStart?: Date | null;
@@ -22,6 +23,7 @@ export interface UpdateSubscriptionData {
 
 export interface ISubscriptionRepository {
   find(): Promise<Subscription | null>;
+  findByStripeSubscriptionId(stripeSubscriptionId: string): Promise<Subscription | null>;
   create(data: CreateSubscriptionData): Promise<Subscription>;
   update(id: string, data: UpdateSubscriptionData): Promise<Subscription>;
 }

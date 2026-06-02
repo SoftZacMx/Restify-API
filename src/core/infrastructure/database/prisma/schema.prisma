@@ -11,32 +11,134 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User Entity
-model User {
-  id               String   @id @default(uuid())
-  name             String
-  last_name        String
-  second_last_name String?
-  email            String   @unique
-  password         String
-  phone            String?
-  status           Boolean  @default(true)
-  rol              UserRole
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+enum OrganizationPlan {
+  FREE
+  PRO
+  ENTERPRISE
+}
 
-  // Relations
-  orders                  Order[]
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum BranchStatus {
+  ACTIVE
+  DISABLED
+}
+
+// SaaS tenant root (multi-tenancy)
+model Organization {
+  id        String             @id @default(uuid())
+  name      String
+  slug      String?            @unique
+  plan      OrganizationPlan   @default(FREE)
+  status    OrganizationStatus @default(ACTIVE)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  deletedAt DateTime?
+
+  users        User[]
+  branches     Branch[]
+  subscription Subscription? // 1:1 relación
+
+  @@map("organizations")
+}
+
+// Physical location / POS scope (replaces legacy Company per org)
+model Branch {
+  id              String       @id @default(uuid())
+  organizationId  String
+  name            String
+  state           String
+  city            String
+  street          String
+  exteriorNumber  String
+  phone           String
+  rfc             String?
+  logoUrl         String?
+  startOperations String?
+  endOperations   String?
+  ticketConfig    Json?
+  paymentConfig   String?      @db.Text
+  timezone        String       @default("America/Mexico_City")
+  currency        String       @default("MXN")
+  status          BranchStatus @default(ACTIVE)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+
+  organization            Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userAccess              UserBranchAccess[]
   products                Product[]
+  orders                  Order[]
+  orderItems              OrderItem[]
+  orderItemExtras         OrderItemExtra[]
   payments                Payment[]
+  paymentSessions         PaymentSession[]
+  paymentDifferentiations PaymentDifferentiation[]
+  refunds                 Refund[]
   salaryPayments          EmployeeSalaryPayment[]
   tables                  Table[]
+  menuCategories          MenuCategory[]
   menuItems               MenuItem[]
   expenses                Expense[]
+  expenseItems            ExpenseItem[]
+
+  @@index([organizationId, status])
+  @@map("branches")
+}
+
+model UserBranchAccess {
+  userId    String
+  branchId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([userId, branchId])
+  @@index([branchId])
+  @@map("user_branch_access")
+}
+
+// User Entity
+model User {
+  id                 String            @id @default(uuid())
+  name               String
+  last_name          String
+  second_last_name   String?
+  email              String            @unique
+  password           String
+  phone              String?
+  status             Boolean           @default(true)
+  rol                UserRole
+  organizationId     String
+  accountStatus      UserAccountStatus @default(ACTIVE)
+  tokenVersion       Int               @default(0)
+  emailVerifiedAt    DateTime?
+  mustChangePassword Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  // Relations
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  orders         Order[]
+  products       Product[]
+  payments       Payment[]
+  salaryPayments EmployeeSalaryPayment[]
+  tables         Table[]
+  menuItems      MenuItem[]
+  expenses       Expense[]
+  branchAccess   UserBranchAccess[]
 
   @@index([email])
   @@index([rol])
   @@index([status])
+  @@index([organizationId])
+  @@index([organizationId, rol])
+  @@index([organizationId, accountStatus])
   @@map("users")
 }
 
@@ -48,49 +150,55 @@ model Product {
   registrationDate DateTime @default(now())
   status           Boolean  @default(true)
   userId           String
+  branchId         String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   // Relations
-  user                     User                      @relation(fields: [userId], references: [id])
-  orderItems               OrderItem[]
-  expenseItems             ExpenseItem[]
+  user         User          @relation(fields: [userId], references: [id])
+  branch       Branch?       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+  expenseItems ExpenseItem[]
 
   @@index([userId])
+  @@index([branchId])
+  @@index([branchId, status])
   @@index([status])
   @@map("products")
 }
 
 // Order Entity
 model Order {
-  id            String   @id @default(uuid())
-  date          DateTime @default(now())
-  status        Boolean  @default(false)
-  paymentMethod Int?     // NULL for split payments, 1: Cash, 2: Transfer, 3: Card, 4: QR Mercado Pago
-  total         Decimal  @db.Decimal(10, 2)
-  subtotal      Decimal  @db.Decimal(10, 2)
-  iva           Decimal  @default(0) @db.Decimal(10, 2)
-  delivered     Boolean  @default(false)
-  tableId       String? // Relation to Table
-  tip           Decimal  @default(0) @db.Decimal(10, 2)
-  origin        String // 'Local', 'Delivery', 'Order', etc.
-  client        String?
-  paymentDiffer Boolean  @default(false)
-  note             String?
-  userId           String?
-  customerName     String?           // Nombre del cliente (pedidos online)
-  customerPhone    String?           // Teléfono del cliente (pedidos online)
-  latitude         Float?            // Coordenadas para domicilio
-  longitude        Float?            // Coordenadas para domicilio
-  deliveryAddress  String?   @db.Text // Dirección de referencia
-  scheduledAt      DateTime?         // Hora programada de entrega/recolección
-  trackingToken    String?   @unique  // Token UUID para seguimiento público
-  deliveryStatus   String?           // PENDING_PAYMENT, PAID, PREPARING, READY, ON_THE_WAY, DELIVERED
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String    @id @default(uuid())
+  date            DateTime  @default(now())
+  status          Boolean   @default(false)
+  paymentMethod   Int? // NULL for split payments, 1: Cash, 2: Transfer, 3: Card, 4: QR Mercado Pago
+  total           Decimal   @db.Decimal(10, 2)
+  subtotal        Decimal   @db.Decimal(10, 2)
+  iva             Decimal   @default(0) @db.Decimal(10, 2)
+  delivered       Boolean   @default(false)
+  tableId         String? // Relation to Table
+  tip             Decimal   @default(0) @db.Decimal(10, 2)
+  origin          String // 'Local', 'Delivery', 'Order', etc.
+  client          String?
+  paymentDiffer   Boolean   @default(false)
+  note            String?
+  userId          String?
+  customerName    String? // Nombre del cliente (pedidos online)
+  customerPhone   String? // Teléfono del cliente (pedidos online)
+  latitude        Float? // Coordenadas para domicilio
+  longitude       Float? // Coordenadas para domicilio
+  deliveryAddress String?   @db.Text // Dirección de referencia
+  scheduledAt     DateTime? // Hora programada de entrega/recolección
+  trackingToken   String?   @unique // Token UUID para seguimiento público
+  deliveryStatus  String? // PENDING_PAYMENT, PAID, PREPARING, READY, ON_THE_WAY, DELIVERED
+  branchId        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   // Relations
   user                   User?                   @relation(fields: [userId], references: [id])
+  branch                 Branch?                 @relation(fields: [branchId], references: [id], onDelete: SetNull)
   table                  Table?                  @relation(fields: [tableId], references: [id])
   orderItems             OrderItem[]
   orderItemExtras        OrderItemExtra[]
@@ -98,8 +206,12 @@ model Order {
   paymentDifferentiation PaymentDifferentiation?
 
   @@index([userId])
+  @@index([branchId])
   @@index([tableId])
   @@index([date])
+  @@index([branchId, date])
+  @@index([branchId, status, date])
+  @@index([branchId, userId])
   @@index([status])
   @@index([paymentMethod])
   @@index([origin])
@@ -115,16 +227,19 @@ model OrderItem {
   productId  String?
   menuItemId String?
   note       String?
+  branchId   String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   // Relations
   order    Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  branch   Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
   product  Product?         @relation(fields: [productId], references: [id])
   menuItem MenuItem?        @relation(fields: [menuItemId], references: [id])
   extras   OrderItemExtra[]
 
   @@index([orderId])
+  @@index([branchId])
   @@index([productId])
   @@index([menuItemId])
   @@map("order_items")
@@ -135,18 +250,21 @@ model OrderItemExtra {
   id          String   @id @default(uuid())
   orderId     String
   orderItemId String
-  extraId     String   // MenuItem with isExtra: true
+  extraId     String // MenuItem with isExtra: true
   quantity    Int      @default(1)
   price       Decimal  @db.Decimal(10, 2) // Price snapshot at order time
+  branchId    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
   order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  branch    Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
   orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   extra     MenuItem  @relation(fields: [extraId], references: [id])
 
   @@index([orderId])
+  @@index([branchId])
   @@index([orderItemId])
   @@index([extraId])
   @@map("order_item_extras")
@@ -164,17 +282,21 @@ model Payment {
   gateway              PaymentGateway? // NULL for CASH, TRANSFER, CARD_PHYSICAL
   gatewayTransactionId String?
   metadata             Json?
+  branchId             String?
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 
   // Relations
   order          Order?          @relation(fields: [orderId], references: [id])
+  branch         Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
   user           User?           @relation(fields: [userId], references: [id])
   refunds        Refund[]
   paymentSession PaymentSession?
 
   @@index([userId])
   @@index([orderId])
+  @@index([branchId])
+  @@index([branchId, createdAt])
   @@index([status])
   @@index([gatewayTransactionId])
   @@map("payments")
@@ -187,12 +309,15 @@ model PaymentSession {
   clientSecret String
   connectionId String? // WebSocket connection
   expiresAt    DateTime
+  branchId     String?
   createdAt    DateTime @default(now())
 
   // Relations
   payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  branch  Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
   @@index([paymentId])
+  @@index([branchId])
   @@map("payment_sessions")
 }
 
@@ -204,13 +329,16 @@ model PaymentDifferentiation {
   firstPaymentMethod  PaymentMethod // CASH, TRANSFER, or CARD_PHYSICAL only
   secondPaymentAmount Decimal       @db.Decimal(10, 2)
   secondPaymentMethod PaymentMethod // CASH, TRANSFER, or CARD_PHYSICAL only
+  branchId            String?
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
   // Relations
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order  Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
+  @@index([branchId])
   @@map("payments_differentiations")
 }
 
@@ -222,12 +350,15 @@ model Refund {
   reason          String?
   gatewayRefundId String?
   status          RefundStatus
+  branchId        String?
   createdAt       DateTime     @default(now())
 
   // Relations
   payment Payment @relation(fields: [paymentId], references: [id])
+  branch  Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@index([paymentId])
+  @@index([branchId])
   @@map("refunds")
 }
 
@@ -238,43 +369,26 @@ model EmployeeSalaryPayment {
   amount        Decimal  @db.Decimal(10, 2)
   paymentMethod Int // 1: Cash, 2: Transfer, 3: Card
   date          DateTime @default(now())
+  branchId      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   // Relations
-  user User @relation(fields: [userId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([branchId])
   @@index([date])
   @@map("employee_salaries_payments")
-}
-
-// Company Entity (singleton: one row per tenant/app - business info)
-model Company {
-  id               String   @id @default(uuid())
-  name             String
-  state            String
-  city             String
-  street           String
-  exteriorNumber   String
-  phone            String
-  rfc              String?
-  logoUrl          String?
-  startOperations  String?  // Hora inicio operaciones "HH:mm"
-  endOperations    String?  // Hora fin operaciones "HH:mm"
-  ticketConfig     Json?    // Config tickets térmicos (JSON)
-  paymentConfig    String?  @db.Text // JSON encriptado con AES-256-GCM (credenciales MP)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@map("companies")
 }
 
 // Table Entity (Restaurant Tables)
 model Table {
   id                 String   @id @default(uuid())
-  name               String   @unique @db.VarChar(64)
+  name               String   @db.VarChar(64)
   userId             String
+  branchId           String?
   status             Boolean  @default(true)
   availabilityStatus Boolean  @default(true)
   createdAt          DateTime @default(now())
@@ -282,9 +396,14 @@ model Table {
 
   // Relations
   user   User    @relation(fields: [userId], references: [id])
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
   orders Order[]
 
+  @@unique([branchId, name])
   @@index([userId])
+  @@index([branchId])
+  @@index([branchId, status])
+  @@index([branchId, availabilityStatus])
   @@index([status])
   @@index([availabilityStatus])
   @@map("tables")
@@ -295,12 +414,16 @@ model MenuCategory {
   id        String   @id @default(uuid())
   name      String
   status    Boolean  @default(true)
+  branchId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
+  branch    Branch?    @relation(fields: [branchId], references: [id], onDelete: Cascade)
   menuItems MenuItem[]
 
+  @@index([branchId])
+  @@index([branchId, status])
   @@index([status])
   @@map("menu_categories")
 }
@@ -312,19 +435,24 @@ model MenuItem {
   price      Decimal  @db.Decimal(10, 2)
   status     Boolean  @default(true)
   isExtra    Boolean  @default(false) // Flag to identify extras
-  categoryId String?  // Optional - menu item can exist without a category
+  categoryId String? // Optional - menu item can exist without a category
   userId     String
+  branchId   String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   // Relations
-  category       MenuCategory?   @relation(fields: [categoryId], references: [id])
-  user           User            @relation(fields: [userId], references: [id])
-  orderItems     OrderItem[]
+  category        MenuCategory?    @relation(fields: [categoryId], references: [id])
+  user            User             @relation(fields: [userId], references: [id])
+  branch          Branch?          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  orderItems      OrderItem[]
   orderItemExtras OrderItemExtra[]
 
   @@index([categoryId])
   @@index([userId])
+  @@index([branchId])
+  @@index([branchId, categoryId])
+  @@index([branchId, status])
   @@index([status])
   @@index([isExtra])
   @@map("menu_items")
@@ -333,24 +461,27 @@ model MenuItem {
 // Expense Entity (Unified expenses module - replaces PurchaseMerchandise and BusinessServicePayment)
 model Expense {
   id            String      @id @default(uuid())
-  title         String      // Título obligatorio del gasto (máx. 200 caracteres)
+  title         String // Título obligatorio del gasto (máx. 200 caracteres)
   type          ExpenseType
   date          DateTime    @default(now())
   total         Decimal     @db.Decimal(10, 2)
   subtotal      Decimal     @db.Decimal(10, 2)
   iva           Decimal     @default(0) @db.Decimal(10, 2)
   description   String?
-  paymentMethod Int         // 1: Cash, 2: Transfer, 3: Card, 4: QR Mercado Pago
-  userId        String?     // Null para gastos creados por el sistema (ej. comisiones MP)
-  paymentId     String?     // Vínculo opcional al Payment del que se derivó (ej. comisión MP). Habilita idempotencia y auditoría.
+  paymentMethod Int // 1: Cash, 2: Transfer, 3: Card, 4: QR Mercado Pago
+  userId        String? // Null para gastos creados por el sistema (ej. comisiones MP)
+  paymentId     String? // Vínculo opcional al Payment del que se derivó (ej. comisión MP). Habilita idempotencia y auditoría.
+  branchId      String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
   // Relations
-  user  User?        @relation(fields: [userId], references: [id])
-  items ExpenseItem[] // Only populated when type = MERCHANDISE
+  user   User?         @relation(fields: [userId], references: [id])
+  branch Branch?       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  items  ExpenseItem[] // Only populated when type = MERCHANDISE
 
   @@index([userId])
+  @@index([branchId])
   @@index([date])
   @@index([type])
   @@index([paymentId])
@@ -359,31 +490,40 @@ model Expense {
 
 // Expense Item Entity (Products in merchandise purchases - only for MERCHANDISE type)
 model ExpenseItem {
-  id        String   @id @default(uuid())
-  expenseId String
-  productId String
-  amount    Decimal  @db.Decimal(10, 2)
-  subtotal Decimal  @db.Decimal(10, 2)
-  total     Decimal  @db.Decimal(10, 2)
+  id            String         @id @default(uuid())
+  expenseId     String
+  productId     String
+  amount        Decimal        @db.Decimal(10, 2)
+  subtotal      Decimal        @db.Decimal(10, 2)
+  total         Decimal        @db.Decimal(10, 2)
   unitOfMeasure UnitOfMeasure?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  branchId      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   // Relations
   expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  branch  Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
 
   @@index([expenseId])
+  @@index([branchId])
   @@index([productId])
   @@map("expense_items")
 }
 
 // Enums
 enum UserRole {
+  OWNER
   ADMIN
   MANAGER
   WAITER
   CHEF
+}
+
+enum UserAccountStatus {
+  ACTIVE
+  DISABLED
 }
 
 enum PaymentStatus {
@@ -398,11 +538,11 @@ enum PaymentStatus {
 }
 
 enum PaymentMethod {
-  CASH              // Efectivo
-  TRANSFER          // Transferencia bancaria
-  CARD_PHYSICAL     // Tarjeta física (POS local)
-  CARD_STRIPE       // Tarjeta vía Stripe (online)
-  QR_MERCADO_PAGO   // QR vía Mercado Pago
+  CASH // Efectivo
+  TRANSFER // Transferencia bancaria
+  CARD_PHYSICAL // Tarjeta física (POS local)
+  CARD_STRIPE // Tarjeta vía Stripe (online)
+  QR_MERCADO_PAGO // QR vía Mercado Pago
 }
 
 enum PaymentGateway {
@@ -421,21 +561,22 @@ enum RefundStatus {
 }
 
 enum ExpenseType {
-  SERVICE_BUSINESS  // Servicios del negocio (limpieza, seguridad, etc.)
-  UTILITY           // Servicios públicos (luz, agua, internet)
-  RENT              // Renta
-  MERCHANDISE       // Compra de mercancía (con items de productos)
-  SALARY            // Pago de salarios (empleado + monto)
-  OTHER             // Otros gastos
-  MERCADO_PAGO_FEE  // Comisión cobrada por Mercado Pago al confirmar un pago
+  SERVICE_BUSINESS // Servicios del negocio (limpieza, seguridad, etc.)
+  UTILITY // Servicios públicos (luz, agua, internet)
+  RENT // Renta
+  MERCHANDISE // Compra de mercancía (con items de productos)
+  SALARY // Pago de salarios (empleado + monto)
+  OTHER // Otros gastos
+  MERCADO_PAGO_FEE // Comisión cobrada por Mercado Pago al confirmar un pago
 }
 
 enum SubscriptionStatus {
-  ACTIVE          // Suscripción activa, pago al día
-  PAST_DUE        // Pago falló, en período de gracia
-  CANCELED        // Cancelada por el usuario
-  EXPIRED         // Venció sin renovación
-  TRIALING        // En período de prueba (opcional)
+  ACTIVE // Suscripción activa, pago al día
+  PAST_DUE // Pago falló, en período de gracia
+  CANCELED // Cancelada por el usuario
+  EXPIRED // Venció sin renovación
+  TRIALING // En período de prueba (opcional)
+  INCOMPLETE // Pago incompleto (Stripe)
 }
 
 enum BillingPeriod {
@@ -444,41 +585,47 @@ enum BillingPeriod {
 }
 
 model SubscriptionPlan {
-  id              String              @id @default(uuid())
-  name            String              // "Mensual", "Anual"
-  billingPeriod   BillingPeriod       // MONTHLY, ANNUAL
-  price           Int                 // Precio en centavos MXN (322000, 3112300)
-  stripePriceId   String              @unique
-  status          Boolean             @default(true)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id            String         @id @default(uuid())
+  name          String         @unique // "Free Legacy", "Mensual", "Anual"
+  billingPeriod BillingPeriod? // MONTHLY, ANNUAL (NULL for Free Legacy)
+  price         Int            @default(0) // Precio en centavos MXN (0 para Free Legacy, 322000, 3112300)
+  stripePriceId String?        @unique // NULL para Free Legacy
+  maxBranches   Int            @default(1) // Max sucursales permitidas (3 para Free Legacy)
+  status        Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
-  subscriptions   Subscription[]
+  subscriptions Subscription[]
 
   @@map("subscription_plans")
 }
 
-// Subscription Entity (una por base de datos = un negocio = una suscripción)
+// Subscription Entity (1:1 con Organization en multi-tenancy)
 model Subscription {
-  id                     String             @id @default(uuid())
-  stripeCustomerId       String             @unique
-  stripeSubscriptionId   String?            @unique
-  status                 SubscriptionStatus @default(EXPIRED)
-  currentPeriodStart     DateTime?
-  currentPeriodEnd       DateTime?
-  cancelAtPeriodEnd      Boolean            @default(false)
-  planId                 String?
-  plan                   SubscriptionPlan?  @relation(fields: [planId], references: [id])
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
+  id                   String             @id @default(uuid())
+  organizationId       String             @unique // 1:1 con Organization
+  stripeCustomerId     String?            @unique // NULL para Free Legacy
+  stripeSubscriptionId String?            @unique
+  status               SubscriptionStatus @default(ACTIVE) // ACTIVE por defecto (Free Legacy)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  planId               String?
+  plan                 SubscriptionPlan?  @relation(fields: [planId], references: [id])
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([status])
   @@map("subscriptions")
 }
 
 // Unidades de medida para ítems de gastos (mercancía): Kilogramos, Gramos, Piezas, Otros
 enum UnitOfMeasure {
-  KG    // Kilogramos
-  G     // Gramos
-  PCS   // Piezas
+  KG // Kilogramos
+  G // Gramos
+  PCS // Piezas
   OTHER // Otros
 }

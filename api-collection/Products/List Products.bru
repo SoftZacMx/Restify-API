@@ -1,0 +1,27 @@
+meta {
+  name: List Products
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/products
+  body: none
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{login-token}}
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/products List products endpoint (with optional filters) NOTE: This must come before /:product_id route
+}

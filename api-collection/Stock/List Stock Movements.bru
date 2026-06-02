@@ -1,0 +1,28 @@
+meta {
+  name: List Stock Movements
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/stock/movements?from=&to=&type=&productId=&limit=100&offset=0
+  body: none
+  auth: inherit
+}
+
+params:query {
+  from: 
+  to: 
+  type: 
+  productId: 
+  limit: 100
+  offset: 0
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Historial completo de movimientos con filtros opcionales.
+}

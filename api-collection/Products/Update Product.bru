@@ -1,0 +1,27 @@
+meta {
+  name: Update Product
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/product/:product_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  product_id: {{product_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  PUT /api/products/:product_id Update product endpoint
+}

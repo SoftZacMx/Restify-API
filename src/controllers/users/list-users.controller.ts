@@ -1,4 +1,6 @@
 import { ListUsersUseCase } from '../../core/application/use-cases/users/list-users.use-case';
-import { makeQueryController } from '../../shared/utils/make-controller';
+import { makeController } from '../../shared/utils/make-controller';
 
-export const listUsersController = makeQueryController(ListUsersUseCase);
+export const listUsersController = makeController(ListUsersUseCase, {
+  mapper: (req) => req.query,
+});

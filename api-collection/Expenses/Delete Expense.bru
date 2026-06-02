@@ -1,0 +1,27 @@
+meta {
+  name: Delete Expense
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/expense/:expense_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  expense_id: {{expense_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  DELETE /api/expense/:expense_id
+}

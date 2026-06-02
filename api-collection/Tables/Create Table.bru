@@ -1,0 +1,23 @@
+meta {
+  name: Create Table
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/table
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  POST /api/tables Create table endpoint
+}

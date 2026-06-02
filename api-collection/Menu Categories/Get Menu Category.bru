@@ -1,0 +1,27 @@
+meta {
+  name: Get Menu Category
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/menu-category/:category_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  category_id: {{category_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/menu-categories/:category_id Get menu category by ID endpoint
+}

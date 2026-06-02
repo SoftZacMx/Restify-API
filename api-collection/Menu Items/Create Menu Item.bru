@@ -1,0 +1,33 @@
+meta {
+  name: Create Menu Item
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/menu-items
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+    {
+      "name": "Extra de carne 2",
+      "price": 34.50,
+      "status": true,
+      "isExtra": true,
+      "userId": "{{userId}}"
+    }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  POST /api/menu-items Create menu item endpoint
+}

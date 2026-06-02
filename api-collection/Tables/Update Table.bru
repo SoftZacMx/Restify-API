@@ -1,0 +1,27 @@
+meta {
+  name: Update Table
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/table/:table_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  table_id: {{table_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  PUT /api/tables/:table_id Update table endpoint
+}

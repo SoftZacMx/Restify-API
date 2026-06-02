@@ -1,0 +1,19 @@
+meta {
+  name: List Subscription Plans
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/subscription/plans
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Ruta pública — devuelve los planes activos (Mensual/Anual) con id, name, billingPeriod y price.
+}

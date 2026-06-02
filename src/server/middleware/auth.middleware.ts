@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
+import { container } from 'tsyringe';
 import { JwtUtil, JwtPayload } from '../../shared/utils/jwt.util';
 import { AppError } from '../../shared/errors';
+import { IUserRepository } from '../../core/domain/interfaces/user-repository.interface';
+import { IOrganizationRepository } from '../../core/domain/interfaces/organization-repository.interface';
 
 export interface AuthenticatedRequest extends Request {
   user?: JwtPayload;
@@ -86,6 +89,62 @@ export class AuthMiddleware {
     } catch (error) {
       // If token is invalid, continue without user (optional auth)
       next();
+    }
+  }
+
+  /**
+   * Validate token version and user/org status.
+   *
+   * Use this after authenticate() for routes that need strict validation.
+   * Validates:
+   * - User's tokenVersion matches JWT (for token revocation)
+   * - User account is active
+   * - Organization is active
+   *
+   * Note: This queries the database. Consider adding cache (TTL 30-60s) for production.
+   */
+  static async validateTokenAndStatus(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.user) {
+        throw new AppError('UNAUTHORIZED', 'Authentication required');
+      }
+
+      const userRepository = container.resolve<IUserRepository>('IUserRepository');
+      const orgRepository = container.resolve<IOrganizationRepository>('IOrganizationRepository');
+
+      // Validate user exists and token version
+      const user = await userRepository.findById(req.user.sub);
+      if (!user) {
+        throw new AppError('USER_NOT_FOUND', 'User not found');
+      }
+
+      // Validate tokenVersion (for revocation)
+      if (user.tokenVersion !== req.user.tokenVersion) {
+        throw new AppError('TOKEN_REVOKED', 'Token has been revoked. Please login again.');
+      }
+
+      // Validate user account status
+      if (!user.isAccountActive()) {
+        throw new AppError('ACCOUNT_DISABLED', 'Account has been disabled');
+      }
+
+      // Validate organization status
+      const org = await orgRepository.findById(user.organizationId);
+      if (!org) {
+        throw new AppError('ORGANIZATION_NOT_FOUND', 'Organization not found');
+      }
+
+      if (org.status !== 'ACTIVE') {
+        throw new AppError('ORGANIZATION_INACTIVE', 'Organization is not active');
+      }
+
+      next();
+    } catch (error) {
+      next(error);
     }
   }
 }

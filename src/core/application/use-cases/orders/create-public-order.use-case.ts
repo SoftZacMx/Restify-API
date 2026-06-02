@@ -1,12 +1,13 @@
 import { inject, injectable } from 'tsyringe';
 import { randomUUID } from 'crypto';
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
-import { ICompanyRepository } from '../../../domain/interfaces/company-repository.interface';
+import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
 import { PrismaService } from '../../../infrastructure/config/prisma.config';
 import { AppError } from '../../../../shared/errors';
 import { isWithinOperatingHours } from '../../../../shared/utils/operating-hours.util';
 
 export interface CreatePublicOrderInput {
+  branchId: string; // Required for multi-tenancy
   customerName: string;
   customerPhone: string;
   orderType: 'DELIVERY' | 'PICKUP';
@@ -37,33 +38,38 @@ export interface CreatePublicOrderResult {
 export class CreatePublicOrderUseCase {
   constructor(
     @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
-    @inject('ICompanyRepository') private readonly companyRepository: ICompanyRepository,
+    @inject('IBranchRepository') private readonly branchRepository: IBranchRepository,
     @inject(PrismaService) private readonly prismaService: PrismaService
   ) {}
 
   async execute(input: CreatePublicOrderInput): Promise<CreatePublicOrderResult> {
-    // 1. Validar horario de operación
-    const company = await this.companyRepository.findFirst();
-    if (company?.startOperations && company?.endOperations) {
+    // 1. Validar que la sucursal existe y obtener horarios
+    const branch = await this.branchRepository.findById(input.branchId);
+    if (!branch) {
+      throw new AppError('BRANCH_NOT_FOUND', 'Branch not found');
+    }
+
+    // 2. Validar horario de operación
+    if (branch.startOperations && branch.endOperations) {
       const timeToCheck = input.scheduledAt
         ? new Date(input.scheduledAt)
         : new Date();
       const hhmm = `${String(timeToCheck.getHours()).padStart(2, '0')}:${String(timeToCheck.getMinutes()).padStart(2, '0')}`;
 
-      if (!isWithinOperatingHours(hhmm, company.startOperations, company.endOperations)) {
+      if (!isWithinOperatingHours(hhmm, branch.startOperations, branch.endOperations)) {
         throw new AppError(
           'OUTSIDE_OPERATING_HOURS',
-          `Horario de operación: ${company.startOperations} - ${company.endOperations}. No se pueden crear pedidos fuera de este horario.`
+          `Horario de operación: ${branch.startOperations} - ${branch.endOperations}. No se pueden crear pedidos fuera de este horario.`
         );
       }
     }
 
-    // 2. Validar que hay items
+    // 3. Validar que hay items
     if (!input.items || input.items.length === 0) {
       throw new AppError('VALIDATION_ERROR', 'At least one item is required');
     }
 
-    // 3. Validar items y extras (lecturas fuera de transacción), cachear precios
+    // 4. Validar items y extras (lecturas fuera de transacción), cachear precios
     let subtotal = 0;
     const itemPrices: Map<string, number> = new Map();
 
@@ -105,7 +111,7 @@ export class CreatePublicOrderUseCase {
     const trackingToken = randomUUID();
     const origin = input.orderType === 'DELIVERY' ? 'online-delivery' : 'online-pickup';
 
-    // 4. Escrituras dentro de transacción
+    // 5. Escrituras dentro de transacción
     const prisma = this.prismaService.getClient();
 
     const result = await prisma.$transaction(async (tx) => {
@@ -131,6 +137,7 @@ export class CreatePublicOrderUseCase {
           deliveryAddress: input.deliveryAddress ?? null,
           scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
           trackingToken,
+          branchId: input.branchId,
         },
       });
 
@@ -143,6 +150,7 @@ export class CreatePublicOrderUseCase {
             productId: null,
             menuItemId: item.menuItemId,
             note: item.note ?? null,
+            branchId: input.branchId,
           },
         });
 
@@ -155,6 +163,7 @@ export class CreatePublicOrderUseCase {
                 extraId: extra.extraId,
                 quantity: extra.quantity,
                 price: itemPrices.get(extra.extraId)!,
+                branchId: input.branchId,
               },
             });
           }

@@ -1,0 +1,23 @@
+meta {
+  name: Create Stripe Refund
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/refund/stripe
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  POST /api/refund/stripe
+}

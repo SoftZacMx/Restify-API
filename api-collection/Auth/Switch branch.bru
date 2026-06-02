@@ -1,0 +1,29 @@
+meta {
+  name: Switch branch
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/auth/switch-branch
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{login-token}}
+}
+
+body:json {
+  {
+      "branchId": "69e13e05-7101-4789-8967-6834cea5fdea"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

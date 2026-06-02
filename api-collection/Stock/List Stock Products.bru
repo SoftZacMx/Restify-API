@@ -1,0 +1,24 @@
+meta {
+  name: List Stock Products
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/products/stock?lowStock=false&search=
+  body: none
+  auth: inherit
+}
+
+params:query {
+  lowStock: false
+  search: 
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Lista productos con `track_stock=true`, su stock actual, unidad, costo promedio y flag de alerta.
+}

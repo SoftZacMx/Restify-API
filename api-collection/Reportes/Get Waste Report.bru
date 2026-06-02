@@ -1,0 +1,24 @@
+meta {
+  name: Get Waste Report
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/reports/waste?from=2026-01-01&to=2026-12-31
+  body: none
+  auth: inherit
+}
+
+params:query {
+  from: 2026-01-01
+  to: 2026-12-31
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Devuelve totales de merma agrupados por motivo (`EXPIRED`, `BROKEN`, `THEFT`, `OTHER`) en el rango.
+}

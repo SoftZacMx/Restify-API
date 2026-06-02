@@ -1,4 +1,6 @@
 import { ListExpensesUseCase } from '../../core/application/use-cases/expenses/list-expenses.use-case';
-import { makeQueryController } from '../../shared/utils/make-controller';
+import { makeController } from '../../shared/utils/make-controller';
 
-export const listExpensesController = makeQueryController(ListExpensesUseCase);
+export const listExpensesController = makeController(ListExpensesUseCase, {
+  mapper: (req) => req.query,
+});

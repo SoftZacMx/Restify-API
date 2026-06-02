@@ -1,0 +1,30 @@
+meta {
+  name: Add Recipe Ingredient
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/menu-items/{{menuItemId}}/recipe/items
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "productId": "{{productId}}",
+    "quantity": 0.05
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Agrega un ingrediente nuevo. 409 si el producto ya está en la receta.
+}

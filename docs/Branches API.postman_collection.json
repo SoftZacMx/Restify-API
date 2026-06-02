@@ -1,0 +1,311 @@
+{
+  "info": {
+    "_postman_id": "branches-collection-2024",
+    "name": "Branches API",
+    "description": "Restify API - Branches (Sucursales) endpoints collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Branches — Sucursales",
+      "item": [
+        {
+          "name": "List Branches",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/branches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "branches"
+              ],
+              "query": [
+                {
+                  "key": "includeDisabled",
+                  "value": "false",
+                  "description": "Include disabled branches (true/false)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lista todas las sucursales accesibles por el usuario. Owner/Admin ven todas; otros roles solo las asignadas."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Branch Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/{{branchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "branches",
+                "{{branchId}}"
+              ]
+            },
+            "description": "Obtiene el detalle completo de una sucursal específica."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Branch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sucursal Norte\",\n  \"state\": \"Nuevo León\",\n  \"city\": \"Monterrey\",\n  \"street\": \"Av. Constitución\",\n  \"exteriorNumber\": \"456\",\n  \"phone\": \"8112345678\",\n  \"rfc\": \"XYZ987654321\",\n  \"logoUrl\": null,\n  \"startOperations\": \"09:00\",\n  \"endOperations\": \"21:00\",\n  \"timezone\": \"America/Monterrey\",\n  \"currency\": \"MXN\",\n  \"ticketConfig\": {\n    \"header\": \"Sucursal Norte\",\n    \"footer\": \"¡Gracias por su preferencia!\",\n    \"showLogo\": true,\n    \"showAddress\": true,\n    \"showRFC\": true,\n    \"showPhone\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/branches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "branches"
+              ]
+            },
+            "description": "Crea una nueva sucursal. Requiere rol OWNER o ADMIN. Valida límite de sucursales según plan (FREE = 3)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Branch",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sucursal Norte - Actualizada\",\n  \"phone\": \"8112345679\",\n  \"startOperations\": \"08:00\",\n  \"logoUrl\": \"https://example.com/logo.png\",\n  \"ticketConfig\": {\n    \"header\": \"Sucursal Norte - Actualizada\",\n    \"footer\": \"Vuelva pronto\",\n    \"showLogo\": true,\n    \"showAddress\": true,\n    \"showRFC\": true,\n    \"showPhone\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/{{branchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "branches",
+                "{{branchId}}"
+              ]
+            },
+            "description": "Actualiza una sucursal existente. Todos los campos son opcionales. Requiere rol OWNER o ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Disable Branch",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/{{branchId}}/disable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "branches",
+                "{{branchId}}",
+                "disable"
+              ]
+            },
+            "description": "Deshabilita una sucursal. La sucursal deshabilitada no aparecerá en listados activos ni permitirá operaciones. Requiere rol OWNER o ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Enable Branch",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/{{branchId}}/enable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "branches",
+                "{{branchId}}",
+                "enable"
+              ]
+            },
+            "description": "Habilita una sucursal previamente deshabilitada. Requiere rol OWNER o ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Branch Ticket Config",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"header\": \"Sucursal Norte\",\n  \"footer\": \"Gracias por visitarnos\\nSíguenos en redes sociales\",\n  \"showLogo\": true,\n  \"showAddress\": true,\n  \"showRFC\": true,\n  \"showPhone\": true,\n  \"showDateTime\": true,\n  \"showOrderNumber\": true,\n  \"showPaymentMethod\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/{{branchId}}/ticket-config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "branches",
+                "{{branchId}}",
+                "ticket-config"
+              ]
+            },
+            "description": "Actualiza únicamente la configuración de impresión de tickets de la sucursal. Requiere rol OWNER o ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Branch Logo",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "logo",
+                  "type": "file",
+                  "src": [],
+                  "description": "Archivo de imagen (PNG, JPG, max 2MB)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/{{branchId}}/logo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "branches",
+                "{{branchId}}",
+                "logo"
+              ]
+            },
+            "description": "Sube el logo de la sucursal. Acepta imágenes PNG/JPG hasta 2MB. Retorna la URL del logo. Requiere rol OWNER o ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Branch Logo",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/branches/{{branchId}}/logo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "branches",
+                "{{branchId}}",
+                "logo"
+              ]
+            },
+            "description": "Elimina el logo de la sucursal y establece logoUrl como null. Requiere rol OWNER o ADMIN."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth — Branch Operations",
+      "item": [
+        {
+          "name": "Switch Branch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/switch-branch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "switch-branch"
+              ]
+            },
+            "description": "Cambia la sucursal activa del usuario. Genera un nuevo JWT con el branchId actualizado. Owner/Admin pueden cambiar a cualquier sucursal activa; otros roles solo a las asignadas."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "branchId",
+      "value": "",
+      "type": "string",
+      "description": "ID de la sucursal (UUID)"
+    }
+  ]
+}

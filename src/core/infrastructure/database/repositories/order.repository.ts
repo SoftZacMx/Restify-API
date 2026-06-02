@@ -32,6 +32,7 @@ export class OrderRepository implements IOrderRepository {
       order.scheduledAt ?? null,
       order.trackingToken ?? null,
       order.deliveryStatus ?? null,
+      order.branchId ?? null,
       order.createdAt,
       order.updatedAt
     );
@@ -207,6 +208,126 @@ export class OrderRepository implements IOrderRepository {
     await this.prisma.order.delete({
       where: { id },
     });
+  }
+
+  async createWithItems(data: {
+    order: {
+      status: boolean;
+      paymentMethod: number | null;
+      total: number;
+      subtotal: number;
+      iva: number;
+      delivered: boolean;
+      tableId: string | null;
+      tip: number;
+      origin: string;
+      client: string | null;
+      paymentDiffer: boolean;
+      note: string | null;
+      userId: string | null;
+    };
+    items: {
+      quantity: number;
+      price: number;
+      productId: string | null;
+      menuItemId: string | null;
+      note: string | null;
+      extras: { extraId: string; quantity: number; price: number }[];
+    }[];
+    lockTable: boolean;
+  }): Promise<{ order: Order; items: OrderItem[]; extras: OrderItemExtra[] }> {
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Crear orden (branchId se inyecta vía tenant extension)
+      const order = await tx.order.create({
+        data: {
+          status: data.order.status,
+          paymentMethod: data.order.paymentMethod,
+          total: data.order.total,
+          subtotal: data.order.subtotal,
+          iva: data.order.iva,
+          delivered: data.order.delivered,
+          tableId: data.order.tableId,
+          tip: data.order.tip,
+          origin: data.order.origin,
+          client: data.order.client,
+          paymentDiffer: data.order.paymentDiffer,
+          note: data.order.note,
+          userId: data.order.userId,
+        },
+      });
+
+      // Marcar mesa como no disponible (con lock para evitar doble reserva)
+      if (order.tableId && data.lockTable) {
+        await tx.$queryRaw`SELECT id FROM tables WHERE id = ${order.tableId} FOR UPDATE`;
+        await tx.table.update({
+          where: { id: order.tableId },
+          data: { availabilityStatus: false },
+        });
+      }
+
+      // Crear items y extras
+      for (const item of data.items) {
+        const createdItem = await tx.orderItem.create({
+          data: {
+            quantity: item.quantity,
+            price: item.price,
+            orderId: order.id,
+            productId: item.productId,
+            menuItemId: item.menuItemId,
+            note: item.note,
+          },
+        });
+
+        for (const extra of item.extras) {
+          await tx.orderItemExtra.create({
+            data: {
+              orderId: order.id,
+              orderItemId: createdItem.id,
+              extraId: extra.extraId,
+              quantity: extra.quantity,
+              price: extra.price,
+            },
+          });
+        }
+      }
+
+      // Leer items y extras creados dentro de la misma transacción
+      const items = await tx.orderItem.findMany({ where: { orderId: order.id } });
+      const extras = await tx.orderItemExtra.findMany({ where: { orderId: order.id } });
+
+      return { order, items, extras };
+    });
+
+    return {
+      order: this.toEntity(result.order),
+      items: result.items.map(
+        (item) =>
+          new OrderItem(
+            item.id,
+            item.quantity,
+            Number(item.price),
+            item.orderId,
+            item.productId,
+            item.menuItemId,
+            item.note,
+            item.createdAt,
+            item.updatedAt
+          )
+      ),
+      extras: result.extras.map(
+        (extra) =>
+          new OrderItemExtra(
+            extra.id,
+            extra.orderId,
+            extra.orderItemId,
+            extra.extraId,
+            extra.quantity,
+            Number(extra.price),
+            extra.createdAt,
+            extra.updatedAt
+          )
+      ),
+    };
   }
 
   // Order Items

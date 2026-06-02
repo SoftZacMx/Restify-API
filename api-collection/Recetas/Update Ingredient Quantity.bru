@@ -1,0 +1,29 @@
+meta {
+  name: Update Ingredient Quantity
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/menu-items/{{menuItemId}}/recipe/items/{{productId}}
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "quantity": 0.2
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Modifica la cantidad de un ingrediente existente.
+}

@@ -29,9 +29,20 @@ export class VerifyUserUseCase {
       throw new AppError('USER_NOT_FOUND');
     }
 
-    // Generate token for password reset
+    // Generate token for password reset with full multi-tenant JWT payload
+    // This token is used for password reset flows and must include all required fields
+    // Note: branch is omitted (undefined) as password reset is org-level, not branch-specific
     const token = JwtUtil.generateToken(
-      { email: user.email, userId: user.id },
+      {
+        sub: user.id,
+        email: user.email,
+        rol: user.rol,
+        org: user.organizationId,
+        branch: undefined, // Password reset doesn't require branch context
+        tokenVersion: user.tokenVersion,
+        emailVerified: user.isEmailVerified(),
+        mustChangePassword: user.mustChangePassword,
+      },
       '1h' // Shorter expiration for password reset
     );
 

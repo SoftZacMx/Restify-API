@@ -1,7 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import { ISubscriptionRepository } from '../../../domain/interfaces/subscription-repository.interface';
 import { ISubscriptionPlanRepository } from '../../../domain/interfaces/subscription-plan-repository.interface';
-import { ICompanyRepository } from '../../../domain/interfaces/company-repository.interface';
+import { IOrganizationRepository } from '../../../domain/interfaces/organization-repository.interface';
 import { IUserRepository } from '../../../domain/interfaces/user-repository.interface';
 import { StripeSubscriptionService } from '../../../infrastructure/payment-gateways/stripe-subscription.service';
 import { AppError } from '../../../../shared/errors';
@@ -21,7 +21,7 @@ export class CreateSubscriptionCheckoutUseCase {
   constructor(
     @inject('ISubscriptionRepository') private readonly subscriptionRepository: ISubscriptionRepository,
     @inject('ISubscriptionPlanRepository') private readonly planRepository: ISubscriptionPlanRepository,
-    @inject('ICompanyRepository') private readonly companyRepository: ICompanyRepository,
+    @inject('IOrganizationRepository') private readonly organizationRepository: IOrganizationRepository,
     @inject('IUserRepository') private readonly userRepository: IUserRepository,
     @inject(StripeSubscriptionService) private readonly stripeSubscriptionService: StripeSubscriptionService
   ) {}
@@ -47,10 +47,10 @@ export class CreateSubscriptionCheckoutUseCase {
       throw new AppError('SUBSCRIPTION_ALREADY_ACTIVE');
     }
 
-    // 4. Obtener datos del negocio para el Customer de Stripe
-    const company = await this.companyRepository.findFirst();
+    // 4. Obtener datos de la organización para el Customer de Stripe
+    const organization = await this.organizationRepository.findById(user.organizationId);
     const customerEmail = user.email;
-    const customerName = company?.name || 'Mi Restaurante';
+    const customerName = organization?.name || 'Mi Restaurante';
 
     // 5. Obtener o crear Stripe Customer
     let stripeCustomerId: string;
@@ -69,6 +69,10 @@ export class CreateSubscriptionCheckoutUseCase {
     const successUrl = `${baseSuccessUrl}?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = process.env.STRIPE_CANCEL_URL || 'http://localhost:5173/subscription/cancel';
 
+    if (!plan.stripePriceId) {
+      throw new AppError('SUBSCRIPTION_PRICE_NOT_CONFIGURED');
+    }
+
     const session = await this.stripeSubscriptionService.createCheckoutSession({
       customerId: stripeCustomerId,
       priceId: plan.stripePriceId,
@@ -80,6 +84,7 @@ export class CreateSubscriptionCheckoutUseCase {
     // 7. Si no existía registro, crear uno con status EXPIRED (se activa via webhook)
     if (!existing) {
       await this.subscriptionRepository.create({
+        organizationId: user.organizationId,
         stripeCustomerId,
         planId: plan.id,
       });

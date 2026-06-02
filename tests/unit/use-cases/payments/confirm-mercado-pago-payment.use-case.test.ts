@@ -3,10 +3,12 @@ import { CreateMercadoPagoFeeExpenseUseCase } from '../../../../src/core/applica
 import { IPaymentRepository } from '../../../../src/core/domain/interfaces/payment-repository.interface';
 import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
 import { ITableRepository } from '../../../../src/core/domain/interfaces/table-repository.interface';
+import { IBranchRepository } from '../../../../src/core/domain/interfaces/branch-repository.interface';
 import { MercadoPagoService } from '../../../../src/core/infrastructure/payment-gateways/mercado-pago.service';
 import { Payment } from '../../../../src/core/domain/entities/payment.entity';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { Table } from '../../../../src/core/domain/entities/table.entity';
+import { Branch } from '../../../../src/core/domain/entities/branch.entity';
 import { PaymentStatus, PaymentMethod, PaymentGateway } from '@prisma/client';
 
 describe('ConfirmMercadoPagoPaymentUseCase', () => {
@@ -14,6 +16,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
   let mockPaymentRepository: jest.Mocked<IPaymentRepository>;
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockTableRepository: jest.Mocked<ITableRepository>;
+  let mockBranchRepository: jest.Mocked<IBranchRepository>;
   let mockMercadoPagoService: jest.Mocked<MercadoPagoService>;
   let mockCreateMpFeeExpenseUseCase: jest.Mocked<CreateMercadoPagoFeeExpenseUseCase>;
 
@@ -29,7 +32,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
   const mockOrder = new Order(
     orderId, new Date(), false, null, 150.50, 129.74, 20.76,
-    false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
+    false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
   );
 
   beforeEach(() => {
@@ -71,6 +74,17 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       delete: jest.fn(),
     };
 
+    mockBranchRepository = {
+      findById: jest.fn(),
+      findByIdAndOrganizationId: jest.fn(),
+      findAllIdsByOrganizationId: jest.fn(),
+      findManyByOrganizationId: jest.fn(),
+      findManyForList: jest.fn(),
+      countActiveByOrganizationId: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    } as any;
+
     mockMercadoPagoService = {
       createPreference: jest.fn(),
       getPreference: jest.fn(),
@@ -86,6 +100,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       mockPaymentRepository,
       mockOrderRepository,
       mockTableRepository,
+      mockBranchRepository,
       mockMercadoPagoService,
       mockCreateMpFeeExpenseUseCase,
     );
@@ -123,7 +138,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
       const updatedOrder = new Order(
         orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
-        false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
+        false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
       );
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
 
@@ -354,7 +369,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
     it('should not release table for non-local orders', async () => {
       const deliveryOrder = new Order(
         orderId, new Date(), false, null, 150.50, 129.74, 20.76,
-        false, null, 0, 'Delivery', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
+        false, null, 0, 'Delivery', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
       );
 
       mockMercadoPagoService.getPayment.mockResolvedValue({
@@ -382,7 +397,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
       const updatedOrder = new Order(
         orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
-        false, null, 0, 'Delivery', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
+        false, null, 0, 'Delivery', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
       );
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
 
@@ -399,7 +414,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         orderId, new Date(), false, null, 150.50, 129.74, 20.76,
         false, null, 0, 'online-delivery', null, false, null, null,
         'Juan', '5512345678', 19.43, -99.13, 'Calle 1', null, 'token-abc', null,
-        new Date(), new Date()
+        null, new Date(), new Date()
       );
 
       mockMercadoPagoService.getPayment.mockResolvedValue({
@@ -429,7 +444,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
         false, null, 0, 'online-delivery', null, false, null, null,
         'Juan', '5512345678', 19.43, -99.13, 'Calle 1', null, 'token-abc', 'PAID',
-        new Date(), new Date()
+        null, new Date(), new Date()
       );
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
 
@@ -481,7 +496,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
       const updatedOrder = new Order(
         orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
-        false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
+        false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
       );
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
 
@@ -526,7 +541,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
       const updatedOrder = new Order(
         orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
-        false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
+        false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
       );
       mockOrderRepository.update.mockResolvedValue(updatedOrder);
       mockTableRepository.update.mockResolvedValue(
@@ -564,7 +579,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       mockOrderRepository.update.mockResolvedValue(
         new Order(
           orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
-          false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
+          false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
         )
       );
       mockTableRepository.update.mockResolvedValue(
@@ -579,6 +594,140 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       expect(result).not.toBeNull();
       expect(result!.payment.status).toBe(PaymentStatus.SUCCEEDED);
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('multi-tenant: external_reference with branchId', () => {
+    const branchId = 'branch-456';
+    const orgId = 'org-789';
+
+    const mockBranch = new Branch(
+      branchId, orgId, 'Sucursal Centro', 'CDMX', 'CDMX', 'Reforma', '100',
+      '5551234567', null, null, null, null, null, null,
+      'America/Mexico_City', 'MXN', 'active', new Date(), new Date(), null
+    );
+
+    it('should establish tenant context when external_reference contains branchId', async () => {
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'approved',
+        statusDetail: 'accredited',
+        externalReference: `${orderId}:${branchId}`,
+        transactionAmount: 150.50,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: '2026-05-30T12:00:00.000Z',
+        feeDetails: [],
+      });
+
+      mockBranchRepository.findById.mockResolvedValue(mockBranch);
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+
+      const updatedPayment = new Payment(
+        paymentId, orderId, userId, 150.50, 'MXN',
+        PaymentStatus.SUCCEEDED, PaymentMethod.QR_MERCADO_PAGO,
+        PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date()
+      );
+      mockPaymentRepository.update.mockResolvedValue(updatedPayment);
+      mockOrderRepository.findById.mockResolvedValue(mockOrder);
+
+      const updatedOrder = new Order(
+        orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
+        false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
+      );
+      mockOrderRepository.update.mockResolvedValue(updatedOrder);
+      mockTableRepository.update.mockResolvedValue(
+        new Table('table-1', 'Mesa 1', userId, true, true, new Date(), new Date())
+      );
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
+
+      expect(mockBranchRepository.findById).toHaveBeenCalledWith(branchId);
+      expect(result).not.toBeNull();
+      expect(result!.payment.status).toBe(PaymentStatus.SUCCEEDED);
+    });
+
+    it('should process without tenant context when branch not found (deleted branch)', async () => {
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'approved',
+        statusDetail: 'accredited',
+        externalReference: `${orderId}:nonexistent-branch`,
+        transactionAmount: 150.50,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: '2026-05-30T12:00:00.000Z',
+        feeDetails: [],
+      });
+
+      mockBranchRepository.findById.mockResolvedValue(null);
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+
+      const updatedPayment = new Payment(
+        paymentId, orderId, userId, 150.50, 'MXN',
+        PaymentStatus.SUCCEEDED, PaymentMethod.QR_MERCADO_PAGO,
+        PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date()
+      );
+      mockPaymentRepository.update.mockResolvedValue(updatedPayment);
+      mockOrderRepository.findById.mockResolvedValue(mockOrder);
+      mockOrderRepository.update.mockResolvedValue(
+        new Order(
+          orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
+          false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
+        )
+      );
+      mockTableRepository.update.mockResolvedValue(
+        new Table('table-1', 'Mesa 1', userId, true, true, new Date(), new Date())
+      );
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
+
+      expect(mockBranchRepository.findById).toHaveBeenCalledWith('nonexistent-branch');
+      expect(result).not.toBeNull();
+      expect(result!.payment.status).toBe(PaymentStatus.SUCCEEDED);
+    });
+
+    it('should handle legacy format (orderId only, no branchId)', async () => {
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'approved',
+        statusDetail: 'accredited',
+        externalReference: orderId, // sin :branchId
+        transactionAmount: 150.50,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: '2026-05-30T12:00:00.000Z',
+        feeDetails: [],
+      });
+
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+
+      const updatedPayment = new Payment(
+        paymentId, orderId, userId, 150.50, 'MXN',
+        PaymentStatus.SUCCEEDED, PaymentMethod.QR_MERCADO_PAGO,
+        PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date()
+      );
+      mockPaymentRepository.update.mockResolvedValue(updatedPayment);
+      mockOrderRepository.findById.mockResolvedValue(mockOrder);
+      mockOrderRepository.update.mockResolvedValue(
+        new Order(
+          orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
+          false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
+        )
+      );
+      mockTableRepository.update.mockResolvedValue(
+        new Table('table-1', 'Mesa 1', userId, true, true, new Date(), new Date())
+      );
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
+
+      // No debe buscar branch cuando no hay branchId en external_reference
+      expect(mockBranchRepository.findById).not.toHaveBeenCalled();
+      expect(result).not.toBeNull();
+      expect(result!.payment.status).toBe(PaymentStatus.SUCCEEDED);
     });
   });
 });

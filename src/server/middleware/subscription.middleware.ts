@@ -10,10 +10,31 @@ export class SubscriptionMiddleware {
     next: NextFunction
   ): Promise<void> {
     try {
+      // Check if billing is disabled
+      if (process.env.BILLING_ENABLED === 'false') {
+        next();
+        return;
+      }
+
       const prismaService = container.resolve(PrismaService);
       const prismaClient = prismaService.getClient();
 
-      const subscription = await prismaClient.subscription.findFirst();
+      // Get organizationId from JWT
+      const organizationId = req.user?.org;
+      if (!organizationId) {
+        res.status(401).json({
+          success: false,
+          error: {
+            code: 'ORGANIZATION_REQUIRED',
+            message: 'Token inválido: falta organizationId',
+          },
+        });
+        return;
+      }
+
+      const subscription = await prismaClient.subscription.findUnique({
+        where: { organizationId },
+      });
 
       if (!subscription) {
         res.status(403).json({

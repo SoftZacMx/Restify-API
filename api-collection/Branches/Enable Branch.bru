@@ -1,0 +1,19 @@
+meta {
+  name: Enable Branch
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/branches/{{branchId}}/enable
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Habilita una sucursal previamente deshabilitada. Requiere rol OWNER o ADMIN.
+}

@@ -1,0 +1,32 @@
+meta {
+  name: Adjust Stock
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/stock/adjust
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "productId": "{{productId}}",
+    "newStock": 4.5,
+    "reason": "Conteo físico — viernes",
+    "notes": null
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Ajusta el stock a un valor absoluto. El movement se calcula como diferencia entre `newStock` y el stock actual.
+}

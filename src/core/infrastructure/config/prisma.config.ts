@@ -1,15 +1,19 @@
 import { PrismaClient } from '@prisma/client';
 import { singleton } from 'tsyringe';
+import { getBasePrisma } from '../database/prisma/get-prisma';
 
+/**
+ * PrismaService for infrastructure operations (health checks, connections).
+ *
+ * Note: For application code (repositories, use cases), use getPrisma() instead.
+ * This service uses the base client without tenant filtering.
+ */
 @singleton()
 export class PrismaService {
   private client: PrismaClient;
 
   constructor() {
-    this.client = new PrismaClient({
-      log: ['error'],
-    });
-    
+    this.client = getBasePrisma();
   }
 
   getClient(): PrismaClient {

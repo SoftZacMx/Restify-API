@@ -1,0 +1,28 @@
+meta {
+  name: List Menu Items
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/menu-items
+  body: none
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{login-token}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  GET /api/menu-items List menu items endpoint (with optional filters) NOTE: This must come before /:menu_item_id route
+}

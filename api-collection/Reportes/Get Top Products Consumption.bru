@@ -1,0 +1,25 @@
+meta {
+  name: Get Top Products Consumption
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/reports/products/consumption?from=2026-01-01&to=2026-12-31&top=10
+  body: none
+  auth: inherit
+}
+
+params:query {
+  from: 2026-01-01
+  to: 2026-12-31
+  top: 10
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Top N productos con mayor cantidad descontada por SALE en el rango. Incluye cantidad consumida, valor (cantidad × averageCost) y participación %.
+}

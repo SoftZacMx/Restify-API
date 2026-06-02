@@ -1,9 +1,17 @@
 import jwt from 'jsonwebtoken';
 
 export interface JwtPayload {
+  sub: string; // userId
   email: string;
+  rol: string;
+  org: string; // organizationId
+  branch?: string; // branchId (optional)
+  tokenVersion: number;
+  emailVerified: boolean;
+  mustChangePassword: boolean;
+
+  // Legacy fields (keep for backwards compatibility during migration)
   userId?: string;
-  rol?: string;
 }
 
 export class JwtUtil {

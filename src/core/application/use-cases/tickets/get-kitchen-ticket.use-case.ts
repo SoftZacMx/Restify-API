@@ -1,6 +1,6 @@
 import { inject, injectable } from 'tsyringe';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
-import { ICompanyRepository } from '../../../domain/interfaces/company-repository.interface';
+import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { IProductRepository } from '../../../domain/interfaces/product-repository.interface';
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
@@ -16,7 +16,7 @@ import { AppError } from '../../../../shared/errors';
 export class GetKitchenTicketUseCase {
   constructor(
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
-    @inject('ICompanyRepository') private readonly companyRepository: ICompanyRepository,
+    @inject('IBranchRepository') private readonly branchRepository: IBranchRepository,
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
     @inject('IProductRepository') private readonly productRepository: IProductRepository,
     @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository
@@ -75,7 +75,7 @@ export class GetKitchenTicketUseCase {
     });
 
     const tableName = table ? table.name : null;
-    const company = await this.companyRepository.findFirst();
+    const branch = order.branchId ? await this.branchRepository.findById(order.branchId) : null;
 
     const lines: string[] = [];
     lines.push('--- COCINA ---');
@@ -98,7 +98,7 @@ export class GetKitchenTicketUseCase {
       tableName,
       items,
       lines,
-      printConfig: mergeTicketPrintConfig(company?.ticketConfig),
+      printConfig: mergeTicketPrintConfig(branch?.ticketConfig),
     };
   }
 }

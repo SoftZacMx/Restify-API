@@ -1,4 +1,6 @@
 import { ListProductsUseCase } from '../../core/application/use-cases/products/list-products.use-case';
-import { makeQueryController } from '../../shared/utils/make-controller';
+import { makeController } from '../../shared/utils/make-controller';
 
-export const listProductsController = makeQueryController(ListProductsUseCase);
+export const listProductsController = makeController(ListProductsUseCase, {
+  mapper: (req) => req.query,
+});

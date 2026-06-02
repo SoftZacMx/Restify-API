@@ -19,15 +19,13 @@ import {
   getPaymentSessionSchema,
   getQRPaymentStatusSchema,
 } from '../../core/application/dto/payment.dto';
-import { AuthMiddleware } from '../middleware/auth.middleware';
+
+// Router separado para webhooks (montado fuera del bloque auth+tenant en index.ts)
+const webhookRouter = Router();
+webhookRouter.post('/mercado-pago', mercadoPagoWebhookController);
+export { webhookRouter as paymentWebhookRoutes };
 
 const router = Router();
-
-// Webhook de Mercado Pago — sin autenticación (MP envía directamente)
-router.post('/webhooks/mercado-pago', mercadoPagoWebhookController);
-
-// Apply authentication to all routes below
-router.use(AuthMiddleware.authenticate);
 
 /** POST /api/payments/card-stripe */
 router.post('/card-stripe', zodValidator({ schema: payOrderWithCardStripeSchema, source: 'body' }), payOrderWithCardStripeController);

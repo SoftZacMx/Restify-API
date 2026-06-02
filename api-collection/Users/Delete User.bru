@@ -1,0 +1,27 @@
+meta {
+  name: Delete User
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/user/:user_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  user_id: {{user_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  DELETE /api/users/:user_id Delete user endpoint
+}

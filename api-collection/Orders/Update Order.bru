@@ -1,0 +1,62 @@
+meta {
+  name: Update Order
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/orders/:order_id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  order_id: ad210e6c-fd58-4e48-98a8-71f041102993
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+    {
+      "status": false,
+      "paymentMethod": 1,
+      "delivered": false,
+      "tip": 20.00,
+      "origin": "Local",
+      "client": "Mesa 5 - Juan",
+      "paymentDiffer": false,
+      "note": "Pedido actualizado completo",
+      "tableId": null,
+      "orderItems": [
+        {
+          "menuItemId": "{{menuItemId}}",
+          "quantity": 3,
+          "price": 85.50,
+          "note": "Sin cebolla",
+          "extras": [
+            {
+              "extraId": "{{extraItemMenuId}}",
+              "quantity": 1,
+              "price": 15.00
+            }
+          ]
+        }
+      ]
+    }
+}
+
+vars:pre-request {
+  menuItemId: 7a3c6037-3268-455d-87e8-40eb263640af
+  extraItemMenuId: ee3ef90f-da37-4c1a-ae87-d08dc7725996
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  PUT /api/orders/:order_id Update order endpoint
+}

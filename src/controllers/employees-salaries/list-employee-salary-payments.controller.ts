@@ -1,4 +1,6 @@
 import { ListEmployeeSalaryPaymentsUseCase } from '../../core/application/use-cases/employee-salary-payments/list-employee-salary-payments.use-case';
-import { makeQueryController } from '../../shared/utils/make-controller';
+import { makeController } from '../../shared/utils/make-controller';
 
-export const listEmployeeSalaryPaymentsController = makeQueryController(ListEmployeeSalaryPaymentsUseCase);
+export const listEmployeeSalaryPaymentsController = makeController(ListEmployeeSalaryPaymentsUseCase, {
+  mapper: (req) => req.query,
+});

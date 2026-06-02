@@ -1,0 +1,23 @@
+meta {
+  name: Generate Report
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/report
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/report/
+}

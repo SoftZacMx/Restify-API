@@ -3,11 +3,12 @@ import { IUserRepository } from '../../../domain/interfaces/user-repository.inte
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { IProductRepository } from '../../../domain/interfaces/product-repository.interface';
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
-import { ICompanyRepository } from '../../../domain/interfaces/company-repository.interface';
-import { PrismaService } from '../../../infrastructure/config/prisma.config';
+import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
+import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { CreateOrderInput } from '../../dto/order.dto';
 import { AppError } from '../../../../shared/errors';
 import { isWithinOperatingHours } from '../../../../shared/utils/operating-hours.util';
+import { getBranchId } from '../../../infrastructure/tenant/tenant-context';
 
 export interface CreateOrderResult {
   id: string;
@@ -54,23 +55,26 @@ export class CreateOrderUseCase {
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
     @inject('IProductRepository') private readonly productRepository: IProductRepository,
     @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
-    @inject('ICompanyRepository') private readonly companyRepository: ICompanyRepository,
-    @inject(PrismaService) private readonly prismaService: PrismaService,
+    @inject('IBranchRepository') private readonly branchRepository: IBranchRepository,
+    @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
   ) {}
 
   async execute(input: CreateOrderInput): Promise<CreateOrderResult> {
     // --- Validaciones (fuera de transacción, solo lecturas) ---
 
     // Validar horario de operación
-    const company = await this.companyRepository.findFirst();
-    if (company?.startOperations && company?.endOperations) {
-      const now = new Date();
-      const nowHhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      if (!isWithinOperatingHours(nowHhmm, company.startOperations, company.endOperations)) {
-        throw new AppError(
-          'OUTSIDE_OPERATING_HOURS',
-          `Horario de operación: ${company.startOperations} - ${company.endOperations}. No se pueden crear órdenes fuera de este horario.`
-        );
+    const branchId = getBranchId();
+    if (branchId) {
+      const branch = await this.branchRepository.findById(branchId);
+      if (branch?.startOperations && branch?.endOperations) {
+        const now = new Date();
+        const nowHhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        if (!isWithinOperatingHours(nowHhmm, branch.startOperations, branch.endOperations)) {
+          throw new AppError(
+            'OUTSIDE_OPERATING_HOURS',
+            `Horario de operación: ${branch.startOperations} - ${branch.endOperations}. No se pueden crear órdenes fuera de este horario.`
+          );
+        }
       }
     }
 
@@ -130,13 +134,10 @@ export class CreateOrderUseCase {
     const iva = 0;
     const total = subtotal + (input.tip || 0);
 
-    // --- Escrituras (dentro de transacción) ---
-    const prisma = this.prismaService.getClient();
-
-    const result = await prisma.$transaction(async (tx) => {
-      // Crear orden
-      const order = await tx.order.create({
-        data: {
+    // --- Escrituras (transacción atómica en el repositorio, branchId vía tenant extension) ---
+    const { order, items: createdOrderItems, extras: allExtras } =
+      await this.orderRepository.createWithItems({
+        order: {
           status: false,
           paymentMethod: input.paymentMethod ?? 1,
           total,
@@ -149,63 +150,24 @@ export class CreateOrderUseCase {
           client: input.client || null,
           paymentDiffer: input.paymentDiffer ?? false,
           note: input.note || null,
-          userId: input.userId,
+          userId: input.userId ?? null,
         },
+        items: (input.orderItems || []).map((item) => ({
+          quantity: item.quantity,
+          price: item.price,
+          productId: item.productId || null,
+          menuItemId: item.menuItemId || null,
+          note: item.note || null,
+          extras: (item.extras || []).map((extra) => ({
+            extraId: extra.extraId,
+            quantity: extra.quantity,
+            price: extra.price,
+          })),
+        })),
+        lockTable: input.origin.toLowerCase() === 'local',
       });
-
-      // Marcar mesa como no disponible (con lock para evitar doble reserva)
-      if (order.tableId && input.origin.toLowerCase() === 'local') {
-        await tx.$queryRaw`SELECT id FROM tables WHERE id = ${order.tableId} FOR UPDATE`;
-        await tx.table.update({
-          where: { id: order.tableId },
-          data: { availabilityStatus: false },
-        });
-      }
-
-      // Crear order items y extras
-      if (input.orderItems && input.orderItems.length > 0) {
-        for (const item of input.orderItems) {
-          const createdOrderItem = await tx.orderItem.create({
-            data: {
-              quantity: item.quantity,
-              price: item.price,
-              orderId: order.id,
-              productId: item.productId || null,
-              menuItemId: item.menuItemId || null,
-              note: item.note || null,
-            },
-          });
-
-          if (item.extras && item.extras.length > 0) {
-            for (const extra of item.extras) {
-              await tx.orderItemExtra.create({
-                data: {
-                  orderId: order.id,
-                  orderItemId: createdOrderItem.id,
-                  extraId: extra.extraId,
-                  quantity: extra.quantity,
-                  price: extra.price,
-                },
-              });
-            }
-          }
-        }
-      }
-
-      // Leer items y extras creados dentro de la misma transacción
-      const createdOrderItems = await tx.orderItem.findMany({
-        where: { orderId: order.id },
-      });
-      const allExtras = await tx.orderItemExtra.findMany({
-        where: { orderId: order.id },
-      });
-
-      return { order, createdOrderItems, allExtras };
-    });
 
     // --- Formatear respuesta ---
-    const { order, createdOrderItems, allExtras } = result;
-
     const extrasByItemId = allExtras.reduce((acc, extra) => {
       if (!acc[extra.orderItemId]) {
         acc[extra.orderItemId] = [];

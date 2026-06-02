@@ -1,4 +1,6 @@
 import { GetTableUseCase } from '../../core/application/use-cases/tables/get-table.use-case';
-import { makeParamsController } from '../../shared/utils/make-controller';
+import { makeController } from '../../shared/utils/make-controller';
 
-export const getTableController = makeParamsController(GetTableUseCase);
+export const getTableController = makeController(GetTableUseCase, {
+  mapper: (req) => req.params,
+});

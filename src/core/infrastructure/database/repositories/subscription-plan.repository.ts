@@ -37,7 +37,8 @@ export class SubscriptionPlanRepository implements ISubscriptionPlanRepository {
     name: string;
     billingPeriod: any;
     price: number;
-    stripePriceId: string;
+    stripePriceId: string | null;
+    maxBranches: number;
     status: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -48,6 +49,7 @@ export class SubscriptionPlanRepository implements ISubscriptionPlanRepository {
       plan.billingPeriod,
       plan.price,
       plan.stripePriceId,
+      plan.maxBranches,
       plan.status,
       plan.createdAt,
       plan.updatedAt,

@@ -1,0 +1,56 @@
+meta {
+  name: Create Order
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/orders
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{login-token}}
+}
+
+body:json {
+    {
+      "origin": "Local",
+      "paymentMethod": 1,
+      "tip": 0,
+      "orderItems": [
+        {
+          "menuItemId": "{{menuItemId}}",
+          "quantity": 2,
+          "price": 85.50,
+          "note": "Sin cebolla",
+          "extras": [
+            {
+              "extraId": "{{extraItemMenuId}}",
+              "quantity": 1,
+              "price": 15.00
+            }
+          ]
+        }
+      ]
+    }
+}
+
+vars:pre-request {
+  menuItemId: 7a3c6037-3268-455d-87e8-40eb263640af
+  extraItemMenuId: ee3ef90f-da37-4c1a-ae87-d08dc7725996
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  POST /api/orders Create order endpoint
+}

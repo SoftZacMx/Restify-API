@@ -1,0 +1,64 @@
+meta {
+  name: Create Product
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/products
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+    {
+      "name": "Coca-Cola Zero 600ml",
+      "description": "Refresco de cola",
+      "status": true,
+      "userId": "{{userId}}"
+    }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  POST /api/products Create product endpoint
+}
+
+example {
+  name: Create Extra
+  
+  request: {
+    url: {{baseUrl}}/api/products
+    method: POST
+    mode: json
+    headers: {
+      Content-Type: application/json
+    }
+  
+    body:json: {
+        {
+          "name": "Aderezo extra",
+          "description": "Salsas",
+          "status": true,
+          "userId": "{{userId}}",
+          "isExtra":true
+        }
+    }
+  }
+  
+  response: {
+    body: {
+      type: text
+      content: '''
+  
+      '''
+    }
+  }
+}

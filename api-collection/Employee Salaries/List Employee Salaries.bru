@@ -1,0 +1,23 @@
+meta {
+  name: List Employee Salaries
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/employee-salary
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/employee-salary/
+}

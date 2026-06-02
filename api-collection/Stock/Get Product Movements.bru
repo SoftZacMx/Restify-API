@@ -1,0 +1,27 @@
+meta {
+  name: Get Product Movements
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/products/{{productId}}/movements?from=&to=&type=&limit=100&offset=0
+  body: none
+  auth: inherit
+}
+
+params:query {
+  from: 
+  to: 
+  type: 
+  limit: 100
+  offset: 0
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Historial de movimientos del producto, filtrable por rango y tipo.
+}

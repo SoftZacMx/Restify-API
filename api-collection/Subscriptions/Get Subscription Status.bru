@@ -1,0 +1,23 @@
+meta {
+  name: Get Subscription Status
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/subscription/status
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Devuelve el estado de la suscripción: exists, status, isActive, daysRemaining, cancelAtPeriodEnd y plan info. Requiere auth ADMIN.
+}

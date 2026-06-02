@@ -1,4 +1,6 @@
 import { UpdateMenuCategoryUseCase } from '../../core/application/use-cases/menu-categories/update-menu-category.use-case';
-import { makeParamBodyController } from '../../shared/utils/make-controller';
+import { makeController } from '../../shared/utils/make-controller';
 
-export const updateMenuCategoryController = makeParamBodyController(UpdateMenuCategoryUseCase, 'category_id');
+export const updateMenuCategoryController = makeController(UpdateMenuCategoryUseCase, {
+  mapper: (req) => [req.params.category_id, req.body],
+});

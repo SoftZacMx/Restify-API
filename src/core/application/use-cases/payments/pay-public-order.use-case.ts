@@ -2,9 +2,11 @@ import { inject, injectable } from 'tsyringe';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { IPaymentRepository } from '../../../domain/interfaces/payment-repository.interface';
 import { IPaymentSessionRepository } from '../../../domain/interfaces/payment-session-repository.interface';
+import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
 import { PaymentStatus, PaymentMethod, PaymentGateway } from '@prisma/client';
 import { AppError } from '../../../../shared/errors';
 import { MercadoPagoService } from '../../../infrastructure/payment-gateways/mercado-pago.service';
+import { runWithTenant, withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 
 export interface PayPublicOrderInput {
   orderId: string;
@@ -23,12 +25,13 @@ export class PayPublicOrderUseCase {
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository,
     @inject('IPaymentSessionRepository') private readonly paymentSessionRepository: IPaymentSessionRepository,
+    @inject('IBranchRepository') private readonly branchRepository: IBranchRepository,
     @inject('MercadoPagoService') private readonly mercadoPagoService: MercadoPagoService
   ) {}
 
   async execute(input: PayPublicOrderInput): Promise<PayPublicOrderResult> {
-    // 1. Validar que la orden existe, no está pagada y es pública
-    const order = await this.orderRepository.findById(input.orderId);
+    // Buscar la orden sin tenant context (es ruta pública, no hay JWT)
+    const order = await withoutTenant(() => this.orderRepository.findById(input.orderId));
     if (!order) {
       throw new AppError('ORDER_NOT_FOUND');
     }
@@ -39,7 +42,23 @@ export class PayPublicOrderUseCase {
       throw new AppError('VALIDATION_ERROR', 'This endpoint is only for public orders');
     }
 
-    // 2. Si ya existe un pago pendiente de MP, reutilizar
+    // Establecer tenant context a partir de la orden para las operaciones restantes
+    if (order.branchId) {
+      const branch = await withoutTenant(() => this.branchRepository.findById(order.branchId!));
+      if (branch) {
+        return runWithTenant(
+          { organizationId: branch.organizationId, branchId: branch.id },
+          () => this.processPayment(order)
+        );
+      }
+    }
+
+    // Fallback legacy (sin branchId)
+    return this.processPayment(order);
+  }
+
+  private async processPayment(order: any): Promise<PayPublicOrderResult> {
+    // Si ya existe un pago pendiente de MP, reutilizar
     const existingPayments = await this.paymentRepository.findAll({
       orderIds: [order.id],
       status: PaymentStatus.PENDING,
@@ -63,7 +82,7 @@ export class PayPublicOrderUseCase {
       await this.paymentRepository.update(pendingMPPayment.id, { status: PaymentStatus.CANCELED });
     }
 
-    // 3. Crear Payment PENDING (sin userId — orden pública)
+    // Crear Payment PENDING (sin userId — orden pública)
     const payment = await this.paymentRepository.create({
       orderId: order.id,
       userId: null,
@@ -74,13 +93,14 @@ export class PayPublicOrderUseCase {
       gateway: PaymentGateway.MERCADO_PAGO,
     });
 
-    // 4. Crear Preference en Mercado Pago
+    // Crear Preference en Mercado Pago
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
     const notificationUrl = process.env.MP_NOTIFICATION_URL || '';
     const backUrl = process.env.MP_PUBLIC_BACK_URL || process.env.MP_BACK_URL || '';
 
     const preference = await this.mercadoPagoService.createPreference({
       orderId: order.id,
+      branchId: order.branchId ?? undefined,
       title: `Pedido online #${order.id.slice(0, 8)} - Restify`,
       description: `Pedido de ${order.customerName}`,
       amount: order.total,
@@ -93,12 +113,12 @@ export class PayPublicOrderUseCase {
       expirationDate: expiresAt.toISOString(),
     });
 
-    // 5. Actualizar Payment con gatewayTransactionId
+    // Actualizar Payment con gatewayTransactionId
     await this.paymentRepository.update(payment.id, {
       gatewayTransactionId: preference.id,
     });
 
-    // 6. Crear PaymentSession
+    // Crear PaymentSession
     await this.paymentSessionRepository.create({
       paymentId: payment.id,
       clientSecret: preference.initPoint,

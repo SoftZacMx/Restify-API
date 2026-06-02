@@ -7,7 +7,7 @@ import './prisma.module';
 import './user.module';
 import './product.module';
 import './table.module';
-import './company.module';
+import './branch.module';
 import './menu.module';
 import './order.module';
 import './expense.module'; // payment.module depende de IExpenseRepository (gasto de comisión MP)

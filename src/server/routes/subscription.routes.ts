@@ -9,6 +9,7 @@ import {
   verifySubscriptionCheckoutController,
 } from '../../controllers/subscription';
 import { AuthMiddleware } from '../middleware/auth.middleware';
+import { OWNER_ADMIN } from '../../shared/constants/roles.constants';
 
 const router = Router();
 
@@ -36,8 +37,8 @@ router.use(AuthMiddleware.authenticate);
  */
 router.get('/status', getSubscriptionStatusController);
 
-// Rutas que sí requieren rol ADMIN (gestión de la suscripción)
-router.use(AuthMiddleware.authorize('ADMIN'));
+// Rutas que sí requieren rol OWNER/ADMIN (gestión de la suscripción)
+router.use(AuthMiddleware.authorize(...OWNER_ADMIN));
 
 /** POST /api/subscription/checkout */
 router.post('/checkout', createSubscriptionCheckoutController);

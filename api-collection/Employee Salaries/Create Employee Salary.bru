@@ -1,0 +1,23 @@
+meta {
+  name: Create Employee Salary
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/employee-salary
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  POST /api/employee-salary/
+}

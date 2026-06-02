@@ -6,14 +6,15 @@ import { payPublicOrderController } from '../../controllers/payments/pay-public-
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
 import { createPublicOrderSchema, payPublicOrderParamsSchema, getPublicOrderStatusParamsSchema } from '../../core/application/dto/order.dto';
 import { publicMenuRateLimiter, publicOrderRateLimiter, publicStatusRateLimiter } from '../middleware/rate-limit.middleware';
+import { PublicTenantMiddleware } from '../middleware/public-tenant.middleware';
 
 const router = Router();
 
-/** GET /api/public/menu — Menú público (items activos agrupados por categoría) */
-router.get('/menu', publicMenuRateLimiter, listPublicMenuController);
+/** GET /api/public/menu?branchId=xxx — Menú público (items activos agrupados por categoría) */
+router.get('/menu', publicMenuRateLimiter, PublicTenantMiddleware.fromBranch, listPublicMenuController);
 
-/** POST /api/public/orders — Crear pedido público (sin auth) */
-router.post('/orders', publicOrderRateLimiter, zodValidator({ schema: createPublicOrderSchema, source: 'body' }), createPublicOrderController);
+/** POST /api/public/orders — Crear pedido público (sin auth, branchId en body) */
+router.post('/orders', publicOrderRateLimiter, zodValidator({ schema: createPublicOrderSchema, source: 'body' }), PublicTenantMiddleware.fromBranch, createPublicOrderController);
 
 /** POST /api/public/orders/:orderId/pay — Pagar pedido público con MP */
 router.post('/orders/:orderId/pay', publicOrderRateLimiter, zodValidator({ schema: payPublicOrderParamsSchema, source: 'params' }), payPublicOrderController);

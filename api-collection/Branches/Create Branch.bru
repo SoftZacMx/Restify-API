@@ -1,0 +1,48 @@
+meta {
+  name: Create Branch
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/branches
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Sucursal Norte 2",
+    "state": "Nuevo León 2",
+    "city": "Monterrey 2",
+    "street": "Av. Constitución 2",
+    "exteriorNumber": "456 2",
+    "phone": "8112345678 2",
+    "rfc": "XYZ987654321 2",
+    "logoUrl": null,
+    "startOperations": "09:00",
+    "endOperations": "21:00",
+    "timezone": "America/Monterrey",
+    "currency": "MXN",
+    "ticketConfig": {
+      "header": "Sucursal Norte",
+      "footer": "¡Gracias por su preferencia!",
+      "showLogo": true,
+      "showAddress": true,
+      "showRFC": true,
+      "showPhone": true
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Crea una nueva sucursal. Requiere rol OWNER o ADMIN. Valida límite de sucursales según plan (FREE = 3).
+}

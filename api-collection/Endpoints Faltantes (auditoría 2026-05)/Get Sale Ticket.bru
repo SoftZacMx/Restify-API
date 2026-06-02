@@ -1,0 +1,23 @@
+meta {
+  name: Get Sale Ticket
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/orders/:order_id/ticket/sale-ticket
+  body: none
+  auth: inherit
+}
+
+params:path {
+  order_id: 
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Devuelve el ticket de venta para el cliente.
+}

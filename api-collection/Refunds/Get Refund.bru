@@ -1,0 +1,27 @@
+meta {
+  name: Get Refund
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/refund/:refund_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  refund_id: {{refund_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/refund/:refund_id
+}

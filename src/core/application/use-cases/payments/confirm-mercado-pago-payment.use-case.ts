@@ -2,9 +2,11 @@ import { inject, injectable } from 'tsyringe';
 import { IPaymentRepository } from '../../../domain/interfaces/payment-repository.interface';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
+import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
 import { PaymentStatus, PaymentGateway } from '@prisma/client';
 import { MercadoPagoService } from '../../../infrastructure/payment-gateways/mercado-pago.service';
 import { CreateMercadoPagoFeeExpenseUseCase } from '../expenses/create-mercado-pago-fee-expense.use-case';
+import { runWithTenant } from '../../../infrastructure/tenant/tenant-context';
 
 export interface ConfirmMPPaymentInput {
   mpPaymentId: number;
@@ -48,6 +50,7 @@ export class ConfirmMercadoPagoPaymentUseCase {
     @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository,
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
+    @inject('IBranchRepository') private readonly branchRepository: IBranchRepository,
     @inject('MercadoPagoService') private readonly mercadoPagoService: MercadoPagoService,
     @inject(CreateMercadoPagoFeeExpenseUseCase)
     private readonly createMpFeeExpenseUseCase: CreateMercadoPagoFeeExpenseUseCase,
@@ -57,11 +60,33 @@ export class ConfirmMercadoPagoPaymentUseCase {
     // 1. Obtener detalles del pago desde MP
     const mpPayment = await this.mercadoPagoService.getPayment(String(input.mpPaymentId));
 
-    // 2. Extraer external_reference (nuestro orderId)
-    const orderId = mpPayment.externalReference;
+    // 2. Extraer external_reference: formato "orderId:branchId" o "orderId" (legacy)
+    const rawRef = mpPayment.externalReference;
+    if (!rawRef) {
+      return null;
+    }
+
+    const [orderId, branchId] = rawRef.split(':');
     if (!orderId) {
       return null;
     }
+
+    // 3. Si tenemos branchId, establecer tenant context para las operaciones siguientes
+    if (branchId) {
+      const branch = await this.branchRepository.findById(branchId);
+      if (branch) {
+        return runWithTenant(
+          { organizationId: branch.organizationId, branchId: branch.id },
+          () => this.processPayment(orderId, mpPayment)
+        );
+      }
+    }
+
+    // Sin branchId (pagos legacy) → procesar sin contexto
+    return this.processPayment(orderId, mpPayment);
+  }
+
+  private async processPayment(orderId: string, mpPayment: any): Promise<ConfirmMPPaymentResult | null> {
 
     // 3. Buscar Payment en BD por orderId + gateway MERCADO_PAGO + status PENDING
     const payments = await this.paymentRepository.findAll({
@@ -122,7 +147,7 @@ export class ConfirmMercadoPagoPaymentUseCase {
 
       // Registrar la comisión cobrada por MP como expense de operación.
       // Idempotente por paymentId: si el webhook se reenvía, no se duplica.
-      const totalFee = mpPayment.feeDetails.reduce((sum, fee) => sum + fee.amount, 0);
+      const totalFee = mpPayment.feeDetails.reduce((sum: number, fee: any) => sum + fee.amount, 0);
       if (totalFee > 0) {
         try {
           await this.createMpFeeExpenseUseCase.execute({

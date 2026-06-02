@@ -1,0 +1,27 @@
+meta {
+  name: Get Payment
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/payment/:payment_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  payment_id: {{payment_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/payment/:payment_id
+}

@@ -1,0 +1,26 @@
+meta {
+  name: Subscription
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/subscription/status
+  body: text
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:text {
+  {
+      "email": "karinaorlaz1@hotmail.com",
+      "businessName": "Restify"
+    }
+}
+
+settings {
+  encodeUrl: true
+}

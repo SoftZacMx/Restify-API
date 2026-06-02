@@ -1,0 +1,27 @@
+meta {
+  name: Delete Table
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/table/:table_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  table_id: {{table_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  DELETE /api/tables/:table_id Delete table endpoint
+}

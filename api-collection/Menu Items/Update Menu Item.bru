@@ -1,0 +1,28 @@
+meta {
+  name: Update Menu Item
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/menu-items/:menu_item_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  menu_item_id: {{menu_item_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  PUT /api/menu-items/:menu_item_id Update menu item endpoint
+}

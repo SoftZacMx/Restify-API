@@ -1,0 +1,33 @@
+meta {
+  name: Save Payment Config
+  type: http
+  seq: 17
+}
+
+put {
+  url: {{baseUrl}}/api/settings/payment-config
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "mercadoPagoAccessToken": "APP_USR-xxx",
+    "mercadoPagoPublicKey": "APP_USR-xxx",
+    "mercadoPagoUserId": "3296134323",
+    "stripeSecretKey": null,
+    "stripePublishableKey": null
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Guarda credenciales de las pasarelas de pago. Las credenciales se almacenan encriptadas (AES-256-GCM). Solo ADMIN.
+}

@@ -1,0 +1,26 @@
+meta {
+  name: Checkout Session
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/subscription/checkout
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+      "email": "karinaorlaz1@hotmail.com",
+      "businessName": "Restify"
+    }
+}
+
+settings {
+  encodeUrl: true
+}

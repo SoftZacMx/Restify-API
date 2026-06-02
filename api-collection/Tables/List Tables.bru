@@ -1,0 +1,23 @@
+meta {
+  name: List Tables
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/table
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/tables List tables endpoint (with optional filters) NOTE: This must come before /:table_id route
+}

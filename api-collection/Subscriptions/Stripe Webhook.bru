@@ -1,0 +1,28 @@
+meta {
+  name: Stripe Webhook
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/subscription/webhooks/stripe
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  stripe-signature: <stripe-webhook-signature>
+}
+
+body:json {
+  {}
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Endpoint para webhooks de Stripe. Sin autenticación. Eventos: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.updated, customer.subscription.deleted.
+}

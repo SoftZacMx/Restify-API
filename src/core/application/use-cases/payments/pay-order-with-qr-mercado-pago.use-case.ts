@@ -76,6 +76,7 @@ export class PayOrderWithQRMercadoPagoUseCase {
 
     const preference = await this.mercadoPagoService.createPreference({
       orderId: order.id,
+      branchId: order.branchId ?? undefined,
       title: `Orden #${order.id.slice(0, 8)} - Restify`,
       description: `Pago de orden`,
       amount: order.total,

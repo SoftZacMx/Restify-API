@@ -1,4 +1,4 @@
-import { UserRole } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
 
 export class User {
   constructor(
@@ -11,6 +11,11 @@ export class User {
     public readonly phone: string | null,
     public readonly status: boolean,
     public readonly rol: UserRole,
+    public readonly organizationId: string,
+    public readonly accountStatus: UserAccountStatus,
+    public readonly tokenVersion: number,
+    public readonly emailVerifiedAt: Date | null,
+    public readonly mustChangePassword: boolean,
     public readonly createdAt: Date,
     public readonly updatedAt: Date
   ) {}
@@ -26,6 +31,11 @@ export class User {
       data.phone,
       data.status,
       data.rol,
+      data.organizationId,
+      data.accountStatus,
+      data.tokenVersion,
+      data.emailVerifiedAt,
+      data.mustChangePassword,
       data.createdAt,
       data.updatedAt
     );
@@ -49,6 +59,22 @@ export class User {
 
   isChef(): boolean {
     return this.rol === UserRole.CHEF;
+  }
+
+  isOwner(): boolean {
+    return this.rol === UserRole.OWNER;
+  }
+
+  isAccountActive(): boolean {
+    return this.accountStatus === UserAccountStatus.ACTIVE;
+  }
+
+  isEmailVerified(): boolean {
+    return this.emailVerifiedAt !== null;
+  }
+
+  hasAccessToAllBranches(): boolean {
+    return this.rol === UserRole.OWNER || this.rol === UserRole.ADMIN;
   }
 
   getFullName(): string {

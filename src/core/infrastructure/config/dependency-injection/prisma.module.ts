@@ -1,8 +1,13 @@
 import { container } from 'tsyringe';
 import { PrismaClient } from '@prisma/client';
 import { PrismaService } from '../prisma.config';
+import { getPrisma } from '../../database/prisma/get-prisma';
 
 container.registerSingleton(PrismaService);
 
-const prismaService = container.resolve(PrismaService);
-export const prismaClient: PrismaClient = prismaService.getClient();
+/**
+ * Prisma client con tenant extension (filtra automáticamente por org/branch).
+ * Todos los repositorios reciben este client.
+ * Cast seguro: en runtime el client extendido tiene todos los métodos de PrismaClient.
+ */
+export const prismaClient = getPrisma() as unknown as PrismaClient;

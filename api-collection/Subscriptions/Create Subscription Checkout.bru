@@ -1,0 +1,34 @@
+meta {
+  name: Create Subscription Checkout
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/subscription/checkout
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Im1lc2Vyb3Rlc3RAZ21haWwuY29tIiwidXNlcklkIjoiMTE0NmFjOWYtMjI1Yy00N2RhLTkxYmMtMmIxN2VhMTgxNjdkIiwicm9sIjoiV0FJVEVSIiwiaWF0IjoxNzc2NjM0MDAxLCJleHAiOjE3NzY2NjI4MDF9.ie01qnH3JP7CXeFxwhLbBjzlaM4anL-Oq9gvihxF9UE",
+}
+
+body:json {
+  {
+    "planId": "e046119c-489c-493f-bbbc-37286df95b5d"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Crea una Stripe Checkout Session para el plan seleccionado. Requiere auth ADMIN. Devuelve checkoutUrl y sessionId.
+}

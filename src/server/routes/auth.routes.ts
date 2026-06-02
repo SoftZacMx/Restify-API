@@ -2,8 +2,13 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { verifyUserController } from '../../controllers/auth/verify-user.controller';
 import { setPasswordController } from '../../controllers/auth/set-password.controller';
 import { logoutController } from '../../controllers/auth/logout.controller';
+import { switchBranchController } from '../../controllers/auth/switch-branch.controller';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
-import { loginSchema, verifyUserSchema } from '../../core/application/dto/auth.dto';
+import {
+  loginSchema,
+  verifyUserSchema,
+  switchBranchSchema,
+} from '../../core/application/dto/auth.dto';
 import { authRateLimiter, passwordResetRateLimiter } from '../middleware/rate-limit.middleware';
 import { AuthMiddleware, AuthenticatedRequest } from '../middleware/auth.middleware';
 
@@ -71,7 +76,7 @@ router.post(
   AuthMiddleware.authenticate,
   (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const { user_id } = req.params;
-    const isOwnUser = req.user?.userId === user_id;
+    const isOwnUser = req.user?.sub === user_id;
     const isAdminOrManager = req.user?.rol === 'ADMIN' || req.user?.rol === 'MANAGER';
 
     if (!isOwnUser && !isAdminOrManager) {
@@ -97,10 +102,43 @@ router.post(
  * y luego llama a este endpoint para cambiar la contraseña.
  * Protegido con rate limiting: 3 intentos por 15 minutos.
  */
+router.post('/recover-password/:user_id', passwordResetRateLimiter, setPasswordController);
+
+/**
+ * POST /api/auth/switch-branch
+ * Switch active branch endpoint
+ * Generates new JWT token with updated branchId
+ * Requires authentication
+ */
 router.post(
-  '/recover-password/:user_id',
-  passwordResetRateLimiter,
-  setPasswordController
+  '/switch-branch',
+  AuthMiddleware.authenticate,
+  zodValidator({ schema: switchBranchSchema, source: 'body' }),
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        switchBranchController(req, res, (err: any) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      // Set new token in cookie
+      const result = res.locals.data;
+      if (result?.token) {
+        const isProduction = process.env.NODE_ENV === 'production';
+        res.cookie('token', result.token, {
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: 'strict',
+          maxAge: 24 * 60 * 60 * 1000,
+          path: '/',
+        });
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
 );
 
 /**

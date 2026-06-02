@@ -1,4 +1,7 @@
 import { DeleteProductUseCase } from '../../core/application/use-cases/products/delete-product.use-case';
-import { makeDeleteController } from '../../shared/utils/make-controller';
+import { makeController } from '../../shared/utils/make-controller';
 
-export const deleteProductController = makeDeleteController(DeleteProductUseCase, 'Product deleted successfully');
+export const deleteProductController = makeController(DeleteProductUseCase, {
+  mapper: (req) => req.params,
+  responseMapper: () => ({ message: 'Product deleted successfully' }),
+});

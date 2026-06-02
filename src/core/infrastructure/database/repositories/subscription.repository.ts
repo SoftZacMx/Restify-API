@@ -14,6 +14,31 @@ export class SubscriptionRepository implements ISubscriptionRepository {
 
     return new Subscription(
       subscription.id,
+      subscription.organizationId,
+      subscription.stripeCustomerId,
+      subscription.stripeSubscriptionId,
+      subscription.status,
+      subscription.currentPeriodStart,
+      subscription.currentPeriodEnd,
+      subscription.cancelAtPeriodEnd,
+      subscription.planId,
+      subscription.createdAt,
+      subscription.updatedAt
+    );
+  }
+
+  async findByStripeSubscriptionId(stripeSubscriptionId: string): Promise<Subscription | null> {
+    const subscription = await this.prisma.subscription.findFirst({
+      where: { stripeSubscriptionId },
+    });
+
+    if (!subscription) {
+      return null;
+    }
+
+    return new Subscription(
+      subscription.id,
+      subscription.organizationId,
       subscription.stripeCustomerId,
       subscription.stripeSubscriptionId,
       subscription.status,
@@ -29,7 +54,8 @@ export class SubscriptionRepository implements ISubscriptionRepository {
   async create(data: CreateSubscriptionData): Promise<Subscription> {
     const subscription = await this.prisma.subscription.create({
       data: {
-        stripeCustomerId: data.stripeCustomerId,
+        organizationId: data.organizationId,
+        stripeCustomerId: data.stripeCustomerId || null,
         stripeSubscriptionId: data.stripeSubscriptionId || null,
         status: data.status || 'EXPIRED',
         currentPeriodStart: data.currentPeriodStart || null,
@@ -41,6 +67,7 @@ export class SubscriptionRepository implements ISubscriptionRepository {
 
     return new Subscription(
       subscription.id,
+      subscription.organizationId,
       subscription.stripeCustomerId,
       subscription.stripeSubscriptionId,
       subscription.status,
@@ -70,6 +97,7 @@ export class SubscriptionRepository implements ISubscriptionRepository {
 
     return new Subscription(
       subscription.id,
+      subscription.organizationId,
       subscription.stripeCustomerId,
       subscription.stripeSubscriptionId,
       subscription.status,

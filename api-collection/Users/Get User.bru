@@ -1,0 +1,27 @@
+meta {
+  name: Get User
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/user/:user_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  user_id: {{user_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/users/:user_id Get user by ID endpoint
+}

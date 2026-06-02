@@ -1,0 +1,54 @@
+meta {
+  name: Create Expense
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/expenses
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{login_token}}
+}
+
+body:json {
+  {
+      "title": "Compra de insumos",
+      "type": "MERCHANDISE",
+      "total": 100.00,
+      "subtotal": 100.00,
+      "iva": 0.00,
+      "description": "Refrescos",
+      "paymentMethod": 1,
+      "userId": "17f8927b-f851-457a-ad80-36420371d556",
+      "items": [
+        {
+          "productId": "8db7b8b3-80d2-46f5-91f0-3df088b7326a",
+          "amount": 5.00,
+          "subtotal": 100.00,
+          "total": 100.00,
+          "unitOfMeasure": "PCS"
+        }
+      ]
+    }
+}
+
+vars:pre-request {
+  login_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxN2Y4OTI3Yi1mODUxLTQ1N2EtYWQ4MC0zNjQyMDM3MWQ1NTYiLCJlbWFpbCI6Im1hbmFnZXJAZGVtby5jb20iLCJyb2wiOiJNQU5BR0VSIiwib3JnIjoiNzI2NTRkODktMTgxNS00NzA1LWE2OTYtODYxNDViM2U2OTFlIiwiYnJhbmNoIjoiYmQ1ZDJlNmItZDY1ZS00MjQwLTg4MmQtODQ3MDA5ZWRiZDgxIiwidG9rZW5WZXJzaW9uIjowLCJlbWFpbFZlcmlmaWVkIjp0cnVlLCJtdXN0Q2hhbmdlUGFzc3dvcmQiOmZhbHNlLCJpYXQiOjE3ODAzMzgxNjksImV4cCI6MTc4MDM2Njk2OX0.xzvlIvMHWudGtvk1qe0wo0UJp74Mv-RFf9sViW_Vvt4
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  POST /api/expense/
+}

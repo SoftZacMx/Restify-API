@@ -1,0 +1,27 @@
+meta {
+  name: Update Menu Category
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/menu-category/:category_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  category_id: {{category_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  PUT /api/menu-categories/:category_id Update menu category endpoint
+}

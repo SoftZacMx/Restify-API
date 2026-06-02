@@ -1,0 +1,23 @@
+meta {
+  name: List Menu Categories
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/menu-category
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/menu-categories List menu categories endpoint (with optional filters) NOTE: This must come before /:category_id route
+}

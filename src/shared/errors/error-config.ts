@@ -17,6 +17,11 @@ export const ERROR_CONFIG = {
     statusCode: 403,
     category: 'AUTH',
   },
+  ACCOUNT_DISABLED: {
+    message: 'Account is disabled',
+    statusCode: 403,
+    category: 'AUTH',
+  },
   USER_ALREADY_DEACTIVATED: {
     message: 'User is already deactivated',
     statusCode: 400,
@@ -26,6 +31,16 @@ export const ERROR_CONFIG = {
     message: 'User is already active',
     statusCode: 400,
     category: 'BUSINESS',
+  },
+  USER_DISABLED: {
+    message: 'User account is disabled',
+    statusCode: 403,
+    category: 'AUTH',
+  },
+  INVALID_CREDENTIALS: {
+    message: 'Invalid email or password',
+    statusCode: 401,
+    category: 'AUTH',
   },
   PASSWORD_INCORRECT: {
     message: 'Password is incorrect',
@@ -49,6 +64,11 @@ export const ERROR_CONFIG = {
   },
   TOKEN_EXPIRED: {
     message: 'Token has expired',
+    statusCode: 401,
+    category: 'AUTH',
+  },
+  TOKEN_REVOKED: {
+    message: 'Token has been revoked',
     statusCode: 401,
     category: 'AUTH',
   },
@@ -341,6 +361,50 @@ export const ERROR_CONFIG = {
   },
 
   // ============================================
+  // Multi-tenancy / Branches
+  // ============================================
+  ORGANIZATION_NOT_FOUND: {
+    message: 'Organization not found',
+    statusCode: 404,
+    category: 'BUSINESS',
+  },
+  ORGANIZATION_INACTIVE: {
+    message: 'Organization is not active',
+    statusCode: 403,
+    category: 'BUSINESS',
+  },
+  BRANCH_DISABLED: {
+    message: 'Branch is disabled',
+    statusCode: 404,
+    category: 'BUSINESS',
+  },
+  BRANCH_FORBIDDEN: {
+    message: 'Branch access is forbidden',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
+  BRANCH_NOT_FOUND: {
+    message: 'Branch not found',
+    statusCode: 404,
+    category: 'BUSINESS',
+  },
+  BRANCH_LIMIT_REACHED: {
+    message: 'Branch limit reached for your plan',
+    statusCode: 409,
+    category: 'BUSINESS',
+  },
+  BRANCH_ALREADY_DISABLED: {
+    message: 'Branch is already disabled',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
+  BRANCH_ALREADY_ACTIVE: {
+    message: 'Branch is already active',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
+
+  // ============================================
   // System Errors
   // ============================================
   INTERNAL_ERROR: {
@@ -374,4 +438,3 @@ export type ErrorCode = keyof typeof ERROR_CONFIG;
  * Error categories for grouping and monitoring
  */
 export type ErrorCategory = 'AUTH' | 'VALIDATION' | 'BUSINESS' | 'SYSTEM';
-

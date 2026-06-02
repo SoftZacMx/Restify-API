@@ -1,0 +1,27 @@
+meta {
+  name: Update Expense
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/expense/:expense_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  expense_id: {{expense_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  PUT /api/expense/:expense_id
+}

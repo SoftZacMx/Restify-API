@@ -3,7 +3,7 @@ import { IOrderRepository } from '../../../domain/interfaces/order-repository.in
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { IProductRepository } from '../../../domain/interfaces/product-repository.interface';
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
-import { ICompanyRepository } from '../../../domain/interfaces/company-repository.interface';
+import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
 import {
   SaleTicketResponse,
   SaleTicketOrderItem,
@@ -31,17 +31,16 @@ export class GetSaleTicketUseCase {
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
     @inject('IProductRepository') private readonly productRepository: IProductRepository,
     @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
-    @inject('ICompanyRepository') private readonly companyRepository: ICompanyRepository
+    @inject('IBranchRepository') private readonly branchRepository: IBranchRepository
   ) {}
 
   async execute(orderId: string): Promise<SaleTicketResponse> {
-    const [order, company] = await Promise.all([
-      this.orderRepository.findById(orderId),
-      this.companyRepository.findFirst(),
-    ]);
+    const order = await this.orderRepository.findById(orderId);
     if (!order) {
       throw new AppError('ORDER_NOT_FOUND');
     }
+
+    const branch = order.branchId ? await this.branchRepository.findById(order.branchId) : null;
 
     const [orderItems, allExtras, table] = await Promise.all([
       this.orderRepository.findOrderItemsByOrderId(orderId),
@@ -130,7 +129,7 @@ export class GetSaleTicketUseCase {
     lines.push(`Entregado:   ${order.delivered ? 'Sí' : 'No'}`);
 
     return {
-      companyName: company?.name ?? 'Restify',
+      companyName: branch?.name ?? 'Restify',
       orderId: order.id,
       date: order.date.toISOString(),
       origin: order.origin,
@@ -145,7 +144,7 @@ export class GetSaleTicketUseCase {
       paymentMethod,
       delivered: order.delivered,
       lines,
-      printConfig: mergeTicketPrintConfig(company?.ticketConfig),
+      printConfig: mergeTicketPrintConfig(branch?.ticketConfig),
     };
   }
 }

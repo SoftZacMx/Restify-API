@@ -6,7 +6,7 @@ import { ISubscriptionPlanRepository } from '../../../domain/interfaces/subscrip
 export interface SubscriptionPlanInfo {
   id: string;
   name: string;
-  billingPeriod: string;
+  billingPeriod: string | null;
   price: number;
 }
 

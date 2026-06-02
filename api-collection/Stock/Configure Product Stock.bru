@@ -1,0 +1,31 @@
+meta {
+  name: Configure Product Stock
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/api/products/{{productId}}/stock-config
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "trackStock": true,
+    "unitOfMeasure": "KG",
+    "minStockAlert": 5
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Activa/desactiva trackeo de stock y configura unidad de medida y mínimo de alerta. `unitOfMeasure`: KG | G | L | ML | PCS | OTHER. Cualquier campo es opcional.
+}

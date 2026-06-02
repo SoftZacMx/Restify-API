@@ -1,0 +1,23 @@
+meta {
+  name: Pay With Cash
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/payment/cash
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  POST /api/payment/cash
+}

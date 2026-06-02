@@ -1,95 +1,128 @@
 import { Request, Response, NextFunction } from 'express';
 import { container } from 'tsyringe';
 import { sendSuccess } from '../middleware/response-formatter.middleware';
+import { logger } from './logger';
 
 type Constructor<T> = new (...args: any[]) => T;
 
 /**
- * Factory for controllers that execute a use case with req.body.
- * Pattern: resolve → execute(req.body) → sendSuccess
+ * Options for customizing controller behavior
  */
-export function makeBodyController<T extends { execute: (input: any) => Promise<any> }>(
-  UseCaseClass: Constructor<T>
-) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const useCase = container.resolve(UseCaseClass);
-      const result = await useCase.execute(req.body);
-      sendSuccess(res, result);
-    } catch (error) {
-      next(error);
-    }
-  };
+export interface ControllerOptions {
+  /**
+   * Function to map request to use case input
+   * @default (req) => req.body
+   */
+  mapper?: (req: Request) => any;
+
+  /**
+   * Function to map use case result to response data
+   * Useful for cases like delete operations that need custom messages
+   */
+  responseMapper?: (result: any) => any;
+
+  /**
+   * Whether this controller requires authentication (req.user)
+   * If true, will extract userId and role from req.user
+   */
+  requireAuth?: boolean;
 }
 
 /**
- * Factory for controllers that execute a use case with req.query.
- * Pattern: resolve → execute(req.query) → sendSuccess
+ * Universal controller factory
+ *
+ * Creates a controller that:
+ * 1. Resolves the use case from DI container
+ * 2. Maps request to use case input using mapper function
+ * 3. Executes the use case
+ * 4. Sends success response
+ *
+ * @example
+ * // Body controller
+ * makeController(LoginUseCase)
+ *
+ * @example
+ * // Query controller
+ * makeController(ListOrdersUseCase, { mapper: req => req.query })
+ *
+ * @example
+ * // Params controller
+ * makeController(GetOrderUseCase, { mapper: req => req.params })
+ *
+ * @example
+ * // No input controller
+ * makeController(GetDashboardUseCase, { mapper: () => ({}) })
+ *
+ * @example
+ * // Delete controller with custom message
+ * makeController(DeleteOrderUseCase, {
+ *   mapper: req => req.params,
+ *   responseMapper: () => ({ message: 'Order deleted successfully' })
+ * })
+ *
+ * @example
+ * // Single param controller
+ * makeController(GetOrderUseCase, { mapper: req => req.params.order_id })
+ *
+ * @example
+ * // Param + body controller
+ * makeController(UpdateOrderUseCase, {
+ *   mapper: req => ({ id: req.params.order_id, ...req.body })
+ * })
  */
-export function makeQueryController<T extends { execute: (input: any) => Promise<any> }>(
-  UseCaseClass: Constructor<T>
-) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const useCase = container.resolve(UseCaseClass);
-      const result = await useCase.execute(req.query || {});
-      sendSuccess(res, result);
-    } catch (error) {
-      next(error);
-    }
-  };
-}
-
-/**
- * Factory for controllers that execute a use case with req.params.
- * Pattern: resolve → execute(req.params) → sendSuccess
- */
-export function makeParamsController<T extends { execute: (input: any) => Promise<any> }>(
-  UseCaseClass: Constructor<T>
-) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const useCase = container.resolve(UseCaseClass);
-      const result = await useCase.execute(req.params);
-      sendSuccess(res, result);
-    } catch (error) {
-      next(error);
-    }
-  };
-}
-
-/**
- * Factory for controllers that execute a use case with a param ID + req.body.
- * Pattern: resolve → execute(req.params[paramName], req.body) → sendSuccess
- */
-export function makeParamBodyController<T extends { execute: (id: string, input: any) => Promise<any> }>(
+export function makeController<T extends { execute: (...args: any[]) => Promise<any> }>(
   UseCaseClass: Constructor<T>,
-  paramName: string
+  options: ControllerOptions = {}
 ) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const useCase = container.resolve(UseCaseClass);
-      const result = await useCase.execute(req.params[paramName], req.body);
-      sendSuccess(res, result);
-    } catch (error) {
-      next(error);
-    }
-  };
-}
+  const {
+    mapper = req => req.body,
+    responseMapper = result => result,
+    requireAuth = false,
+  } = options;
 
-/**
- * Factory for delete controllers that execute a use case with req.params and return a message.
- * Pattern: resolve → execute(req.params) → sendSuccess({ message })
- */
-export function makeDeleteController<T extends { execute: (input: any) => Promise<any> }>(
-  UseCaseClass: Constructor<T>,
-  message: string
-) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // DEBUG: log JWT payload and tenant context
+      logger.info({
+        useCaseName: UseCaseClass.name,
+        user: (req as any).user ?? 'NO USER (no auth)',
+        authHeader: req.headers.authorization ? 'Bearer ***' : 'NONE',
+        cookie: req.headers.cookie ?? 'NONE',
+      }, '[DEBUG] makeController invoked');
+
       const useCase = container.resolve(UseCaseClass);
-      await useCase.execute(req.params);
-      sendSuccess(res, { message });
+      let input = mapper(req);
+
+      // If auth is required, validate and inject userId/role
+      if (requireAuth) {
+        const user = (req as any).user;
+        if (!user?.sub || !user?.rol) {
+          return res.status(401).json({ success: false, error: 'UNAUTHORIZED' });
+        }
+        // Auto-inject userId and role into input
+        // If input is an array (multiple args), inject into first object arg
+        if (Array.isArray(input)) {
+          input = [
+            input[0],
+            { ...input[1], userId: user.sub, role: user.rol },
+            ...input.slice(2),
+          ];
+        } else {
+          input = {
+            ...input,
+            userId: user.sub,
+            role: user.rol,
+          };
+        }
+      }
+
+      // Support both single object input and multiple args (for legacy use cases)
+      const result = Array.isArray(input)
+        ? await useCase.execute(...input)
+        : await useCase.execute(input);
+      const responseData = responseMapper(result);
+
+      sendSuccess(res, responseData);
     } catch (error) {
       next(error);
     }
