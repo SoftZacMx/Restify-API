@@ -1,6 +1,7 @@
-import { inject, injectable } from 'tsyringe';
-import { MenuItemIngredient, Prisma, PrismaClient, UnitOfMeasure } from '@prisma/client';
-import { PrismaService } from '../../infrastructure/config/prisma.config';
+import { injectable } from 'tsyringe';
+import { MenuItemIngredient, Prisma, UnitOfMeasure } from '@prisma/client';
+import { getPrisma } from '../../infrastructure/database/prisma/get-prisma';
+import { getBranchId } from '../../infrastructure/tenant/tenant-context';
 import { AppError } from '../../../shared/errors';
 import { unitsCompatible } from '../../../shared/utils/unit-conversion.util';
 
@@ -32,10 +33,10 @@ export interface RecipeIngredientView {
  */
 @injectable()
 export class RecipeService {
-  private readonly prisma: PrismaClient;
-
-  constructor(@inject(PrismaService) prismaService: PrismaService) {
-    this.prisma = prismaService.getClient();
+  // Cliente extendido: las queries a menu_item_ingredients / menu_items / products
+  // se filtran automáticamente por branchId vía la tenant extension.
+  private get prisma() {
+    return getPrisma();
   }
 
   async getRecipe(menuItemId: string): Promise<RecipeIngredientView[]> {
@@ -75,6 +76,9 @@ export class RecipeService {
     this.assertNoDuplicateProducts(ingredients);
     this.assertUnitsCompatible(ingredients, productMap);
 
+    // branchId explícito: dentro de $transaction la tenant extension no se propaga.
+    const branchId = getBranchId() ?? null;
+
     return this.prisma.$transaction(async (tx) => {
       await tx.menuItemIngredient.deleteMany({ where: { menuItemId } });
       const created: MenuItemIngredient[] = [];
@@ -85,6 +89,7 @@ export class RecipeService {
             productId: ing.productId,
             quantity: new Prisma.Decimal(ing.quantity),
             unit: ing.unit ?? null,
+            branchId,
           },
         });
         created.push(row);
@@ -111,7 +116,13 @@ export class RecipeService {
     }
 
     return this.prisma.menuItemIngredient.create({
-      data: { menuItemId, productId, quantity: new Prisma.Decimal(quantity), unit },
+      data: {
+        menuItemId,
+        productId,
+        quantity: new Prisma.Decimal(quantity),
+        unit,
+        branchId: getBranchId() ?? null,
+      },
     });
   }
 

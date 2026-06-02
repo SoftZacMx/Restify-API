@@ -28,6 +28,8 @@ const BRANCH_LEVEL_MODELS = new Set([
   'ExpenseItem',
   'Refund',
   'EmployeeSalaryPayment',
+  'MenuItemIngredient',
+  'StockMovement',
 ]);
 
 // Models that should NOT be filtered (global data)

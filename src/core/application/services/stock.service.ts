@@ -1,5 +1,6 @@
 import { inject, injectable } from 'tsyringe';
 import { Prisma, PrismaClient, Product, StockMovement, StockMovementType, UnitOfMeasure } from '@prisma/client';
+import { getPrisma } from '../../infrastructure/database/prisma/get-prisma';
 import { PrismaService } from '../../infrastructure/config/prisma.config';
 import { AppError } from '../../../shared/errors';
 import { convertQuantity, unitsCompatible } from '../../../shared/utils/unit-conversion.util';
@@ -107,7 +108,7 @@ export interface StockBatchSaleItem {
   extras: { quantity: number; menuItem: StockBatchMenuItem }[];
 }
 
-type StockBatchProduct = Pick<Product, 'id' | 'unitOfMeasure' | 'trackStock' | 'stockActual'>;
+type StockBatchProduct = Pick<Product, 'id' | 'unitOfMeasure' | 'trackStock' | 'stockActual' | 'branchId'>;
 
 /**
  * Único punto del código que muta `products.stockActual` y escribe en `stock_movements`.
@@ -124,10 +125,18 @@ type StockBatchProduct = Pick<Product, 'id' | 'unitOfMeasure' | 'trackStock' | '
  */
 @injectable()
 export class StockService {
-  private readonly prisma: PrismaClient;
+  // Cliente base: necesario para abrir $transaction cuyo `tx` sea Prisma.TransactionClient.
+  // El aislamiento dentro de la tx se garantiza con branchId explícito (derivado del product).
+  private readonly txClient: PrismaClient;
 
   constructor(@inject(PrismaService) prismaService: PrismaService) {
-    this.prisma = prismaService.getClient();
+    this.txClient = prismaService.getClient();
+  }
+
+  // Cliente extendido: las lecturas fuera de transacción se filtran por branchId
+  // automáticamente vía la tenant extension.
+  private get prisma() {
+    return getPrisma();
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -209,6 +218,7 @@ export class StockService {
           expenseItemId: input.expenseItemId ?? null,
           userId: input.userId,
           notes: input.notes ?? null,
+          branchId: product.branchId,
         },
       });
 
@@ -223,7 +233,7 @@ export class StockService {
       return movement;
     };
 
-    return tx ? run(tx) : this.prisma.$transaction(run);
+    return tx ? run(tx) : this.txClient.$transaction(run);
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -303,7 +313,7 @@ export class StockService {
       return movements;
     };
 
-    return tx ? run(tx) : this.prisma.$transaction(run);
+    return tx ? run(tx) : this.txClient.$transaction(run);
   }
 
   /**
@@ -335,6 +345,7 @@ export class StockService {
       type: StockMovementType;
       orderItemId: string;
       userId: string | null;
+      branchId: string | null;
     }[] = [];
 
     // Delta firmado acumulado por producto (negativo = salida).
@@ -349,6 +360,7 @@ export class StockService {
         type: StockMovementType.SALE,
         orderItemId,
         userId,
+        branchId: product.branchId,
       });
       const prev = deltaByProduct.get(productId) ?? new Decimal(0);
       deltaByProduct.set(productId, prev.plus(qty));
@@ -437,6 +449,7 @@ export class StockService {
             type: StockMovementType.SALE,
             orderItemId: params.orderItemId,
             userId: params.userId,
+            branchId: product.branchId,
           },
         });
 
@@ -488,6 +501,7 @@ export class StockService {
         type: StockMovementType.SALE,
         orderItemId: params.orderItemId,
         userId: params.userId,
+        branchId: product.branchId,
       },
     });
 
@@ -535,6 +549,7 @@ export class StockService {
             orderItemId,
             userId,
             reason,
+            branchId: sale.branchId,
           },
         });
 
@@ -548,7 +563,7 @@ export class StockService {
       return reversals;
     };
 
-    return tx ? run(tx) : this.prisma.$transaction(run);
+    return tx ? run(tx) : this.txClient.$transaction(run);
   }
 
   /**
@@ -592,6 +607,7 @@ export class StockService {
       orderItemId: string;
       userId: string | null;
       reason: string;
+      branchId: string | null;
     }[] = [];
     const deltaByProduct = new Map<string, Prisma.Decimal>();
 
@@ -604,6 +620,7 @@ export class StockService {
         orderItemId: sale.orderItemId!,
         userId,
         reason,
+        branchId: sale.branchId,
       });
       const prev = deltaByProduct.get(sale.productId) ?? new Decimal(0);
       deltaByProduct.set(sale.productId, prev.plus(reverseQty));
@@ -675,6 +692,7 @@ export class StockService {
           notes: input.notes ?? null,
           expenseItemId: input.expenseItemId,
           userId: input.userId,
+          branchId: original.branchId,
         },
       });
 
@@ -686,7 +704,7 @@ export class StockService {
       return adjustment;
     };
 
-    return tx ? run(tx) : this.prisma.$transaction(run);
+    return tx ? run(tx) : this.txClient.$transaction(run);
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -709,7 +727,7 @@ export class StockService {
       throw new AppError('VALIDATION_ERROR', `invalid waste reason: ${input.reason}`);
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.txClient.$transaction(async (tx) => {
       const product = await tx.product.findUnique({ where: { id: input.productId } });
       if (!product) {
         throw new AppError('PRODUCT_NOT_FOUND', `Product ${input.productId} not found`);
@@ -726,6 +744,7 @@ export class StockService {
           reason: input.reason,
           notes: input.notes ?? null,
           userId: input.userId,
+          branchId: product.branchId,
         },
       });
 
@@ -754,7 +773,7 @@ export class StockService {
       throw new AppError('STOCK_REASON_REQUIRED', 'reason is required for adjustment');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.txClient.$transaction(async (tx) => {
       const product = await tx.product.findUnique({ where: { id: input.productId } });
       if (!product) {
         throw new AppError('PRODUCT_NOT_FOUND', `Product ${input.productId} not found`);
@@ -772,6 +791,7 @@ export class StockService {
           reason: input.reason,
           notes: input.notes ?? null,
           userId: input.userId,
+          branchId: product.branchId,
         },
       });
 

@@ -85,6 +85,8 @@ model Branch {
   menuItems               MenuItem[]
   expenses                Expense[]
   expenseItems            ExpenseItem[]
+  menuItemIngredients     MenuItemIngredient[]
+  stockMovements          StockMovement[]
 
   @@index([organizationId, status])
   @@map("branches")
@@ -487,15 +489,18 @@ model MenuItemIngredient {
   // Si null, se interpreta en la unidad del producto. Si difiere, el StockService convierte
   // al unit base del producto antes de descontar (ej. receta en G, producto en KG).
   unit       UnitOfMeasure?
+  branchId   String?
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
   menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
   product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  branch   Branch?  @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@unique([menuItemId, productId])
   @@index([menuItemId])
   @@index([productId])
+  @@index([branchId])
   @@map("menu_item_ingredients")
 }
 
@@ -511,18 +516,22 @@ model StockMovement {
   expenseItemId String? // origen para PURCHASE
   orderItemId   String? // origen para SALE / SALE_REVERSAL
   userId        String? // null para movements originados por el sistema (ej. ventas de órdenes públicas)
+  branchId      String?
   createdAt     DateTime          @default(now())
 
   product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
   expenseItem ExpenseItem? @relation(fields: [expenseItemId], references: [id], onDelete: SetNull)
   orderItem   OrderItem?   @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
   user        User?        @relation(fields: [userId], references: [id])
+  branch      Branch?      @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@index([productId, createdAt])
   @@index([type, createdAt])
   @@index([expenseItemId])
   @@index([orderItemId])
   @@index([userId])
+  @@index([branchId])
+  @@index([branchId, createdAt])
   @@map("stock_movements")
 }
 

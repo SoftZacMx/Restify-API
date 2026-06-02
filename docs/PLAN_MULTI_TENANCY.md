@@ -34,6 +34,7 @@ Estrategia: **shared database** + aislamiento lógico con `TenantContext` y exte
 | **1** | Multi-tenancy núcleo | [Etapa 1](#etapa-1--multi-tenancy-núcleo) |
 | **2** | Sucursales (branches) | [Etapa 2](#etapa-2--sucursales-branches) |
 | **3** | Adaptar Restify actual | [Etapa 3](#etapa-3--adaptar-restify-actual) |
+| **3.5** | Aislar stock y recetas (merge `qa`) | [Etapa 3.5](#etapa-35--aislar-stock-y-recetas-merge-qa) |
 | **4** | Producto SaaS (org) | [Etapa 4](#etapa-4--producto-saas) |
 | **5** | Go-live | [Etapa 5](#etapa-5--go-live) |
 
@@ -51,13 +52,14 @@ Implementar en este orden:
 | 2 | **Infraestructura tenant**: TenantContext + Prisma Extension + middleware | ✅ Completo | 0 días |
 | 3 | **Auth multi-tenant**: JWT con org/branch + roles + switch-branch | ✅ Completo | 0 días |
 | 4 | **API Sucursales**: CRUD + acceso user↔sucursal + límites plan | ✅ Completo | 0 días |
-| 5 | **Adaptar POS**: Repos (orders, menu, payments, tables) + jobs + webhooks | ⏳ Pendiente | 3 días |
-| 6 | **Signup público**: Org + primera sucursal + bootstrap + email verification | ⏳ Pendiente | 1 día |
-| 7 | **Frontend**: Selector sucursal + CRUD + onboarding + reemplazo Company | ⏳ Pendiente | 3 días |
-| 8 | **QA + Rollout**: Tests E2E + aislamiento + deploy | ⏳ Pendiente | 2 días |
+| 5 | **Adaptar POS**: Repos (orders, menu, payments, tables) + webhooks | ✅ ~95% | 0 días (smoke test) |
+| 6 | **Aislar stock y recetas** (merge `qa`): `branchId` + extension + servicios | ✅ Completo | 0 días |
+| 7 | **Signup público**: Org + primera sucursal + bootstrap + email verification | ⏳ Pendiente | 1 día |
+| 8 | **Frontend**: Selector sucursal + CRUD + onboarding + reemplazo Company | ⏳ Pendiente | 3 días |
+| 9 | **QA + Rollout**: Tests E2E + aislamiento + deploy | ⏳ Pendiente | 2 días |
 
-**Progreso:** 4/8 pasos completos (50%)  
-**Total restante:** ~9.5 días (de 15 días originales)
+**Progreso:** 6/9 pasos completos (~67%)  
+**Total restante:** ~6 días
 
 ---
 
@@ -891,6 +893,168 @@ export const prismaClient = getPrisma();
 - [ ] Desde org A sucursal 1, intentar ver datos de sucursal 2 → no los ve
 - [ ] Intentar acceder con un `branchId` de otra org → error (no leak de existencia)
 - [ ] Smoke test manual: operar el POS completo y confirmar que todo funciona
+
+---
+
+## Etapa 3.5 — Aislar stock y recetas (merge de `qa`)
+
+**Objetivo:** Dar aislamiento multi-tenant a las tablas que llegaron del merge de `qa` (sistema de stock/inventario y recetas). Actualmente `StockMovement` y `MenuItemIngredient` **no tienen `branchId`**, no están en la tenant extension, y sus servicios usan el cliente Prisma base (`getClient()`), por lo que **no filtran por sucursal** (leak de aislamiento).
+
+**Estado: ✅ Completa** — `branchId` + extension + servicios + tests de aislamiento (8/8 verde contra DB real).
+
+**Contexto:**
+- `MenuItemIngredient` (recetas) es hija de `MenuItem` → el padre ya tiene `branchId`.
+- `StockMovement` (ledger de inventario) es hija de `Product` → el padre ya tiene `branchId`.
+- Estrategia elegida: **`branchId` directo + tenant extension** (consistente con las otras 14 tablas branch-level), en lugar de filtrado derivado del padre.
+- `StockMovement` se escribe dentro de la transacción de creación de orden (vía `recordSalesBatch`, que recibe el `tx` base). Dentro de `$transaction` la extension **no se propaga**, así que el `branchId` se asigna **explícitamente** (igual que en los use-cases de orders ya mergeados).
+
+**Archivos afectados (referencia):**
+
+```text
+src/core/infrastructure/database/prisma/schema.prisma
+src/core/infrastructure/database/prisma/migrations/<nueva>/migration.sql
+src/core/infrastructure/database/prisma/tenant-extension.ts
+src/core/application/services/recipe.service.ts
+src/core/application/services/stock.service.ts
+src/core/application/use-cases/orders/create-order.use-case.ts
+src/core/application/use-cases/orders/create-public-order.use-case.ts
+```
+
+| Tarea | Nombre | Estado |
+|------|--------|--------|
+| 3.5.1 | Schema: `branchId` en `MenuItemIngredient` | ✅ |
+| 3.5.2 | Schema: `branchId` en `StockMovement` | ✅ |
+| 3.5.3 | Migración + backfill desde el padre | ✅ |
+| 3.5.4 | Tenant extension: registrar ambos modelos | ✅ |
+| 3.5.5 | `RecipeService` → `getPrisma()` + `branchId` explícito | ✅ |
+| 3.5.6 | `StockService` → `getPrisma()` + `branchId` explícito | ✅ |
+| 3.5.7 | `recordSalesBatch`: recibir y propagar `branchId` | ✅ |
+| 3.5.8 | Tests de aislamiento (stock + recetas) | ✅ |
+
+---
+
+### Tarea 3.5.1 — Schema: `branchId` en `MenuItemIngredient`
+
+**Qué:** Agregar la columna y relación de sucursal al modelo de recetas.
+
+- [ ] Agregar `branchId String?` al modelo `MenuItemIngredient`
+- [ ] Agregar relación `branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)`
+- [ ] Agregar `branches MenuItemIngredient[]`/back-relation en `Branch` (si Prisma lo exige)
+- [ ] Agregar índice `@@index([branchId])`
+- [ ] `prisma validate`
+
+```prisma
+model MenuItemIngredient {
+  // ... campos existentes ...
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId])
+}
+```
+
+---
+
+### Tarea 3.5.2 — Schema: `branchId` en `StockMovement`
+
+**Qué:** Agregar la columna y relación de sucursal al ledger de stock.
+
+- [ ] Agregar `branchId String?` al modelo `StockMovement`
+- [ ] Agregar relación `branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)`
+- [ ] Back-relation en `Branch` (si Prisma lo exige)
+- [ ] Agregar índices `@@index([branchId])` y `@@index([branchId, createdAt])` (reportes por fecha)
+- [ ] `prisma validate`
+
+```prisma
+model StockMovement {
+  // ... campos existentes ...
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId])
+  @@index([branchId, createdAt])
+}
+```
+
+---
+
+### Tarea 3.5.3 — Migración + backfill desde el padre
+
+**Qué:** Crear la migración que añade las columnas y rellena `branchId` con el valor del registro padre (no debe quedar `NULL` en datos existentes).
+
+- [ ] Generar migración (`prisma migrate dev --create-only`) y revisar el SQL
+- [ ] Backfill `menu_item_ingredients.branchId` desde `menu_items.branchId`
+- [ ] Backfill `stock_movements.branchId` desde `products.branchId`
+- [ ] Aplicar y verificar 0 filas con `branchId NULL` (en deploy nuevo la DB está vacía → no-op, pero dejar el SQL listo)
+
+```sql
+-- Backfill recetas
+UPDATE menu_item_ingredients mii
+JOIN menu_items mi ON mi.id = mii.menuItemId
+SET mii.branchId = mi.branchId;
+
+-- Backfill movimientos de stock
+UPDATE stock_movements sm
+JOIN products p ON p.id = sm.productId
+SET sm.branchId = p.branchId;
+```
+
+---
+
+### Tarea 3.5.4 — Tenant extension: registrar ambos modelos
+
+**Qué:** Que la extension filtre automáticamente estas tablas por `branchId`.
+
+- [ ] Añadir `'MenuItemIngredient'` y `'StockMovement'` a `BRANCH_LEVEL_MODELS` en `tenant-extension.ts`
+- [ ] Confirmar que NO quedan en el fallback "unknown model → sin filtrado"
+- [ ] Verificar que una query sin `branchId` en contexto lanza `TENANT_BRANCH_REQUIRED`
+
+---
+
+### Tarea 3.5.5 — `RecipeService` → `getPrisma()` + `branchId` explícito
+
+**Qué:** Hacer que el servicio de recetas use el cliente extendido y asigne sucursal al crear.
+
+- [ ] Cambiar `prismaService.getClient()` → `getPrisma()` en el constructor/uso
+- [ ] En `replaceRecipe` (corre en `$transaction`): asignar `branchId` explícito en cada `create`, tomado del `menuItem` padre o de `getBranchId()`
+- [ ] En `addIngredient`: asignar `branchId` explícito
+- [ ] Verificar que `getRecipe`/`updateIngredientQuantity`/`removeIngredient` quedan aislados por la extension
+- [ ] Compila (`tsc --noEmit`)
+
+---
+
+### Tarea 3.5.6 — `StockService` → `getPrisma()` + `branchId` explícito
+
+**Qué:** Misma adaptación en el servicio de stock (entradas, salidas, ajustes, mermas).
+
+- [ ] Cambiar `prismaService.getClient()` → `getPrisma()` donde aplique (operaciones que abren su propia `$transaction`)
+- [ ] En cada `stockMovement.create`/`createMany`: asignar `branchId` explícito
+- [ ] `recordPurchase`, `recordAdjustment`, `recordWaste`, reversiones: propagar `branchId`
+- [ ] Compila (`tsc --noEmit`)
+
+---
+
+### Tarea 3.5.7 — `recordSalesBatch`: recibir y propagar `branchId`
+
+**Qué:** El batch de ventas corre dentro de la `$transaction` de creación de orden con el `tx` base; necesita el `branchId` como parámetro.
+
+- [ ] Añadir parámetro `branchId: string | null` a la firma de `recordSalesBatch`
+- [ ] Incluir `branchId` en las filas de `movementRows` (createMany)
+- [ ] Actualizar las llamadas en `create-order.use-case.ts` y `create-public-order.use-case.ts` para pasar el `branchId` del contexto/parámetro
+- [ ] Compila (`tsc --noEmit`)
+
+---
+
+### Tarea 3.5.8 — Tests de aislamiento (stock + recetas)
+
+**Qué:** Confirmar que org/sucursal A nunca ve stock ni recetas de B.
+
+- [ ] Receta de un `MenuItem` de sucursal B no es visible/editable desde sucursal A
+- [ ] `StockMovement` de sucursal B no aparece en listados/consumos de A
+- [ ] Crear orden en sucursal A genera movements con `branchId = A`
+- [ ] Query a stock/recetas sin `branchId` en contexto → `TENANT_BRANCH_REQUIRED`
+
+**Salida:** stock y recetas completamente aislados por sucursal, consistentes con el resto del POS. (Reportes de stock se ajustan en una fase posterior.)
 
 ---
 
