@@ -12,6 +12,7 @@ import refundRoutes from './refund.routes';
 import expenseRoutes from './expense.routes';
 import employeeSalaryRoutes from './employee-salary.routes';
 import reportRoutes from './report.routes';
+import stockRoutes from './stock.routes';
 import dashboardRoutes from './dashboard.routes';
 import branchRoutes from './branch.routes';
 import healthRoutes from './health.routes';
@@ -63,6 +64,7 @@ router.use('/api/refunds', refundRoutes);
 router.use('/api/expenses', expenseRoutes);
 router.use('/api/employee-salaries', employeeSalaryRoutes);
 router.use('/api/reports', reportRoutes);
+router.use('/api/stock', stockRoutes);
 router.use('/api/dashboard', dashboardRoutes);
 router.use('/api/settings', settingsRoutes);
 

@@ -44,7 +44,8 @@ export class AuthMiddleware {
       }
 
       const payload = JwtUtil.verifyToken(token);
-      req.user = payload;
+      // Compat: el módulo de stock lee `req.user.userId`; el JWT multi-tenant usa `sub`.
+      req.user = { ...payload, userId: payload.userId ?? payload.sub };
       next();
     } catch (error) {
       if (error instanceof AppError) {
@@ -83,7 +84,8 @@ export class AuthMiddleware {
 
       if (token) {
         const payload = JwtUtil.verifyToken(token);
-        req.user = payload;
+        // Compat: el módulo de stock lee `req.user.userId`; el JWT multi-tenant usa `sub`.
+        req.user = { ...payload, userId: payload.userId ?? payload.sub };
       }
       next();
     } catch (error) {

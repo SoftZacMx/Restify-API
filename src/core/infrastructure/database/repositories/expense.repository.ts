@@ -1,4 +1,4 @@
-import { PrismaClient, ExpenseType, UnitOfMeasure } from '@prisma/client';
+import { PrismaClient, ExpenseType, UnitOfMeasure, Prisma } from '@prisma/client';
 import { injectable } from 'tsyringe';
 import {
   IExpenseRepository,
@@ -203,22 +203,23 @@ export class ExpenseRepository implements IExpenseRepository {
     return Expense.fromPrisma(expense);
   }
 
-  async createWithItems(data: {
-    title: string;
-    type: ExpenseType;
-    date: Date;
-    total: number;
-    subtotal: number;
-    iva: number;
-    description?: string | null;
-    paymentMethod: number;
-    userId: string | null;
-    items: ExpenseItemInput[];
-  }): Promise<{ expense: Expense; items: ExpenseItem[] }> {
-    // Use transaction to ensure atomicity
-    const result = await this.prisma.$transaction(async (tx) => {
-      // Create expense
-      const expense = await tx.expense.create({
+  async createWithItems(
+    data: {
+      title: string;
+      type: ExpenseType;
+      date: Date;
+      total: number;
+      subtotal: number;
+      iva: number;
+      description?: string | null;
+      paymentMethod: number;
+      userId: string | null;
+      items: ExpenseItemInput[];
+    },
+    tx?: Prisma.TransactionClient
+  ): Promise<{ expense: Expense; items: ExpenseItem[] }> {
+    const run = async (client: Prisma.TransactionClient) => {
+      const expense = await client.expense.create({
         data: {
           title: data.title,
           type: data.type,
@@ -237,7 +238,7 @@ export class ExpenseRepository implements IExpenseRepository {
         data.type === ExpenseType.MERCHANDISE && data.items.length > 0
           ? await Promise.all(
               data.items.map((item) =>
-                tx.expenseItem.create({
+                client.expenseItem.create({
                   data: {
                     expenseId: expense.id,
                     productId: item.productId,
@@ -252,7 +253,9 @@ export class ExpenseRepository implements IExpenseRepository {
           : [];
 
       return { expense, items };
-    });
+    };
+
+    const result = tx ? await run(tx) : await this.prisma.$transaction(run);
 
     return {
       expense: Expense.fromPrisma(result.expense),
@@ -290,8 +293,9 @@ export class ExpenseRepository implements IExpenseRepository {
     return Expense.fromPrisma(expense);
   }
 
-  async delete(id: string): Promise<void> {
-    await this.prisma.expense.delete({
+  async delete(id: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.prisma;
+    await client.expense.delete({
       where: { id },
     });
   }
@@ -319,8 +323,9 @@ export class ExpenseRepository implements IExpenseRepository {
     return ExpenseItem.fromPrisma(item);
   }
 
-  async findItemsByExpenseId(expenseId: string): Promise<ExpenseItem[]> {
-    const items = await this.prisma.expenseItem.findMany({
+  async findItemsByExpenseId(expenseId: string, tx?: Prisma.TransactionClient): Promise<ExpenseItem[]> {
+    const client = tx ?? this.prisma;
+    const items = await client.expenseItem.findMany({
       where: { expenseId },
       orderBy: {
         createdAt: 'asc',

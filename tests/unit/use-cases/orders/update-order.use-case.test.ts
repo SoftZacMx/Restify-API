@@ -1,19 +1,17 @@
 import { UpdateOrderUseCase } from '../../../../src/core/application/use-cases/orders/update-order.use-case';
 import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
 import { ITableRepository } from '../../../../src/core/domain/interfaces/table-repository.interface';
-import { IProductRepository } from '../../../../src/core/domain/interfaces/product-repository.interface';
-import { IMenuItemRepository } from '../../../../src/core/domain/interfaces/menu-item-repository.interface';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { OrderItem } from '../../../../src/core/domain/entities/order-item.entity';
 import { Table } from '../../../../src/core/domain/entities/table.entity';
+import { StockService } from '../../../../src/core/application/services/stock.service';
+import { PrismaService } from '../../../../src/core/infrastructure/config/prisma.config';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('UpdateOrderUseCase', () => {
   let updateOrderUseCase: UpdateOrderUseCase;
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockTableRepository: jest.Mocked<ITableRepository>;
-  let mockProductRepository: jest.Mocked<IProductRepository>;
-  let mockMenuItemRepository: jest.Mocked<IMenuItemRepository>;
 
   beforeEach(() => {
     mockOrderRepository = {
@@ -45,29 +43,46 @@ describe('UpdateOrderUseCase', () => {
       delete: jest.fn(),
     };
 
-    mockProductRepository = {
-      findById: jest.fn(),
-      findByIds: jest.fn(),
-      findAll: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
+    const mockStockService = {
+      recordSaleForOrderItem: jest.fn().mockResolvedValue([]),
+      reverseSaleForOrderItem: jest.fn().mockResolvedValue([]),
+      recordSalesBatch: jest.fn().mockResolvedValue(undefined),
+      reverseSalesBatch: jest.fn().mockResolvedValue(undefined),
+    } as any;
+
+    // Los tests actuales no ejercitan el camino con orderItems (solo updates simples),
+    // así que el mockTx no necesita createMany — pero lo dejamos consistente con el flujo nuevo.
+    const mockTx = {
+      orderItem: {
+        findMany: jest.fn().mockResolvedValue([]),
+        createMany: jest.fn().mockResolvedValue({ count: 0 }),
+        deleteMany: jest.fn().mockResolvedValue({}),
+      },
+      orderItemExtra: {
+        createMany: jest.fn().mockResolvedValue({ count: 0 }),
+        deleteMany: jest.fn().mockResolvedValue({}),
+      },
+      stockMovement: {
+        createMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      product: {
+        update: jest.fn().mockResolvedValue({}),
+      },
     };
 
-    mockMenuItemRepository = {
-      findById: jest.fn(),
-      findByIds: jest.fn(),
-      findAll: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    };
+    const mockPrismaService = {
+      getClient: jest.fn().mockReturnValue({
+        $transaction: jest.fn().mockImplementation((cb: Function) => cb(mockTx)),
+        menuItem: { findMany: jest.fn().mockResolvedValue([]) },
+        product: { findMany: jest.fn().mockResolvedValue([]) },
+      }),
+    } as unknown as PrismaService;
 
     updateOrderUseCase = new UpdateOrderUseCase(
       mockOrderRepository,
       mockTableRepository,
-      mockProductRepository,
-      mockMenuItemRepository,
+      mockPrismaService,
+      mockStockService as unknown as StockService,
     );
   });
 

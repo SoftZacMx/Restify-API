@@ -86,6 +86,11 @@ export const ERROR_CONFIG = {
     statusCode: 400,
     category: 'VALIDATION',
   },
+  EMAIL_ALREADY_EXISTS: {
+    message: 'An account with this email already exists',
+    statusCode: 409,
+    category: 'VALIDATION',
+  },
   INVALID_PASSWORD: {
     message: 'Invalid password format',
     statusCode: 400,
@@ -139,6 +144,21 @@ export const ERROR_CONFIG = {
     message: 'Menu item not found',
     statusCode: 404,
     category: 'BUSINESS',
+  },
+  ORDER_ITEM_NOT_FOUND: {
+    message: 'Order item not found',
+    statusCode: 404,
+    category: 'BUSINESS',
+  },
+  STOCK_REASON_REQUIRED: {
+    message: 'Reason is required for this stock operation',
+    statusCode: 400,
+    category: 'VALIDATION',
+  },
+  STOCK_INVALID_QUANTITY: {
+    message: 'Quantity must be positive',
+    statusCode: 400,
+    category: 'VALIDATION',
   },
   MENU_ITEM_NOT_AVAILABLE: {
     message: 'Menu item is not available',
@@ -307,6 +327,31 @@ export const ERROR_CONFIG = {
   },
   TOTAL_MISMATCH: {
     message: 'Items total does not match purchase total',
+    statusCode: 400,
+    category: 'VALIDATION',
+  },
+  INGREDIENT_NOT_FOUND: {
+    message: 'Ingredient is not part of the recipe',
+    statusCode: 404,
+    category: 'BUSINESS',
+  },
+  INGREDIENT_ALREADY_EXISTS: {
+    message: 'Ingredient is already part of the recipe',
+    statusCode: 409,
+    category: 'BUSINESS',
+  },
+  DUPLICATE_INGREDIENT: {
+    message: 'A product appears more than once in the recipe',
+    statusCode: 400,
+    category: 'VALIDATION',
+  },
+  RECIPE_NOT_ALLOWED_ON_DIRECT_ITEM: {
+    message: 'MenuItem is configured as direct (linked product). Cannot have a recipe.',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
+  INCOMPATIBLE_UNIT: {
+    message: 'La unidad del ingrediente no es compatible con la del producto',
     statusCode: 400,
     category: 'VALIDATION',
   },

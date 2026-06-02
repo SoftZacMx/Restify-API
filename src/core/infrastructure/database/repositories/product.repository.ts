@@ -22,7 +22,10 @@ export class ProductRepository implements IProductRepository {
       product.status,
       product.userId,
       product.createdAt,
-      product.updatedAt
+      product.updatedAt,
+      product.trackStock,
+      product.unitOfMeasure,
+      product.minStockAlert != null ? Number(product.minStockAlert) : null
     );
   }
 
@@ -45,7 +48,10 @@ export class ProductRepository implements IProductRepository {
           product.status,
           product.userId,
           product.createdAt,
-          product.updatedAt
+          product.updatedAt,
+          product.trackStock,
+          product.unitOfMeasure,
+          product.minStockAlert != null ? Number(product.minStockAlert) : null
         )
     );
   }
@@ -84,7 +90,10 @@ export class ProductRepository implements IProductRepository {
           product.status,
           product.userId,
           product.createdAt,
-          product.updatedAt
+          product.updatedAt,
+          product.trackStock,
+          product.unitOfMeasure,
+          product.minStockAlert != null ? Number(product.minStockAlert) : null
         )
     );
   }
@@ -94,6 +103,9 @@ export class ProductRepository implements IProductRepository {
     description: string | null;
     status: boolean;
     userId: string;
+    trackStock?: boolean;
+    unitOfMeasure?: import('@prisma/client').UnitOfMeasure | null;
+    minStockAlert?: number | null;
   }): Promise<Product> {
     const product = await this.prisma.product.create({
       data: {
@@ -101,6 +113,11 @@ export class ProductRepository implements IProductRepository {
         description: data.description,
         status: data.status,
         userId: data.userId,
+        ...(data.trackStock !== undefined && { trackStock: data.trackStock }),
+        ...(data.unitOfMeasure !== undefined && { unitOfMeasure: data.unitOfMeasure }),
+        ...(data.minStockAlert !== undefined && {
+          minStockAlert: data.minStockAlert === null ? null : data.minStockAlert,
+        }),
       },
     });
 
@@ -112,7 +129,10 @@ export class ProductRepository implements IProductRepository {
       product.status,
       product.userId,
       product.createdAt,
-      product.updatedAt
+      product.updatedAt,
+      product.trackStock,
+      product.unitOfMeasure,
+      product.minStockAlert != null ? Number(product.minStockAlert) : null
     );
   }
 
@@ -143,7 +163,10 @@ export class ProductRepository implements IProductRepository {
       product.status,
       product.userId,
       product.createdAt,
-      product.updatedAt
+      product.updatedAt,
+      product.trackStock,
+      product.unitOfMeasure,
+      product.minStockAlert != null ? Number(product.minStockAlert) : null
     );
   }
 

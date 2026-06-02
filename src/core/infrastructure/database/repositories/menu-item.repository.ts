@@ -8,6 +8,7 @@ export class MenuItemRepository implements IMenuItemRepository {
   async findById(id: string): Promise<MenuItem | null> {
     const menuItem = await this.prisma.menuItem.findUnique({
       where: { id },
+      include: { _count: { select: { ingredients: true } } },
     });
 
     if (!menuItem) {
@@ -23,7 +24,9 @@ export class MenuItemRepository implements IMenuItemRepository {
       menuItem.categoryId,
       menuItem.userId,
       menuItem.createdAt,
-      menuItem.updatedAt
+      menuItem.updatedAt,
+      menuItem.productId,
+      menuItem._count.ingredients > 0
     );
   }
 
@@ -32,6 +35,7 @@ export class MenuItemRepository implements IMenuItemRepository {
     if (uniqueIds.length === 0) return [];
     const items = await this.prisma.menuItem.findMany({
       where: { id: { in: uniqueIds } },
+      include: { _count: { select: { ingredients: true } } },
     });
     return items.map(
       (menuItem) =>
@@ -44,7 +48,9 @@ export class MenuItemRepository implements IMenuItemRepository {
           menuItem.categoryId,
           menuItem.userId,
           menuItem.createdAt,
-          menuItem.updatedAt
+          menuItem.updatedAt,
+          menuItem.productId,
+          menuItem._count.ingredients > 0
         )
     );
   }
@@ -74,6 +80,7 @@ export class MenuItemRepository implements IMenuItemRepository {
 
     const menuItems = await this.prisma.menuItem.findMany({
       where,
+      include: { _count: { select: { ingredients: true } } },
       orderBy: {
         name: 'asc',
       },
@@ -90,7 +97,9 @@ export class MenuItemRepository implements IMenuItemRepository {
           menuItem.categoryId,
           menuItem.userId,
           menuItem.createdAt,
-          menuItem.updatedAt
+          menuItem.updatedAt,
+          menuItem.productId,
+          menuItem._count.ingredients > 0
         )
     );
   }

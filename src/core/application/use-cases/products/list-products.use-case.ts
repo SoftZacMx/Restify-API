@@ -1,4 +1,5 @@
 import { inject, injectable } from 'tsyringe';
+import type { UnitOfMeasure } from '@prisma/client';
 import { IProductRepository } from '../../../domain/interfaces/product-repository.interface';
 import { ListProductsInput } from '../../dto/product.dto';
 
@@ -11,6 +12,11 @@ export interface ListProductsResult {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+  // Stock config — útiles para que la UI tenga datos completos al usar la lista como
+  // placeholder para el detalle (evita "flash" de trackStock=false al abrir un item).
+  trackStock: boolean;
+  unitOfMeasure: UnitOfMeasure | null;
+  minStockAlert: number | null;
 }
 
 @injectable()
@@ -39,6 +45,9 @@ export class ListProductsUseCase {
       userId: product.userId,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
+      trackStock: product.trackStock,
+      unitOfMeasure: product.unitOfMeasure,
+      minStockAlert: product.minStockAlert,
     }));
   }
 }

@@ -1,4 +1,4 @@
-import { ExpenseType } from '@prisma/client';
+import { ExpenseType, Prisma } from '@prisma/client';
 import { Expense } from '../entities/expense.entity';
 import { ExpenseItem } from '../entities/expense-item.entity';
 
@@ -66,18 +66,21 @@ export interface IExpenseRepository {
     userId: string | null;
     paymentId?: string | null;
   }): Promise<Expense>;
-  createWithItems(data: {
-    title: string;
-    type: ExpenseType;
-    date: Date;
-    total: number;
-    subtotal: number;
-    iva: number;
-    description?: string | null;
-    paymentMethod: number;
-    userId: string | null;
-    items: ExpenseItemInput[];
-  }): Promise<{ expense: Expense; items: ExpenseItem[] }>;
+  createWithItems(
+    data: {
+      title: string;
+      type: ExpenseType;
+      date: Date;
+      total: number;
+      subtotal: number;
+      iva: number;
+      description?: string | null;
+      paymentMethod: number;
+      userId: string | null;
+      items: ExpenseItemInput[];
+    },
+    tx?: Prisma.TransactionClient
+  ): Promise<{ expense: Expense; items: ExpenseItem[] }>;
   update(
     id: string,
     data: {
@@ -90,7 +93,7 @@ export interface IExpenseRepository {
       paymentMethod?: number;
     }
   ): Promise<Expense>;
-  delete(id: string): Promise<void>;
+  delete(id: string, tx?: Prisma.TransactionClient): Promise<void>;
 
   // Items methods (only for MERCHANDISE type)
   createItem(data: {
@@ -101,7 +104,7 @@ export interface IExpenseRepository {
     total: number;
     unitOfMeasure?: string | null;
   }): Promise<ExpenseItem>;
-  findItemsByExpenseId(expenseId: string): Promise<ExpenseItem[]>;
+  findItemsByExpenseId(expenseId: string, tx?: Prisma.TransactionClient): Promise<ExpenseItem[]>;
   updateItem(
     id: string,
     data: {

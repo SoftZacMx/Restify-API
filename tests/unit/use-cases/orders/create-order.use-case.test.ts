@@ -1,18 +1,15 @@
 import { CreateOrderUseCase } from '../../../../src/core/application/use-cases/orders/create-order.use-case';
 import { IUserRepository } from '../../../../src/core/domain/interfaces/user-repository.interface';
 import { ITableRepository } from '../../../../src/core/domain/interfaces/table-repository.interface';
-import { IProductRepository } from '../../../../src/core/domain/interfaces/product-repository.interface';
-import { IMenuItemRepository } from '../../../../src/core/domain/interfaces/menu-item-repository.interface';
 import { ICompanyRepository } from '../../../../src/core/domain/interfaces/company-repository.interface';
 import { PrismaService } from '../../../../src/core/infrastructure/config/prisma.config';
 import { User } from '../../../../src/core/domain/entities/user.entity';
 import { Table } from '../../../../src/core/domain/entities/table.entity';
-import { Product } from '../../../../src/core/domain/entities/product.entity';
-import { MenuItem } from '../../../../src/core/domain/entities/menu-item.entity';
 import { UserRole } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 
-// Mock transaction: executes the callback with a mock tx that returns realistic data
+// Mock prisma client + transaction. Soporta el flujo bulk-load (findMany fuera de tx)
+// y createMany dentro de tx que usa la versión refactorizada del use case.
 function createMockPrismaService(overrides: Record<string, any> = {}) {
   const mockTx = {
     order: {
@@ -41,17 +38,7 @@ function createMockPrismaService(overrides: Record<string, any> = {}) {
       update: jest.fn().mockResolvedValue({}),
     },
     orderItem: {
-      create: jest.fn().mockResolvedValue({
-        id: 'order-item-123',
-        quantity: 2,
-        price: 10,
-        orderId: 'order-123',
-        productId: 'product-123',
-        menuItemId: null,
-        note: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }),
+      createMany: jest.fn().mockResolvedValue({ count: 1 }),
       findMany: jest.fn().mockResolvedValue([
         {
           id: 'order-item-123',
@@ -67,29 +54,43 @@ function createMockPrismaService(overrides: Record<string, any> = {}) {
       ]),
     },
     orderItemExtra: {
-      create: jest.fn().mockResolvedValue({}),
+      createMany: jest.fn().mockResolvedValue({ count: 0 }),
       findMany: jest.fn().mockResolvedValue([]),
+    },
+    stockMovement: {
+      createMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    product: {
+      update: jest.fn().mockResolvedValue({}),
     },
     $queryRaw: jest.fn().mockResolvedValue([]),
   };
 
+  // Cliente fuera de tx: bulk-loads (menuItem/product findMany) corren acá.
+  const mockClient = {
+    $transaction: jest.fn().mockImplementation((cb: Function) => cb(mockTx)),
+    menuItem: {
+      findMany: jest.fn().mockResolvedValue(overrides.menuItems ?? []),
+    },
+    product: {
+      findMany: jest.fn().mockResolvedValue(overrides.products ?? []),
+    },
+  };
+
   return {
-    getClient: jest.fn().mockReturnValue({
-      $transaction: jest.fn().mockImplementation((cb: Function) => cb(mockTx)),
-    }),
+    getClient: jest.fn().mockReturnValue(mockClient),
     connect: jest.fn(),
     disconnect: jest.fn(),
     healthCheck: jest.fn(),
     mockTx,
-  } as unknown as jest.Mocked<PrismaService> & { mockTx: typeof mockTx };
+    mockClient,
+  } as unknown as jest.Mocked<PrismaService> & { mockTx: typeof mockTx; mockClient: typeof mockClient };
 }
 
 describe('CreateOrderUseCase', () => {
   let createOrderUseCase: CreateOrderUseCase;
   let mockUserRepository: jest.Mocked<IUserRepository>;
   let mockTableRepository: jest.Mocked<ITableRepository>;
-  let mockProductRepository: jest.Mocked<IProductRepository>;
-  let mockMenuItemRepository: jest.Mocked<IMenuItemRepository>;
   let mockCompanyRepository: jest.Mocked<ICompanyRepository>;
   let mockPrismaService: ReturnType<typeof createMockPrismaService>;
 
@@ -98,15 +99,38 @@ describe('CreateOrderUseCase', () => {
     'hashed_password', null, true, UserRole.WAITER, new Date(), new Date()
   );
 
-  const mockProduct = new Product(
-    'product-123', 'Test Product', 'Description',
-    new Date(), true, 'user-123', new Date(), new Date()
-  );
+  // Filas Prisma "raw" (no entidades de dominio) — coinciden con lo que devuelven
+  // los findMany de bulk-load. trackStock=false para evitar tocar stockMovement en
+  // los tests genéricos.
+  const mockProductRow = {
+    id: 'product-123',
+    name: 'Test Product',
+    description: 'Description',
+    registrationDate: new Date(),
+    status: true,
+    userId: 'user-123',
+    stockActual: { isZero: () => true, plus: () => ({ lessThan: () => false }) } as any,
+    unitOfMeasure: null,
+    trackStock: false,
+    minStockAlert: null,
+    averageCost: 0 as any,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 
-  const mockMenuItem = new MenuItem(
-    'menu-item-123', 'Test Menu Item', 10.50, true, false,
-    'category-123', 'user-123', new Date(), new Date()
-  );
+  const mockMenuItemRow = {
+    id: 'menu-item-123',
+    name: 'Test Menu Item',
+    price: 10.5 as any,
+    status: true,
+    isExtra: false,
+    categoryId: 'category-123',
+    userId: 'user-123',
+    productId: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ingredients: [],
+  };
 
   beforeEach(() => {
     mockUserRepository = {
@@ -128,39 +152,26 @@ describe('CreateOrderUseCase', () => {
       delete: jest.fn(),
     };
 
-    mockProductRepository = {
-      findById: jest.fn(),
-      findByIds: jest.fn(),
-      findAll: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    };
-
-    mockMenuItemRepository = {
-      findById: jest.fn(),
-      findByIds: jest.fn(),
-      findAll: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    };
-
     mockCompanyRepository = {
       findFirst: jest.fn().mockResolvedValue(null),
       create: jest.fn(),
       update: jest.fn(),
     };
 
-    mockPrismaService = createMockPrismaService();
+    mockPrismaService = createMockPrismaService({ products: [mockProductRow], menuItems: [mockMenuItemRow] });
+
+    const mockStockService = {
+      recordSaleForOrderItem: jest.fn().mockResolvedValue([]),
+      reverseSaleForOrderItem: jest.fn().mockResolvedValue([]),
+      recordSalesBatch: jest.fn().mockResolvedValue(undefined),
+    } as any;
 
     createOrderUseCase = new CreateOrderUseCase(
       mockUserRepository,
       mockTableRepository,
-      mockProductRepository,
-      mockMenuItemRepository,
       mockCompanyRepository,
       mockPrismaService as any,
+      mockStockService,
     );
   });
 
@@ -182,7 +193,6 @@ describe('CreateOrderUseCase', () => {
       };
 
       mockUserRepository.findById.mockResolvedValue(mockUser);
-      mockProductRepository.findById.mockResolvedValue(mockProduct);
 
       const result = await createOrderUseCase.execute(validInput);
 
@@ -190,7 +200,8 @@ describe('CreateOrderUseCase', () => {
       expect(result.status).toBe(false);
       expect(result.orderItems).toHaveLength(1);
       expect(mockUserRepository.findById).toHaveBeenCalledWith('user-123');
-      expect(mockProductRepository.findById).toHaveBeenCalledWith('product-123');
+      expect(mockPrismaService.mockClient.product.findMany).toHaveBeenCalled();
+      expect(mockPrismaService.mockTx.orderItem.createMany).toHaveBeenCalled();
     });
 
     it('should create an order with menu items', async () => {
@@ -206,12 +217,11 @@ describe('CreateOrderUseCase', () => {
       };
 
       mockUserRepository.findById.mockResolvedValue(mockUser);
-      mockMenuItemRepository.findById.mockResolvedValue(mockMenuItem);
 
       const result = await createOrderUseCase.execute(validInput);
 
       expect(result).toHaveProperty('id');
-      expect(mockMenuItemRepository.findById).toHaveBeenCalledWith('menu-item-123');
+      expect(mockPrismaService.mockClient.menuItem.findMany).toHaveBeenCalled();
     });
 
     it('should create an order with table and mark it unavailable', async () => {
@@ -221,15 +231,22 @@ describe('CreateOrderUseCase', () => {
 
       const mockPrismaWithTable = createMockPrismaService({
         order: { tableId: 'table-123' },
+        products: [mockProductRow],
+        menuItems: [mockMenuItemRow],
       });
+
+      const mockStockServiceLocal = {
+        recordSaleForOrderItem: jest.fn().mockResolvedValue([]),
+        reverseSaleForOrderItem: jest.fn().mockResolvedValue([]),
+        recordSalesBatch: jest.fn().mockResolvedValue(undefined),
+      } as any;
 
       const useCaseWithTable = new CreateOrderUseCase(
         mockUserRepository,
         mockTableRepository,
-        mockProductRepository,
-        mockMenuItemRepository,
         mockCompanyRepository,
         mockPrismaWithTable as any,
+        mockStockServiceLocal,
       );
 
       const validInput = {
@@ -246,7 +263,6 @@ describe('CreateOrderUseCase', () => {
 
       mockUserRepository.findById.mockResolvedValue(mockUser);
       mockTableRepository.findById.mockResolvedValue(mockTable);
-      mockProductRepository.findById.mockResolvedValue(mockProduct);
 
       await useCaseWithTable.execute(validInput);
 
@@ -305,6 +321,21 @@ describe('CreateOrderUseCase', () => {
     });
 
     it('should throw error when product not found', async () => {
+      // Bulk-load devuelve array vacío → product-123 no existe en el map.
+      const mockPrismaNoProduct = createMockPrismaService({ products: [], menuItems: [] });
+      const mockStockServiceLocal = {
+        recordSaleForOrderItem: jest.fn(),
+        reverseSaleForOrderItem: jest.fn(),
+        recordSalesBatch: jest.fn(),
+      } as any;
+      const useCase = new CreateOrderUseCase(
+        mockUserRepository,
+        mockTableRepository,
+        mockCompanyRepository,
+        mockPrismaNoProduct as any,
+        mockStockServiceLocal,
+      );
+
       const validInput = {
         userId: 'user-123',
         paymentMethod: 1,
@@ -317,10 +348,9 @@ describe('CreateOrderUseCase', () => {
       };
 
       mockUserRepository.findById.mockResolvedValue(mockUser);
-      mockProductRepository.findById.mockResolvedValue(null);
 
       try {
-        await createOrderUseCase.execute(validInput);
+        await useCase.execute(validInput);
         fail('Should have thrown an error');
       } catch (error) {
         expect(error).toBeInstanceOf(AppError);
@@ -329,6 +359,20 @@ describe('CreateOrderUseCase', () => {
     });
 
     it('should throw error when menu item not found', async () => {
+      const mockPrismaNoMenuItem = createMockPrismaService({ products: [], menuItems: [] });
+      const mockStockServiceLocal = {
+        recordSaleForOrderItem: jest.fn(),
+        reverseSaleForOrderItem: jest.fn(),
+        recordSalesBatch: jest.fn(),
+      } as any;
+      const useCase = new CreateOrderUseCase(
+        mockUserRepository,
+        mockTableRepository,
+        mockCompanyRepository,
+        mockPrismaNoMenuItem as any,
+        mockStockServiceLocal,
+      );
+
       const validInput = {
         userId: 'user-123',
         paymentMethod: 1,
@@ -341,10 +385,9 @@ describe('CreateOrderUseCase', () => {
       };
 
       mockUserRepository.findById.mockResolvedValue(mockUser);
-      mockMenuItemRepository.findById.mockResolvedValue(null);
 
       try {
-        await createOrderUseCase.execute(validInput);
+        await useCase.execute(validInput);
         fail('Should have thrown an error');
       } catch (error) {
         expect(error).toBeInstanceOf(AppError);

@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { UnitOfMeasure } from '@prisma/client';
+
+const unitOfMeasureEnum = z.nativeEnum(UnitOfMeasure);
 
 // Create Product Schema
 export const createProductSchema = z.object({
@@ -6,6 +9,10 @@ export const createProductSchema = z.object({
   description: z.string().max(1000, 'Description is too long').optional().nullable(),
   status: z.boolean().default(true),
   userId: z.string().uuid('Invalid user ID format'),
+  // Stock config opcional desde la creación (si no se manda, defaults seguros).
+  trackStock: z.boolean().optional(),
+  unitOfMeasure: unitOfMeasureEnum.optional().nullable(),
+  minStockAlert: z.number().min(0).optional().nullable(),
 });
 
 // Update Product Schema (all fields optional except those that shouldn't change)
