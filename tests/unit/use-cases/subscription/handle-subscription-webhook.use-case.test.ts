@@ -16,6 +16,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
 
   const existingSub = new Subscription(
     'sub-id-1',
+    'org-1',
     'cus_test_123',
     'sub_stripe_123',
     SubscriptionStatus.EXPIRED,
@@ -30,6 +31,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
   beforeEach(() => {
     mockSubscriptionRepository = {
       find: jest.fn(),
+      findByStripeSubscriptionId: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     };
@@ -118,6 +120,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
     it('should renew subscription period on invoice paid', async () => {
       const activeSub = new Subscription(
         'sub-id-1',
+        'org-1',
         'cus_test_123',
         'sub_stripe_123',
         SubscriptionStatus.ACTIVE,
@@ -140,7 +143,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
         },
       } as unknown as Stripe.Event;
 
-      mockSubscriptionRepository.find.mockResolvedValue(activeSub);
+      mockSubscriptionRepository.findByStripeSubscriptionId.mockResolvedValue(activeSub);
       mockStripeService.getSubscription.mockResolvedValue({
         id: 'sub_stripe_123',
         status: 'active',
@@ -162,6 +165,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
     it('should ignore if subscription id does not match', async () => {
       const activeSub = new Subscription(
         'sub-id-1',
+        'org-1',
         'cus_test_123',
         'sub_stripe_OTHER',
         SubscriptionStatus.ACTIVE,
@@ -182,7 +186,8 @@ describe('HandleSubscriptionWebhookUseCase', () => {
         },
       } as unknown as Stripe.Event;
 
-      mockSubscriptionRepository.find.mockResolvedValue(activeSub);
+      // El lookup ahora es por stripeSubscriptionId exacto; 'sub_stripe_123' no coincide
+      mockSubscriptionRepository.findByStripeSubscriptionId.mockResolvedValue(null);
 
       await useCase.execute({ event });
 
@@ -194,6 +199,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
     it('should set status to PAST_DUE on payment failure', async () => {
       const activeSub = new Subscription(
         'sub-id-1',
+        'org-1',
         'cus_test_123',
         'sub_stripe_123',
         SubscriptionStatus.ACTIVE,
@@ -214,7 +220,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
         },
       } as unknown as Stripe.Event;
 
-      mockSubscriptionRepository.find.mockResolvedValue(activeSub);
+      mockSubscriptionRepository.findByStripeSubscriptionId.mockResolvedValue(activeSub);
       mockSubscriptionRepository.update.mockResolvedValue(activeSub);
 
       await useCase.execute({ event });
@@ -229,6 +235,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
     it('should sync subscription state from Stripe', async () => {
       const activeSub = new Subscription(
         'sub-id-1',
+        'org-1',
         'cus_test_123',
         'sub_stripe_123',
         SubscriptionStatus.ACTIVE,
@@ -253,7 +260,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
         },
       } as unknown as Stripe.Event;
 
-      mockSubscriptionRepository.find.mockResolvedValue(activeSub);
+      mockSubscriptionRepository.findByStripeSubscriptionId.mockResolvedValue(activeSub);
       mockSubscriptionRepository.update.mockResolvedValue(activeSub);
 
       await useCase.execute({ event });
@@ -271,6 +278,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
     it('should set status to CANCELED', async () => {
       const activeSub = new Subscription(
         'sub-id-1',
+        'org-1',
         'cus_test_123',
         'sub_stripe_123',
         SubscriptionStatus.ACTIVE,
@@ -295,7 +303,7 @@ describe('HandleSubscriptionWebhookUseCase', () => {
         },
       } as unknown as Stripe.Event;
 
-      mockSubscriptionRepository.find.mockResolvedValue(activeSub);
+      mockSubscriptionRepository.findByStripeSubscriptionId.mockResolvedValue(activeSub);
       mockSubscriptionRepository.update.mockResolvedValue(activeSub);
 
       await useCase.execute({ event });

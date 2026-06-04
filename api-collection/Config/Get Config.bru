@@ -1,0 +1,19 @@
+meta {
+  name: Get Config
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/config
+  body: none
+  auth: none
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/config — Endpoint público. Devuelve flags de configuración del frontend (billing, etc.). Sin auth.
+}

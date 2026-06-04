@@ -24,6 +24,14 @@ export const switchBranchSchema = z.object({
   branchId: z.string().uuid('Invalid branch ID format'),
 });
 
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+});
+
+export const resendVerificationSchema = z.object({
+  email: z.string().email('Invalid email format'),
+});
+
 export const signupSchema = z.object({
   user: z.object({
     email: z.string().email('Invalid email format'),
@@ -57,4 +65,6 @@ export type VerifyUserInput = z.infer<typeof verifyUserSchema>;
 export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
 export type SwitchBranchInput = z.infer<typeof switchBranchSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
+export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>;
 

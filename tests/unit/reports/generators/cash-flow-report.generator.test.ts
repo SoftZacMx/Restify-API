@@ -27,6 +27,7 @@ describe('CashFlowReportGenerator', () => {
       findAll: jest.fn(),
       count: jest.fn(),
       create: jest.fn(),
+      createWithItems: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       createOrderItem: jest.fn(),
@@ -131,6 +132,7 @@ describe('CashFlowReportGenerator', () => {
           null,
           'user-1',
           null, null, null, null, null, null, null, null,
+          null,
           new Date(),
           new Date()
         ),
@@ -151,6 +153,7 @@ describe('CashFlowReportGenerator', () => {
           null,
           'user-1',
           null, null, null, null, null, null, null, null,
+          null,
           new Date(),
           new Date()
         ),
@@ -239,6 +242,7 @@ describe('CashFlowReportGenerator', () => {
           null,
           'user-1',
           null, null, null, null, null, null, null, null,
+          null,
           new Date(),
           new Date()
         ),
@@ -260,9 +264,9 @@ describe('CashFlowReportGenerator', () => {
 
     it('should group incomes by payment method', async () => {
       const mockOrders = [
-        new Order('order-1', new Date(), true, 1, 1000, 900, 100, true, null, 0, 'Local', null, false, null, 'user-1', null, null, null, null, null, null, null, null, new Date(), new Date()),
-        new Order('order-2', new Date(), true, 2, 2000, 1800, 200, true, null, 0, 'Local', null, false, null, 'user-1', null, null, null, null, null, null, null, null, new Date(), new Date()),
-        new Order('order-3', new Date(), true, 3, 1500, 1350, 150, true, null, 0, 'Local', null, false, null, 'user-1', null, null, null, null, null, null, null, null, new Date(), new Date()),
+        new Order('order-1', new Date(), true, 1, 1000, 900, 100, true, null, 0, 'Local', null, false, null, 'user-1', null, null, null, null, null, null, null, null, null, new Date(), new Date()),
+        new Order('order-2', new Date(), true, 2, 2000, 1800, 200, true, null, 0, 'Local', null, false, null, 'user-1', null, null, null, null, null, null, null, null, null, new Date(), new Date()),
+        new Order('order-3', new Date(), true, 3, 1500, 1350, 150, true, null, 0, 'Local', null, false, null, 'user-1', null, null, null, null, null, null, null, null, null, new Date(), new Date()),
       ];
 
       mockOrderRepository.findAll.mockResolvedValue(mockOrders);
@@ -295,6 +299,7 @@ describe('CashFlowReportGenerator', () => {
           null,
           'user-1',
           null, null, null, null, null, null, null, null,
+          null,
           new Date(),
           new Date()
         ),
@@ -368,6 +373,7 @@ describe('CashFlowReportGenerator', () => {
           null,
           'user-1',
           null, null, null, null, null, null, null, null,
+          null,
           new Date(),
           new Date()
         ),
@@ -417,6 +423,7 @@ describe('CashFlowReportGenerator', () => {
           null,
           'user-1',
           null, null, null, null, null, null, null, null,
+          null,
           new Date(),
           new Date()
         ),
@@ -496,6 +503,7 @@ describe('CashFlowReportGenerator', () => {
           null,
           'user-1',
           null, null, null, null, null, null, null, null,
+          null,
           new Date(),
           new Date()
         ),

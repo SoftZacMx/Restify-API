@@ -61,6 +61,7 @@ describe('SubscriptionRepository', () => {
   describe('create', () => {
     it('should create a new subscription', async () => {
       const createData = {
+        organizationId: 'org-1',
         stripeCustomerId: 'cus_test_123',
       };
 

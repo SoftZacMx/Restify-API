@@ -19,6 +19,8 @@ describe('VerifyUserUseCase', () => {
       update: jest.fn(),
       delete: jest.fn(),
       reactivate: jest.fn(),
+      markForPasswordReset: jest.fn(),
+      markEmailVerified: jest.fn(),
       findAll: jest.fn(),
     };
 

@@ -8,6 +8,7 @@ import './user.module';
 import './product.module';
 import './table.module';
 import './branch.module';
+import './organization.module'; // depende de IUserRepository / IOrganizationRepository / IBranchRepository
 import './menu.module';
 import './order.module';
 import './expense.module'; // payment.module depende de IExpenseRepository (gasto de comisión MP)
@@ -17,5 +18,6 @@ import './refund.module';
 import './report.module';
 import './ticket.module';
 import './websocket.module';
+import './email.module';
 
 export { container } from 'tsyringe';

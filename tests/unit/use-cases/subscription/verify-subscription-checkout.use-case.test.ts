@@ -14,13 +14,14 @@ describe('VerifySubscriptionCheckoutUseCase', () => {
 
   const makeSubscription = (status: SubscriptionStatus = SubscriptionStatus.EXPIRED) =>
     new Subscription(
-      'sub-1', 'cus_abc', 'sub_stripe_1', status,
+      'sub-1', 'org-1', 'cus_abc', 'sub_stripe_1', status,
       now, periodEnd, false, 'plan-1', now, now
     );
 
   beforeEach(() => {
     mockSubscriptionRepository = {
       find: jest.fn(),
+      findByStripeSubscriptionId: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     };

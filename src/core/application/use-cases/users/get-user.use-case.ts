@@ -1,5 +1,6 @@
 import { inject, injectable } from 'tsyringe';
 import { IUserRepository } from '../../../domain/interfaces/user-repository.interface';
+import { IUserBranchAccessRepository } from '../../../domain/interfaces/user-branch-access-repository.interface';
 import { GetUserInput } from '../../dto/user.dto';
 import { AppError } from '../../../../shared/errors';
 
@@ -12,6 +13,7 @@ export interface GetUserResult {
   phone: string | null;
   status: boolean;
   rol: string;
+  branchIds: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,7 +21,9 @@ export interface GetUserResult {
 @injectable()
 export class GetUserUseCase {
   constructor(
-    @inject('IUserRepository') private readonly userRepository: IUserRepository
+    @inject('IUserRepository') private readonly userRepository: IUserRepository,
+    @inject('IUserBranchAccessRepository')
+    private readonly userBranchAccessRepository: IUserBranchAccessRepository
   ) {}
 
   async execute(input: GetUserInput): Promise<GetUserResult> {
@@ -28,6 +32,8 @@ export class GetUserUseCase {
     if (!user) {
       throw new AppError('USER_NOT_FOUND');
     }
+
+    const branchIds = await this.userBranchAccessRepository.findBranchIdsByUserId(user.id);
 
     // Return user without password
     return {
@@ -39,6 +45,7 @@ export class GetUserUseCase {
       phone: user.phone,
       status: user.status,
       rol: user.rol,
+      branchIds,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

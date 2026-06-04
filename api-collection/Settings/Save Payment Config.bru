@@ -1,0 +1,32 @@
+meta {
+  name: Save Payment Config
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/settings/payment-config
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "mercadoPago": {
+      "accessToken": "APP_USR-xxxxxxxx",
+      "webhookSecret": "xxxxxxxx"
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  PUT /api/settings/payment-config — Guarda la configuración de pagos (Mercado Pago). Requiere OWNER o ADMIN.
+}

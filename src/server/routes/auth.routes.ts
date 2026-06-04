@@ -6,8 +6,11 @@ import { switchBranchController } from '../../controllers/auth/switch-branch.con
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
 import {
   loginSchema,
+  signupSchema,
   verifyUserSchema,
   switchBranchSchema,
+  verifyEmailSchema,
+  resendVerificationSchema,
 } from '../../core/application/dto/auth.dto';
 import { authRateLimiter, passwordResetRateLimiter } from '../middleware/rate-limit.middleware';
 import { AuthMiddleware, AuthenticatedRequest } from '../middleware/auth.middleware';
@@ -42,6 +45,44 @@ router.post(
       });
 
       res.status(200).json({
+        success: true,
+        data: result,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /api/auth/signup
+ * Alta pública: crea organización + owner + primera sucursal (+ bootstrap).
+ * Protegido con rate limiting: 5 intentos por 15 minutos.
+ * Setea cookie HttpOnly con el JWT (igual que /login).
+ */
+router.post(
+  '/signup',
+  authRateLimiter,
+  zodValidator({ schema: signupSchema, source: 'body' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { container } = await import('tsyringe');
+      const { SignupUseCase } = await import('../../core/application/use-cases/auth/signup.use-case');
+
+      const signupUseCase = container.resolve(SignupUseCase);
+      const result = await signupUseCase.execute(req.body);
+
+      const isProduction = process.env.NODE_ENV === 'production';
+      res.cookie('token', result.token, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000,
+        path: '/',
+      });
+
+      res.status(201).json({
         success: true,
         data: result,
         timestamp: new Date().toISOString(),
@@ -103,6 +144,80 @@ router.post(
  * Protegido con rate limiting: 3 intentos por 15 minutos.
  */
 router.post('/recover-password/:user_id', passwordResetRateLimiter, setPasswordController);
+
+/**
+ * Verificación de email (4.1.E) — confirma la titularidad del correo.
+ * - GET  /api/auth/verify-email?token=...  → para el clic en el link del correo
+ * - POST /api/auth/verify-email            → token en el body (uso desde el frontend)
+ * Idempotente: si ya estaba verificado responde 200 con alreadyVerified=true.
+ * Rate limited para evitar fuerza bruta sobre el token.
+ */
+async function handleVerifyEmail(token: string, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { container } = await import('tsyringe');
+    const { VerifyEmailUseCase } = await import(
+      '../../core/application/use-cases/auth/verify-email.use-case'
+    );
+
+    const useCase = container.resolve(VerifyEmailUseCase);
+    const result = await useCase.execute({ token });
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+router.get(
+  '/verify-email',
+  passwordResetRateLimiter,
+  zodValidator({ schema: verifyEmailSchema, source: 'query' }),
+  (req: Request, res: Response, next: NextFunction) =>
+    handleVerifyEmail(String(req.query.token), res, next)
+);
+
+router.post(
+  '/verify-email',
+  passwordResetRateLimiter,
+  zodValidator({ schema: verifyEmailSchema, source: 'body' }),
+  (req: Request, res: Response, next: NextFunction) =>
+    handleVerifyEmail(req.body.token, res, next)
+);
+
+/**
+ * POST /api/auth/resend-verification (4.1.E)
+ * Reenvía el correo de verificación. Respuesta uniforme (anti-enumeración):
+ * siempre 200 aunque el email no exista o ya esté verificado.
+ * Rate limited: 3 intentos por 15 minutos.
+ */
+router.post(
+  '/resend-verification',
+  passwordResetRateLimiter,
+  zodValidator({ schema: resendVerificationSchema, source: 'body' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { container } = await import('tsyringe');
+      const { ResendVerificationUseCase } = await import(
+        '../../core/application/use-cases/auth/resend-verification.use-case'
+      );
+
+      const useCase = container.resolve(ResendVerificationUseCase);
+      await useCase.execute(req.body);
+
+      res.status(200).json({
+        success: true,
+        data: { message: 'Si la cuenta existe y no está verificada, se envió un correo.' },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /**
  * POST /api/auth/switch-branch

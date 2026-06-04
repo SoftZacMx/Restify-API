@@ -5,7 +5,7 @@ meta {
 }
 
 delete {
-  url: {{baseUrl}}/api/user/:user_id
+  url: {{baseUrl}}/api/users/:user_id
   body: none
   auth: inherit
 }
@@ -20,6 +20,7 @@ headers {
 
 settings {
   encodeUrl: true
+  timeout: 0
 }
 
 docs {

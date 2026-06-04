@@ -15,6 +15,7 @@ import reportRoutes from './report.routes';
 import stockRoutes from './stock.routes';
 import dashboardRoutes from './dashboard.routes';
 import branchRoutes from './branch.routes';
+import organizationRoutes from './organization.routes';
 import healthRoutes from './health.routes';
 import subscriptionRoutes from './subscription.routes';
 import settingsRoutes from './settings.routes';
@@ -36,6 +37,10 @@ router.use('/api/auth', authRoutes);
 
 // Subscription routes (no tenant - handled by Stripe webhooks)
 router.use('/api/subscription', subscriptionRoutes);
+
+// Organization routes (4.1.G): close (auth+tenant inline) + reactivate (público).
+// Se monta antes del bloque global porque reactivate no debe pasar por auth.
+router.use('/api/organization', organizationRoutes);
 
 // Webhook de Mercado Pago (no auth, no tenant - MP envía directamente)
 router.use('/api/payments/webhooks', paymentWebhookRoutes);

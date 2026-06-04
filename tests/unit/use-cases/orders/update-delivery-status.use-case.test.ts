@@ -10,7 +10,7 @@ describe('UpdateDeliveryStatusUseCase', () => {
   const makeOnlineOrder = (delivered = false, deliveryStatus: string | null = 'PAID') => new Order(
     'order-1', new Date(), true, 4, 150, 150, 0,
     delivered, null, 0, 'online-delivery', null, false, null, null,
-    'Juan', '5512345678', 19.43, -99.13, 'Calle 1', null, 'token-abc', deliveryStatus,
+    'Juan', '5512345678', 19.43, -99.13, 'Calle 1', null, 'token-abc', deliveryStatus, null,
     new Date(), new Date()
   );
 
@@ -23,6 +23,7 @@ describe('UpdateDeliveryStatusUseCase', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      createWithItems: jest.fn(),
       createOrderItem: jest.fn(),
       updateOrderItem: jest.fn(),
       deleteOrderItem: jest.fn(),
@@ -82,7 +83,7 @@ describe('UpdateDeliveryStatusUseCase', () => {
     const localOrder = new Order(
       'order-1', new Date(), true, 1, 150, 150, 0,
       false, 'table-1', 0, 'Local', null, false, null, 'user-1',
-      null, null, null, null, null, null, null, null,
+      null, null, null, null, null, null, null, null, null,
       new Date(), new Date()
     );
     mockOrderRepository.findById.mockResolvedValue(localOrder);

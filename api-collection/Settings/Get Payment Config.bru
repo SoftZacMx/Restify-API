@@ -1,0 +1,19 @@
+meta {
+  name: Get Payment Config
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/settings/payment-config
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/settings/payment-config — Configuración de pagos (Mercado Pago) de la org. Requiere OWNER o ADMIN.
+}

@@ -1,0 +1,33 @@
+meta {
+  name: Mercado Pago Webhook
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/payments/webhooks/mercado-pago
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "type": "payment",
+    "action": "payment.updated",
+    "data": {
+      "id": "123456789"
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  POST /api/payments/webhooks/mercado-pago — Webhook que MP invoca al cambiar el estado de un pago. Sin auth ni tenant (MP llama directo). Nota: la validación de firma está deshabilitada por un bug de MP.
+}

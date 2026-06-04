@@ -79,6 +79,30 @@ export class UserRepository implements IUserRepository {
     return User.fromPrisma(user);
   }
 
+  async markForPasswordReset(id: string): Promise<User> {
+    // Forzar cambio de contraseña en el próximo login e invalidar sesiones activas.
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        mustChangePassword: true,
+        tokenVersion: { increment: 1 },
+      },
+    });
+
+    return User.fromPrisma(user);
+  }
+
+  async markEmailVerified(id: string): Promise<User> {
+    // Confirma la titularidad del correo (4.1.E). La idempotencia (no re-verificar)
+    // la maneja el use-case leyendo emailVerifiedAt antes de llamar aquí.
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: { emailVerifiedAt: new Date() },
+    });
+
+    return User.fromPrisma(user);
+  }
+
   async findAll(filters?: UserFilters): Promise<User[]> {
     const where: any = {};
 

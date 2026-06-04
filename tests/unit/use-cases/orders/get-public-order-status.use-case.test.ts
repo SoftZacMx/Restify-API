@@ -20,6 +20,7 @@ describe('GetPublicOrderStatusUseCase', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      createWithItems: jest.fn(),
       createOrderItem: jest.fn(),
       updateOrderItem: jest.fn(),
       deleteOrderItem: jest.fn(),
@@ -50,7 +51,7 @@ describe('GetPublicOrderStatusUseCase', () => {
     const order = new Order(
       'order-1', new Date(), false, null, 150, 150, 0,
       false, null, 0, 'online-delivery', null, false, null, null,
-      'Juan', '5512345678', null, null, null, null, 'token-abc', null,
+      'Juan', '5512345678', null, null, null, null, 'token-abc', null, null,
       new Date(), new Date()
     );
     mockOrderRepository.findByTrackingToken.mockResolvedValue(order);
@@ -68,7 +69,7 @@ describe('GetPublicOrderStatusUseCase', () => {
     const order = new Order(
       'order-1', new Date(), true, 4, 150, 150, 0,
       false, null, 0, 'online-delivery', null, false, null, null,
-      'Juan', '5512345678', null, null, null, null, 'token-abc', 'PREPARING',
+      'Juan', '5512345678', null, null, null, null, 'token-abc', 'PREPARING', null,
       new Date(), new Date()
     );
     mockOrderRepository.findByTrackingToken.mockResolvedValue(order);
@@ -84,7 +85,7 @@ describe('GetPublicOrderStatusUseCase', () => {
     const order = new Order(
       'order-1', new Date(), true, 4, 150, 150, 0,
       false, null, 0, 'online-delivery', null, false, null, null,
-      'Juan', '5512345678', null, null, null, null, 'token-abc', 'PAID',
+      'Juan', '5512345678', null, null, null, null, 'token-abc', 'PAID', null,
       new Date(), new Date()
     );
     const orderItem = new OrderItem('oi-1', 2, 75, 'order-1', null, 'menu-1', null, new Date(), new Date());
@@ -106,7 +107,7 @@ describe('GetPublicOrderStatusUseCase', () => {
     const order = new Order(
       'order-1', new Date(), true, 4, 150, 150, 0,
       false, null, 0, 'online-pickup', null, false, null, null,
-      'Maria', '5598765432', null, null, null, null, 'token-xyz', 'READY',
+      'Maria', '5598765432', null, null, null, null, 'token-xyz', 'READY', null,
       new Date(), new Date()
     );
     mockOrderRepository.findByTrackingToken.mockResolvedValue(order);

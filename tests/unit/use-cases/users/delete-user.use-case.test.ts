@@ -1,7 +1,7 @@
 import { DeleteUserUseCase } from '../../../../src/core/application/use-cases/users/delete-user.use-case';
 import { IUserRepository } from '../../../../src/core/domain/interfaces/user-repository.interface';
 import { User } from '../../../../src/core/domain/entities/user.entity';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('DeleteUserUseCase', () => {
@@ -17,6 +17,8 @@ describe('DeleteUserUseCase', () => {
       delete: jest.fn(),
       findAll: jest.fn(),
       reactivate: jest.fn(),
+      markForPasswordReset: jest.fn(),
+      markEmailVerified: jest.fn(),
     };
 
     deleteUserUseCase = new DeleteUserUseCase(mockUserRepository);
@@ -42,6 +44,11 @@ describe('DeleteUserUseCase', () => {
         null,
         true,
         UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        null,
+        false,
         new Date(),
         new Date()
       );

@@ -10,8 +10,8 @@ describe('ListSubscriptionPlansUseCase', () => {
   const now = new Date();
 
   const mockPlans = [
-    new SubscriptionPlan('plan-1', 'Mensual', BillingPeriod.MONTHLY, 322000, 'price_monthly', true, now, now),
-    new SubscriptionPlan('plan-2', 'Anual', BillingPeriod.ANNUAL, 3112300, 'price_annual', true, now, now),
+    new SubscriptionPlan('plan-1', 'Mensual', BillingPeriod.MONTHLY, 322000, 'price_monthly', 5, true, now, now),
+    new SubscriptionPlan('plan-2', 'Anual', BillingPeriod.ANNUAL, 3112300, 'price_annual', 10, true, now, now),
   ];
 
   beforeEach(() => {

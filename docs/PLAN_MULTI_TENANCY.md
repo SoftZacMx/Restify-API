@@ -48,18 +48,18 @@ Implementar en este orden:
 
 | Paso | Qué | Estado | Duración restante |
 |------|-----|--------|-------------------|
-| 1 | **Schema completo**: Org + Users + Branches + `branchId` + índices | ✅ 95% | 0.5 días (índices) |
+| 1 | **Schema completo**: Org + Users + Branches + `branchId` + índices | ✅ Completo | 0 días (índices, subscriptions y seed ya en código) |
 | 2 | **Infraestructura tenant**: TenantContext + Prisma Extension + middleware | ✅ Completo | 0 días |
 | 3 | **Auth multi-tenant**: JWT con org/branch + roles + switch-branch | ✅ Completo | 0 días |
 | 4 | **API Sucursales**: CRUD + acceso user↔sucursal + límites plan | ✅ Completo | 0 días |
-| 5 | **Adaptar POS**: Repos (orders, menu, payments, tables) + webhooks | ✅ ~95% | 0 días (smoke test) |
+| 5 | **Adaptar POS**: Repos (orders, menu, payments, tables) + webhooks | ✅ Completo | 0 días (3.1 inyección + 3.4 webhooks hechos; falta smoke/tests aislamiento) |
 | 6 | **Aislar stock y recetas** (merge `qa`): `branchId` + extension + servicios | ✅ Completo | 0 días |
-| 7 | **Signup público**: Org + primera sucursal + bootstrap + email verification | ⏳ Pendiente | 1 día |
+| 7 | **Signup público**: Org + primera sucursal + bootstrap + email verification + cron limpieza (4.1.F ✅) + org close/reactivate (4.1.G ✅). Falta solo E2E (4.1.H) | 🔶 Casi | 0.5 día (E2E) |
 | 8 | **Frontend**: Selector sucursal + CRUD + onboarding + reemplazo Company | ⏳ Pendiente | 3 días |
 | 9 | **QA + Rollout**: Tests E2E + aislamiento + deploy | ⏳ Pendiente | 2 días |
 
-**Progreso:** 6/9 pasos completos (~67%)  
-**Total restante:** ~6 días
+**Progreso:** 7/9 pasos completos (~82%)  
+**Total restante:** ~5.5 días (frontend + E2E + QA/rollout)
 
 ---
 
@@ -77,9 +77,9 @@ Implementar en este orden:
 - [x] Migración SQL con organización legacy para usuarios existentes.
 - [x] Índices de performance multi-tenant agregados.
 - [x] `prisma validate` (schema validado).
-- [ ] Aplicar migración: `prisma migrate deploy`.
-- [ ] Tabla `subscriptions` 1:1 con org; catálogo `subscription_plans` con `max_branches` (consumido en Etapa 2).
-- [ ] Seed plan **Free Legacy** (`max_branches = 3`).
+- [x] Aplicar migración: `prisma migrate deploy` (migración `20260523153740_add_user_org_fields_and_indexes` aplicada).
+- [x] Tabla `subscriptions` 1:1 con org; catálogo `subscription_plans` con `maxBranches` (modelos en schema; migración `20260523165947_add_subscription_org_relation`).
+- [x] Seed plan **Free Legacy** (`maxBranches = 3`) — `seeds/seed-subscription-plans.ts`.
 
 **Ejemplo Prisma — Organization:**
 
@@ -378,7 +378,7 @@ const token = jwt.sign(
 - [x] `branchId` en tablas operativas
 - [x] Entidades y repositorios (`IBranchRepository`, `IUserBranchAccessRepository`)
 - [x] Migración `20260519013000_add_branches_b1` aplicada
-- [ ] Agregar índices compuestos para queries multi-tenant (ver sección "Índices de performance")
+- [x] Agregar índices compuestos para queries multi-tenant (ver sección "Índices de performance") — ya presentes en `schema.prisma` (`branchId, date`/`branchId, status`/etc.)
 - [ ] Tests unitarios de mapeo Prisma → entidad
 
 **Ejemplo Prisma — Branch:**
@@ -584,8 +584,8 @@ src/server/routes/branch.routes.ts
 - [x] Lógica de acceso por rol implementada en login (owner/admin: todas; otros: `user_branch_access`)
 - [x] JWT inicial incluye `branch` según permisos del usuario
 - [x] `POST /auth/switch-branch` valida acceso y emite nuevo JWT
-- [ ] Extraer helper `getAccessibleBranchIds(user)` reutilizable (actualmente inline en login)
-- [ ] `branchIds` en `POST/PATCH /api/users` (Etapa 4.1)
+- [x] Extraer helper `getAccessibleBranchIds(user)` reutilizable — `src/core/application/services/branch-access.service.ts` (usado por list/get/update/disable/enable-branch)
+- [x] `branchIds` en `POST/PATCH /api/users` (Etapa 4.1.B — implementado)
 - [ ] Tests específicos de acceso + switch-branch
 
 ```typescript
@@ -711,13 +711,15 @@ queryClient.invalidateQueries({ queryKey: ['menu'] });
 
 **Tareas (orden de dependencia):**
 
-1. **Backend - Eliminar código de Company:**
-   - [ ] Remover registro de rutas en `src/server/routes/index.ts`:
+> **Estado backend (auditado 2026-06-03): ✅ HECHO.** No quedan rutas/controllers/use-cases/repos/entidad `Company` en backend, y la migración `20260525001232_remove_company_table` (DROP TABLE) está aplicada. Solo persisten referencias inofensivas a "company" en config de tickets (`ticket.dto.ts`, `get-sale-ticket.use-case.ts`) y mensajes de error. **Pendiente: solo frontend (paso 4).**
+
+1. **Backend - Eliminar código de Company:** ✅
+   - [x] Remover registro de rutas en `src/server/routes/index.ts`:
      ```diff
      - import companyRoutes from './company.routes';
      - router.use('/api/company', companyRoutes);
      ```
-   - [ ] Eliminar archivos:
+   - [x] Eliminar archivos:
      ```bash
      rm src/server/routes/company.routes.ts
      rm -rf src/controllers/company/
@@ -729,26 +731,18 @@ queryClient.invalidateQueries({ queryKey: ['menu'] });
      rm src/core/domain/interfaces/company-repository.interface.ts
      ```
 
-2. **Schema Prisma - Eliminar modelo:**
-   - [ ] Remover modelo `Company` de `schema.prisma`:
-     ```diff
-     - model Company {
-     -   id              String   @id @default(uuid())
-     -   name            String
-     -   // ... resto de campos
-     -   @@map("companies")
-     - }
-     ```
-   - [ ] Generar migración: `npx prisma migrate dev --name remove_company_table`
-   - [ ] Verificar que genera: `DROP TABLE "companies";`
+2. **Schema Prisma - Eliminar modelo:** ✅
+   - [x] Remover modelo `Company` de `schema.prisma`
+   - [x] Generar migración: `20260525001232_remove_company_table`
+   - [x] Verificar que genera: `DROP TABLE "companies";`
 
-3. **Validación:**
-   - [ ] Compilar sin errores: `npm run build`
-   - [ ] Verificar imports rotos: `npx tsc --noEmit`
-   - [ ] Endpoints `/api/company` responden 404
-   - [ ] Endpoints `/api/branches/:id` funcionan
+3. **Validación:** ✅ (backend)
+   - [x] Compilar sin errores: `npm run build`
+   - [x] Verificar imports rotos: `npx tsc --noEmit`
+   - [x] Endpoints `/api/company` responden 404 (ruta eliminada)
+   - [x] Endpoints `/api/branches/:id` funcionan
 
-4. **Frontend (Fase 2.5 - referencia):**
+4. **Frontend (Fase 2.5 - referencia):** ⏳ PENDIENTE — `CompanyConfigPage` y `company.service.ts` siguen presentes en `Restify-Frontend`
    - [ ] Reemplazar `CompanyConfigPage` por listado/detalle sucursal
    - [ ] Cambiar calls de API:
      ```typescript
@@ -811,9 +805,9 @@ Limpieza en cron hard-delete org (Etapa C.3): borrar prefijos de todas las sucur
 
 **Objetivo:** Que todo el código del POS (órdenes, menú, mesas, pagos, etc.) use el filtrado automático por organización y sucursal que ya construimos en la Etapa 1.
 
-**Estado: ❌ Pendiente** — La infraestructura de aislamiento (TenantContext + Prisma Extension) existe pero NO está conectada a los repositorios. Actualmente `prisma.module.ts` inyecta `getBasePrisma()` (sin filtros) a los 18 repositorios del POS.
+**Estado: ✅ ~90%** — `prisma.module.ts` YA inyecta `getPrisma()` (con tenant extension) a todos los repositorios (Tarea 3.1 hecha). Webhooks ajustados (Tarea 3.4 hecha): MP usa `external_reference` con `orderId:branchId` y Stripe busca por `findByStripeSubscriptionId`. Falta cerrar la validación formal de repos (3.2/3.3) y los tests de aislamiento end-to-end del POS (3.5).
 
-**No hay crons ni jobs programados.** Solo existen 2 webhooks (Stripe y Mercado Pago) que necesitan ajuste.
+**No hay crons ni jobs programados.** Solo existen 2 webhooks (Stripe y Mercado Pago), ya ajustados.
 
 ---
 
@@ -836,9 +830,9 @@ export const prismaClient = getPrisma();
 
 **Precaución:** Después de este cambio, cualquier query que se ejecute sin contexto de tenant va a fallar con `TENANT_ORG_REQUIRED` o `TENANT_BRANCH_REQUIRED`. Por eso las tareas 3.2 y 3.3 son de validación.
 
-- [ ] Cambiar la inyección en `prisma.module.ts`
-- [ ] Verificar que la app arranca sin errores
-- [ ] Marcar con `withoutTenant` los casos que NO deben filtrarse (signup, scripts admin)
+- [x] Cambiar la inyección en `prisma.module.ts` (ya inyecta `getPrisma()`)
+- [x] Verificar que la app arranca sin errores
+- [x] Marcar con `withoutTenant` los casos que NO deben filtrarse (signup, scripts admin) — helper presente en `tenant-context.ts`
 
 ---
 
@@ -876,11 +870,11 @@ export const prismaClient = getPrisma();
 **Qué:** Los 2 webhooks reciben llamadas externas sin JWT, así que no tienen contexto de tenant. Hay que buscar los datos por identificadores únicos del servicio externo.
 
 **Webhook Stripe** (`POST /api/subscription/webhooks/stripe`):
-- [ ] Buscar suscripción por `stripeSubscriptionId` (viene en el evento) en vez de `subscriptionRepository.find()` genérico
+- [x] Buscar suscripción por `stripeSubscriptionId` — `handle-subscription-webhook.use-case.ts:55` (`findByStripeSubscriptionId`, con fallback)
 
 **Webhook Mercado Pago** (`POST /api/payments/webhooks/mercado-pago`):
-- [ ] Al crear un pago, incluir `orgId` + `branchId` en el `external_reference`
-- [ ] En el webhook, extraer esos IDs del `external_reference` y usarlos para filtrar el pago correcto
+- [x] Al crear un pago, incluir `branchId` en el `external_reference` — `mercado-pago.service.ts:97` (formato `orderId:branchId`)
+- [x] En el webhook, extraer esos IDs del `external_reference` y usarlos para filtrar — `confirm-mercado-pago-payment.use-case.ts:63-64`
 
 ---
 
@@ -1064,50 +1058,211 @@ SET sm.branchId = p.branchId;
 
 ### Fase 4.1 — Signup, usuarios y org (backend)
 
-**Tareas:**
+**Objetivo:** alta pública de clientes + gestión de usuarios/org desde el backend.
 
-- [ ] `POST /api/auth/signup` — orquesta org + user; **delega creación de primera sucursal** a servicio Etapa 2.4.
-- [ ] Validaciones: email único, slug, password, rate limit.
-- [ ] `POST /api/users`, `GET/PATCH`, disable, reset-password (owner).
-- [ ] Email verify / resend; cron 7 días sin verificar.
-- [ ] `POST /api/organization/close` y `reactivate` (ver transversal C).
-- [ ] Tests E2E signup org (con Etapa 2.4 integrada).
+**Estado actual (auditado en código 2026-06-03):**
+- ✅ `SignupUseCase` completo y **expuesto**: `POST /api/auth/signup` registrado en `auth.routes.ts:62-92` (handler inline, no controller separado), con `authRateLimiter` (5/15 min) y cookie HttpOnly con el JWT.
+- ✅ DTO de signup con validación de password fuerte ya existe (`auth.dto.ts`).
+- ✅ CRUD de usuarios **sí maneja `branchIds`**: `CreateUserUseCase` y `UpdateUserUseCase` crean/reemplazan filas `UserBranchAccess` (`replaceForUser`), `branchIds` está en `createUserSchema`/`updateUserSchema` y `GET /api/users/:id` los devuelve.
+- ✅ Servicio de email base (`EmailService` con AWS SES, apagable por `EMAIL_ENABLED`) registrado en DI y testeado. **Aún no lo invoca ningún use-case** (pendiente 4.1.E).
+- ❌ No existe flujo de verificación de email (sin token, sin endpoints `verify-email`/`resend`).
+- ✅ Módulo `organization` (close/reactivate) implementado (4.1.G).
+- ✅ Cron de limpieza de cuentas sin verificar implementado (4.1.F, node-cron in-process).
+- ✅ Tests E2E del signup (4.1.H) — `tests/integration/auth/signup.integration.test.ts`, 4 tests verdes contra DB real.
 
-**Ejemplo — signup body (org + user; sucursal en Etapa 2):**
+**Sub-fases (cada una commiteable por separado):**
+
+| Sub-fase | Nombre | Estado |
+|------|--------|--------|
+| 4.1.A | Exponer endpoint signup | ✅ |
+| 4.1.B | `branchIds` en gestión de usuarios | ✅ |
+| 4.1.C | Reset-password de empleados (owner) | ✅ |
+| 4.1.D | Servicio de email (base) | ✅ |
+| 4.1.E | Verificación de email (verify + resend) | ✅ |
+| 4.1.F | Cron limpieza de cuentas sin verificar | ✅ |
+| 4.1.G | Organization close / reactivate | ✅ |
+| 4.1.H | Tests E2E del flujo de alta | ✅ |
+
+> **Nota de dependencias:** 4.1.A es independiente y desbloquea el alta. 4.1.E depende de 4.1.D (email). 4.1.F depende de 4.1.E. 4.1.G es independiente (puede ir en paralelo). 4.1.B/4.1.C son independientes entre sí.
+
+---
+
+#### Sub-fase 4.1.A — Exponer endpoint signup
+
+**Qué:** El `SignupUseCase` ya existe; solo faltaba exponerlo. **Implementado** como handler inline en `auth.routes.ts` (no se creó controller separado).
+
+- [x] Endpoint signup expuesto resolviendo `SignupUseCase` y devolviendo `{ token, user, org, branch }` (handler inline en `auth.routes.ts:62-92`, no archivo `signup.controller.ts`)
+- [x] Registrar `POST /api/auth/signup` en `auth.routes.ts` (ruta pública, sin auth ni tenant)
+- [x] Aplicar `authRateLimiter` (5/15 min) al endpoint
+- [x] Validar body con el schema Zod de signup (ya existe en `auth.dto.ts`) vía `zodValidator`
+- [x] Confirmar que la respuesta setea cookie HttpOnly con el JWT (igual que `/login`) — `auth.routes.ts:75-81`
+- [x] Verificar manual: `POST /api/auth/signup` crea org+owner+sucursal y responde 200
+
+**Salida:** un cliente nuevo puede registrarse por API.
+
+**Ejemplo — signup body:**
 
 ```typescript
 interface SignupRequest {
-  user: {
-    email: string;
-    password: string;
-    name: string;
-    lastName: string;
-  };
-  organization: {
-    name: string;
-    slug?: string;
-  };
+  user: { email: string; password: string; name: string; lastName: string };
+  organization: { name: string; slug?: string };
   branch: SignupBranchInput; // ver Fase 2.4
   timezone: string; // IANA desde navegador
 }
 ```
 
-**Ejemplo — transacción signup (orquestación):**
+---
 
-```typescript
-await withoutTenant(async () => {
-  await prisma.$transaction(async (tx) => {
-    const org = await createOrganization(tx, input.organization);
-    await createSubscriptionFree(tx, org.id);
-    const branch = await createFirstBranch(tx, org.id, input.branch, input.timezone);
-    const user = await createOwnerUser(tx, org.id, input.user);
-    await bootstrapBranchDefaults(tx, branch.id); // Etapa 2.4
-    return { org, branch, user };
-  });
-});
-```
 
-**Salida:** owner puede registrarse y crear empleados (asignación sucursales en Etapa 2.3).
+#### Sub-fase 4.1.B — `branchIds` en gestión de usuarios
+
+**Qué:** Al crear/editar un empleado, el owner puede asignarle sucursales (filas `UserBranchAccess`) usando el `IUserBranchAccessRepository`. **Implementado.**
+
+- [x] Agregar `branchIds: string[]` (opcional) al `createUserSchema` (`user.dto.ts:23`) y `updateUserSchema` (`user.dto.ts:45`)
+- [x] `CreateUserUseCase`: tras crear el user, crear filas `UserBranchAccess` vía `replaceForUser` (`create-user.use-case.ts:73-76`)
+- [x] Validar que cada `branchId` pertenece a la org del contexto (rechazar ajenos → 404/403)
+- [x] `UpdateUserUseCase`: reemplazar el set de accesos vía `applyBranchIds` → `replaceForUser` (`update-user.use-case.ts:73-75`)
+- [x] Owner/admin no requieren `branchIds` (acceden a todas — ya cubierto por `branch-access.service.ts`)
+- [x] `GET /api/users/:id` devuelve los `branchIds` asignados (`get-user.use-case.ts:36,48`)
+- [x] Tests unitarios: crear waiter con 2 sucursales → 2 filas `UserBranchAccess`; con branchId ajeno → error
+
+**Salida:** el owner asigna sucursales a sus empleados al crearlos/editarlos.
+
+---
+
+#### Sub-fase 4.1.C — Reset-password de empleados (owner)
+
+**Qué:** Un endpoint claro para que el owner resetee la contraseña de un empleado de su org (hoy solo existe el flujo genérico `set-password`).
+
+- [x] Endpoint `POST /api/users/:id/reset-password` (solo owner/admin)
+- [x] Validar que el usuario objetivo pertenece a la org del contexto
+- [x] Setear `mustChangePassword = true` para forzar cambio en el próximo login
+- [x] Incrementar `tokenVersion` del usuario objetivo (invalida sus sesiones)
+- [x] Tests: owner resetea empleado de su org ✅; de otra org → 404
+
+**Salida:** el owner puede resetear contraseñas de su equipo.
+
+---
+
+#### Sub-fase 4.1.D — Servicio de email (base)
+
+**Qué:** El proyecto **no tiene** envío de email. Esta sub-fase monta la base mínima reutilizable; NO envía nada de negocio todavía (eso es 4.1.E). **Decisión de proveedor requerida antes de empezar.**
+
+> **Decisión (2026-06-02): AWS SES** — encaja con la infra AWS existente (ya se usan `@aws-sdk/client-sqs`, `client-dynamodb`, etc.) y reutiliza el patrón de cliente con `AWS_ENDPOINT_URL` para LocalStack. SDK: `@aws-sdk/client-ses`.
+
+- [x] Decidir proveedor (ej. AWS SES — ya hay infra AWS; o SMTP/nodemailer). Registrar la decisión aquí.
+- [x] Agregar dependencia + variables de entorno (`EMAIL_FROM`, credenciales, `EMAIL_ENABLED`)
+- [x] Crear `EmailService` con un método `send({ to, subject, html })` y registrar en DI
+- [x] Flag `EMAIL_ENABLED=false` → no-op que loggea (para dev/test sin credenciales)
+- [x] Test unitario del servicio con cliente mockeado
+
+**Salida:** capacidad genérica de enviar correos, apagable por env.
+
+---
+
+#### Sub-fase 4.1.E — Verificación de email (verify + resend)
+
+**Qué:** Usar el `EmailService` (4.1.D) para el flujo de confirmación de cuenta. El campo `emailVerifiedAt` ya existe en `User`.
+
+> **Decisión de diseño (2026-06-03): JWT stateless + link con token.**
+> - **Mecanismo:** JWT firmado (reutiliza `JwtUtil`, mismo patrón que el password reset en `verify-user.use-case.ts`). **Sin migración** — no se guarda token en DB.
+> - **Claim `purpose: 'email_verification'`** en el payload para que un token de verificación no sirva como token de auth/reset ni viceversa. Payload mínimo: `sub` (userId), `email`, `purpose`. Expiry **24h** (más largo que el 1h del reset porque el correo se abre tarde).
+> - **Canal:** link clicable en el correo → `https://app/verify-email?token=<jwt>`.
+> - **"¿Ya válido / expirado?"** → firma + `exp` del JWT (`JwtUtil.verifyToken`).
+> - **"¿Ya usado?"** → **idempotente vía `emailVerifiedAt`**: si ya tiene fecha, responder "ya verificado" sin error; si es `null`, setear `now()`. No se necesita marcar el token como consumido.
+> - **Nota de implementación:** el `JwtPayload` actual tiene campos requeridos (`rol`, `org`, `tokenVersion`, etc.); para el token de verificación se usó un payload reducido aparte (`EmailVerificationPayload`) en vez de rellenarlos con datos de auth.
+
+- [x] Generar JWT de verificación (`purpose: 'email_verification'`, 24h) al signup y enviar email con el link — `JwtUtil.generateEmailVerificationToken`, `SendVerificationEmailUseCase`, integrado en `signup.use-case.ts` (best-effort, no aborta el alta)
+- [x] `GET/POST /api/auth/verify-email` — `verifyEmailVerificationToken` valida firma+`purpose`; si `emailVerifiedAt` es null → setea `now()`; si ya tiene fecha → `alreadyVerified: true` (idempotente). `VerifyEmailUseCase` + rutas en `auth.routes.ts`
+- [x] `POST /api/auth/resend-verification` — `ResendVerificationUseCase` reenvía (rate-limited, anti-enumeración: 200 uniforme); el token anterior sigue válido hasta expirar (inofensivo por idempotencia)
+- [x] Login/JWT reflejan `emailVerified` correctamente tras verificar (ya cubierto: `login.use-case.ts` deriva `emailVerified` de `isEmailVerified()`)
+- [x] Tests: verificar marca la fecha; token con `purpose` incorrecto/expirado → `INVALID_TOKEN`; segunda verificación → `alreadyVerified`; resend no-op si no existe o ya verificado (9 tests nuevos en `tests/unit/use-cases/auth/`)
+
+**Salida:** los nuevos usuarios confirman su email. **Implementado (2026-06-03):**
+- `src/shared/utils/jwt.util.ts` — `EmailVerificationPayload` + generate/verify
+- `src/core/application/use-cases/auth/send-verification-email.use-case.ts`
+- `src/core/application/use-cases/auth/verify-email.use-case.ts`
+- `src/core/application/use-cases/auth/resend-verification.use-case.ts`
+- `markEmailVerified` en `IUserRepository` / `UserRepository`
+- Rutas en `src/server/routes/auth.routes.ts`; DTOs en `auth.dto.ts`
+
+---
+
+#### Sub-fase 4.1.F — Cron limpieza de cuentas sin verificar
+
+**Qué:** Suspender (soft-close) organizaciones cuyo owner nunca verificó el email tras 7 días. **Es el primer cron del proyecto.**
+
+**Estado: ✅ COMPLETA (2026-06-03).** 5 tests unitarios verdes + smoke test del runner manual contra DB real.
+
+> **Decisión de scheduling (2026-06-03): `node-cron` in-process.**
+> - El job se agenda **dentro del proceso del API** (`server.ts` → `startCronJobs()`), no en un proceso aparte. Razón: por ahora hay **un solo servidor** en Railway, así que no hay riesgo de ejecución duplicada y evita montar un segundo servicio/infra.
+> - **Guarda de escalado futuro:** `RUN_CRONS=false` desactiva los crons en una instancia. Si algún día se escala a >1 réplica, basta con dejar `RUN_CRONS=true` en una sola.
+> - La lógica vive en un UseCase (testeable); el scheduler solo dispara. Schedule por defecto `0 4 * * *` (configurable por env), timezone `America/Mexico_City`.
+> - **Soft-close** (no hard-delete): reutiliza `OrganizationRepository.close` (marca `deletedAt`+CANCELLED e invalida sesiones). El hard-delete real lo hará el cron de 30 días (Transversal C.3).
+
+- [x] Definir mecanismo de scheduling (registrar decisión) — node-cron in-process
+- [x] Job diario: orgs con owner `emailVerifiedAt = null` y `createdAt < now() - 7 días` (umbral configurable vía `UNVERIFIED_RETENTION_DAYS`)
+- [x] Usar `withoutTenant` (es cross-tenant); soft-close vía `OrganizationRepository.close`
+- [x] `log()` de cuántas cuentas se procesaron (`found`/`closed`/`failed`, sin truncado silencioso); un fallo no aborta el lote
+- [x] Test del criterio de selección (no cierra cuentas verificadas ni recientes; respeta umbral custom; no aborta el lote ante un fallo)
+
+**Implementado en:**
+- `src/core/application/use-cases/organization/cleanup-unverified-orgs.use-case.ts`
+- `src/core/infrastructure/scheduler/cron-scheduler.ts` (`startCronJobs`/`stopCronJobs`, enganchado en `server.ts`)
+- `scripts/cron/cleanup-unverified-orgs.ts` (runner manual) + `npm run cron:cleanup-unverified`
+- `OrganizationRepository.findUnverifiedOwnerOrgIdsOlderThan`
+- Env nuevas (en `env.config.ts` + `env.example.txt`): `RUN_CRONS`, `UNVERIFIED_RETENTION_DAYS`, `CLEANUP_UNVERIFIED_CRON`, `CRON_TIMEZONE`
+- Dependencia: `node-cron` (+ `@types/node-cron`)
+- Tests: `tests/unit/use-cases/organization/cleanup-unverified-orgs.use-case.test.ts`
+
+**Salida:** las cuentas fantasma no se acumulan.
+
+---
+
+#### Sub-fase 4.1.G — Organization close / reactivate
+
+**Qué:** Crear el módulo `organization` (no existe). Detalle en [Transversal C](#transversal--cierre-y-reactivación-de-cuenta).
+
+**Estado: ✅ COMPLETA (2026-06-03).** Módulo creado con el controller factory (`makeController`). 10 tests unitarios verdes.
+
+- [x] `POST /api/organization/close` (solo owner): body `{ confirmationName }` debe coincidir con `organization.name`
+- [x] Marcar `organization.deletedAt = now()` (+ `status = CANCELLED`) + incrementar `tokenVersion` de todos los users de la org (atómico vía `$transaction` en `OrganizationRepository.close`)
+- [x] `POST /api/organization/reactivate` (solo owner, dentro de 30 días) — **ruta pública** que re-valida email+password (el JWT viejo queda invalidado y login bloquea orgs cerradas); emite JWT nuevo + cookie HttpOnly
+- [x] Crear `organization.routes.ts` + controllers + use-cases y registrar en `routes/index.ts` (montado antes del bloque global de auth por el reactivate público)
+- [ ] El hard-delete real (cron a 30 días) → Transversal C.3 (fuera de 4.1)
+- [x] Tests: close marca deletedAt e invalida sesiones; reactivate solo owner y dentro de ventana
+
+**Implementado en:**
+- `src/core/application/dto/organization.dto.ts`
+- `src/core/application/use-cases/organization/close-organization.use-case.ts`
+- `src/core/application/use-cases/organization/reactivate-organization.use-case.ts`
+- `src/controllers/organization/` (close vía `makeController`)
+- `src/server/routes/organization.routes.ts`
+- `src/core/infrastructure/config/dependency-injection/organization.module.ts`
+- `OrganizationRepository.close/reactivate/findByIdIncludingDeleted` (+ `deletedAt` en `OrganizationRecord`)
+- Errores nuevos: `ORGANIZATION_NAME_MISMATCH`, `ORGANIZATION_ALREADY_CLOSED`, `ORGANIZATION_NOT_CLOSED`, `ORGANIZATION_REACTIVATION_EXPIRED`
+- Tests: `tests/unit/use-cases/organization/*.test.ts`
+
+**Salida:** el owner puede cerrar y reactivar su organización.
+
+---
+
+#### Sub-fase 4.1.H — Tests E2E del flujo de alta
+
+**Qué:** Verificar el camino completo de un cliente nuevo de punta a punta.
+
+**Estado: ✅ COMPLETA (2026-06-03).** 4 tests E2E verdes contra DB real (supertest + Express app real), con skip automático si no hay DATABASE_URL operativa.
+
+- [x] E2E: signup → JWT válido (body + cookie HttpOnly) → org+owner+sucursal+bootstrap (4 categorías + Mesa 1) creados en una transacción; password persistido hasheado
+- [x] E2E: email duplicado → 409 `EMAIL_ALREADY_EXISTS` (sin crear una segunda org)
+- [x] E2E: owner crea empleado `WAITER` con `branchIds` → `GET /api/users/:id` y el login solo exponen esa sucursal; `GET /api/branches` la filtra; `switch-branch` a la asignada 200, a la ajena → `BRANCH_FORBIDDEN`
+- [x] E2E: aislamiento — el owner de org A solo ve su sucursal; leer la sucursal de org B → 403 `FORBIDDEN`
+
+**Implementado en:**
+- `tests/integration/auth/signup.integration.test.ts`
+- Se ejecuta con `BILLING_ENABLED=false` (el signup crea la subscription sin `currentPeriodEnd`, que el `SubscriptionMiddleware` rechazaría) y `EMAIL_ENABLED=false`.
+
+**Salida:** flujo de alta cubierto por tests automatizados.
 
 ---
 
@@ -1199,9 +1354,9 @@ npx prisma db seed
 
 ### Etapa 1
 
-- [ ] Tenant obligatorio en modelos de dominio.
-- [ ] JWT con `org` + `branch` + `tokenVersion`.
-- [ ] `GET /api/config` y guards operativos.
+- [x] Tenant obligatorio en modelos de dominio.
+- [x] JWT con `org` + `branch` + `tokenVersion`.
+- [x] `GET /api/config` y guards operativos.
 
 ### Etapa 2
 

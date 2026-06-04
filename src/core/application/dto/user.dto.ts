@@ -18,6 +18,9 @@ export const createUserSchema = z.object({
   rol: z.nativeEnum(UserRole, {
     errorMap: () => ({ message: 'Invalid role. Must be ADMIN, MANAGER, WAITER, or CHEF' }),
   }),
+  // Sucursales asignadas (para roles no org-wide: MANAGER, WAITER, CHEF).
+  // OWNER/ADMIN acceden a todas, ignoran este campo.
+  branchIds: z.array(z.string().uuid('Invalid branch ID format')).optional(),
 });
 
 // Update User Schema (all fields optional except those that shouldn't change)
@@ -38,6 +41,8 @@ export const updateUserSchema = z.object({
   rol: z.nativeEnum(UserRole, {
     errorMap: () => ({ message: 'Invalid role. Must be ADMIN, MANAGER, WAITER, or CHEF' }),
   }).optional(),
+  // Si se envía, reemplaza el set de sucursales asignadas al usuario.
+  branchIds: z.array(z.string().uuid('Invalid branch ID format')).optional(),
 });
 
 // Get User Schema (path parameter)
@@ -67,6 +72,11 @@ export const reactivateUserSchema = z.object({
   user_id: z.string().uuid('Invalid user ID format'),
 });
 
+// Reset Password Schema (path parameter) — owner/admin fuerza reseteo de un empleado
+export const resetUserPasswordSchema = z.object({
+  user_id: z.string().uuid('Invalid user ID format'),
+});
+
 // Type exports
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
@@ -74,4 +84,5 @@ export type GetUserInput = z.infer<typeof getUserSchema>;
 export type ListUsersInput = z.infer<typeof listUsersSchema>;
 export type DeleteUserInput = z.infer<typeof deleteUserSchema>;
 export type ReactivateUserInput = z.infer<typeof reactivateUserSchema>;
+export type ResetUserPasswordInput = z.infer<typeof resetUserPasswordSchema>;
 

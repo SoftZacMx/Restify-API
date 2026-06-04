@@ -3,7 +3,7 @@ import { IEmployeeSalaryPaymentRepository } from '../../../../src/core/domain/in
 import { IUserRepository } from '../../../../src/core/domain/interfaces/user-repository.interface';
 import { EmployeeSalaryPayment } from '../../../../src/core/domain/entities/employee-salary-payment.entity';
 import { User } from '../../../../src/core/domain/entities/user.entity';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('CreateEmployeeSalaryPaymentUseCase', () => {
@@ -29,6 +29,8 @@ describe('CreateEmployeeSalaryPaymentUseCase', () => {
       delete: jest.fn(),
       findAll: jest.fn(),
       reactivate: jest.fn(),
+      markForPasswordReset: jest.fn(),
+      markEmailVerified: jest.fn(),
     };
 
     createEmployeeSalaryPaymentUseCase = new CreateEmployeeSalaryPaymentUseCase(
@@ -60,6 +62,11 @@ describe('CreateEmployeeSalaryPaymentUseCase', () => {
         null,
         true,
         UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
         new Date(),
         new Date()
       );
@@ -122,6 +129,11 @@ describe('CreateEmployeeSalaryPaymentUseCase', () => {
         null,
         true,
         UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
         new Date(),
         new Date()
       );

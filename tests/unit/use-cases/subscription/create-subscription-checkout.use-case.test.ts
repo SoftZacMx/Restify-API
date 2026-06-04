@@ -1,21 +1,20 @@
 import { CreateSubscriptionCheckoutUseCase } from '../../../../src/core/application/use-cases/subscription/create-subscription-checkout.use-case';
 import { ISubscriptionRepository } from '../../../../src/core/domain/interfaces/subscription-repository.interface';
 import { ISubscriptionPlanRepository } from '../../../../src/core/domain/interfaces/subscription-plan-repository.interface';
-import { ICompanyRepository } from '../../../../src/core/domain/interfaces/company-repository.interface';
+import { IOrganizationRepository, OrganizationRecord } from '../../../../src/core/domain/interfaces/organization-repository.interface';
 import { IUserRepository } from '../../../../src/core/domain/interfaces/user-repository.interface';
 import { StripeSubscriptionService } from '../../../../src/core/infrastructure/payment-gateways/stripe-subscription.service';
 import { Subscription } from '../../../../src/core/domain/entities/subscription.entity';
 import { SubscriptionPlan } from '../../../../src/core/domain/entities/subscription-plan.entity';
 import { User } from '../../../../src/core/domain/entities/user.entity';
-import { Company } from '../../../../src/core/domain/entities/company.entity';
-import { SubscriptionStatus, UserRole, BillingPeriod } from '@prisma/client';
+import { SubscriptionStatus, UserRole, BillingPeriod, OrganizationPlan } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('CreateSubscriptionCheckoutUseCase', () => {
   let useCase: CreateSubscriptionCheckoutUseCase;
   let mockSubscriptionRepository: jest.Mocked<ISubscriptionRepository>;
   let mockPlanRepository: jest.Mocked<ISubscriptionPlanRepository>;
-  let mockCompanyRepository: jest.Mocked<ICompanyRepository>;
+  let mockOrganizationRepository: jest.Mocked<IOrganizationRepository>;
   let mockUserRepository: jest.Mocked<IUserRepository>;
   let mockStripeService: jest.Mocked<StripeSubscriptionService>;
 
@@ -29,27 +28,22 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     null,
     true,
     UserRole.ADMIN,
+    'org-1',
+    'ACTIVE',
+    0,
+    new Date(),
+    false,
     new Date(),
     new Date()
   );
 
-  const mockCompany = new Company(
-    'company-1',
-    'Mi Restaurante',
-    'State',
-    'City',
-    'Street',
-    '123',
-    '5551234567',
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    new Date(),
-    new Date()
-  );
+  const mockOrganization: OrganizationRecord = {
+    id: 'org-1',
+    name: 'Mi Restaurante',
+    plan: OrganizationPlan.FREE,
+    status: 'ACTIVE',
+    deletedAt: null,
+  };
 
   const mockPlan = new SubscriptionPlan(
     'plan-monthly-1',
@@ -57,6 +51,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     BillingPeriod.MONTHLY,
     322000,
     'price_test_123',
+    5,
     true,
     new Date(),
     new Date()
@@ -65,6 +60,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
   beforeEach(() => {
     mockSubscriptionRepository = {
       find: jest.fn(),
+      findByStripeSubscriptionId: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     };
@@ -76,10 +72,13 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
       findByStripePriceId: jest.fn(),
     };
 
-    mockCompanyRepository = {
-      findFirst: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
+    mockOrganizationRepository = {
+      findById: jest.fn(),
+      findFirstActive: jest.fn(),
+      findByIdIncludingDeleted: jest.fn(),
+      close: jest.fn(),
+      reactivate: jest.fn(),
+      findUnverifiedOwnerOrgIdsOlderThan: jest.fn(),
     };
 
     mockUserRepository = {
@@ -90,6 +89,8 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
       delete: jest.fn(),
       findAll: jest.fn(),
       reactivate: jest.fn(),
+      markForPasswordReset: jest.fn(),
+      markEmailVerified: jest.fn(),
     };
 
     mockStripeService = {
@@ -105,7 +106,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     useCase = new CreateSubscriptionCheckoutUseCase(
       mockSubscriptionRepository,
       mockPlanRepository,
-      mockCompanyRepository,
+      mockOrganizationRepository,
       mockUserRepository,
       mockStripeService
     );
@@ -123,7 +124,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
   it('should create checkout session for new subscription with plan', async () => {
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
     mockPlanRepository.findById.mockResolvedValue(mockPlan);
-    mockCompanyRepository.findFirst.mockResolvedValue(mockCompany);
+    mockOrganizationRepository.findById.mockResolvedValue(mockOrganization);
     mockSubscriptionRepository.find.mockResolvedValue(null);
     mockStripeService.createCustomer.mockResolvedValue('cus_test_123');
     mockStripeService.createCheckoutSession.mockResolvedValue({
@@ -133,6 +134,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     mockSubscriptionRepository.create.mockResolvedValue(
       new Subscription(
         'sub-id-1',
+        'org-1',
         'cus_test_123',
         null,
         SubscriptionStatus.EXPIRED,
@@ -160,6 +162,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
       })
     );
     expect(mockSubscriptionRepository.create).toHaveBeenCalledWith({
+      organizationId: 'org-1',
       stripeCustomerId: 'cus_test_123',
       planId: 'plan-monthly-1',
     });
@@ -168,6 +171,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
   it('should reuse existing stripe customer when subscription exists but is not active', async () => {
     const existingSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_existing_123',
       null,
       SubscriptionStatus.EXPIRED,
@@ -181,7 +185,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
 
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
     mockPlanRepository.findById.mockResolvedValue(mockPlan);
-    mockCompanyRepository.findFirst.mockResolvedValue(mockCompany);
+    mockOrganizationRepository.findById.mockResolvedValue(mockOrganization);
     mockSubscriptionRepository.find.mockResolvedValue(existingSub);
     mockSubscriptionRepository.update.mockResolvedValue(existingSub);
     mockStripeService.createCheckoutSession.mockResolvedValue({
@@ -203,6 +207,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
   it('should throw error when subscription is already active', async () => {
     const activeSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       'sub_test_123',
       SubscriptionStatus.ACTIVE,

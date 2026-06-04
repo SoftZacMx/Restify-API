@@ -1,0 +1,35 @@
+meta {
+  name: Update Employee Salary
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/employee-salaries/:employee_salary_payment_id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  employee_salary_payment_id:
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "amount": 5500.00,
+    "paymentMethod": 2,
+    "date": "2026-06-01"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  PUT /api/employee-salaries/:employee_salary_payment_id — Actualiza un pago de salario. paymentMethod: 1 (Efectivo), 2 (Transferencia), 3 (Tarjeta). Todos los campos opcionales.
+}

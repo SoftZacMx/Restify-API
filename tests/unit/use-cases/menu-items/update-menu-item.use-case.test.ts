@@ -41,6 +41,8 @@ describe('UpdateMenuItemUseCase', () => {
       delete: jest.fn(),
       findAll: jest.fn(),
       reactivate: jest.fn(),
+      markForPasswordReset: jest.fn(),
+      markEmailVerified: jest.fn(),
     };
 
     updateMenuItemUseCase = new UpdateMenuItemUseCase(

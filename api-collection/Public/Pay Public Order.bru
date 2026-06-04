@@ -1,0 +1,23 @@
+meta {
+  name: Pay Public Order
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/public/orders/:orderId/pay
+  body: none
+  auth: none
+}
+
+params:path {
+  orderId:
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  POST /api/public/orders/:orderId/pay — Paga un pedido público con Mercado Pago. Sin auth, con rate limit.
+}

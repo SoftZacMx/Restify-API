@@ -448,6 +448,26 @@ export const ERROR_CONFIG = {
     statusCode: 400,
     category: 'BUSINESS',
   },
+  ORGANIZATION_NAME_MISMATCH: {
+    message: 'Confirmation name does not match the organization name',
+    statusCode: 400,
+    category: 'BUSINESS',
+  },
+  ORGANIZATION_ALREADY_CLOSED: {
+    message: 'Organization is already closed',
+    statusCode: 409,
+    category: 'BUSINESS',
+  },
+  ORGANIZATION_NOT_CLOSED: {
+    message: 'Organization is not closed',
+    statusCode: 409,
+    category: 'BUSINESS',
+  },
+  ORGANIZATION_REACTIVATION_EXPIRED: {
+    message: 'The reactivation window has expired',
+    statusCode: 410,
+    category: 'BUSINESS',
+  },
 
   // ============================================
   // System Errors

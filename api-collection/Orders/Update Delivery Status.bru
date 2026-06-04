@@ -1,0 +1,33 @@
+meta {
+  name: Update Delivery Status
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{baseUrl}}/api/orders/:order_id/delivery-status
+  body: json
+  auth: inherit
+}
+
+params:path {
+  order_id:
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "status": "PREPARING"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  PUT /api/orders/:order_id/delivery-status — Actualiza el estado de entrega. status: PREPARING | READY | ON_THE_WAY | DELIVERED.
+}

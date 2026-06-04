@@ -3,7 +3,7 @@ import { ITableRepository } from '../../../../src/core/domain/interfaces/table-r
 import { IUserRepository } from '../../../../src/core/domain/interfaces/user-repository.interface';
 import { Table } from '../../../../src/core/domain/entities/table.entity';
 import { User } from '../../../../src/core/domain/entities/user.entity';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('CreateTableUseCase', () => {
@@ -29,6 +29,8 @@ describe('CreateTableUseCase', () => {
       delete: jest.fn(),
       findAll: jest.fn(),
       reactivate: jest.fn(),
+      markForPasswordReset: jest.fn(),
+      markEmailVerified: jest.fn(),
     };
 
     createTableUseCase = new CreateTableUseCase(
@@ -60,6 +62,11 @@ describe('CreateTableUseCase', () => {
         null,
         true,
         UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
         new Date(),
         new Date()
       );
@@ -113,6 +120,11 @@ describe('CreateTableUseCase', () => {
         null,
         true,
         UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
         new Date(),
         new Date()
       );

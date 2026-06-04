@@ -1,0 +1,23 @@
+meta {
+  name: Get QR Payment Status
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/payments/qr-mercado-pago/:orderId
+  body: none
+  auth: inherit
+}
+
+params:path {
+  orderId:
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/payments/qr-mercado-pago/:orderId — Consulta el estado de un pago QR de Mercado Pago.
+}

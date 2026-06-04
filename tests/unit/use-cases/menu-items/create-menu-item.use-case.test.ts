@@ -5,7 +5,7 @@ import { IUserRepository } from '../../../../src/core/domain/interfaces/user-rep
 import { MenuItem } from '../../../../src/core/domain/entities/menu-item.entity';
 import { MenuCategory } from '../../../../src/core/domain/entities/menu-category.entity';
 import { User } from '../../../../src/core/domain/entities/user.entity';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('CreateMenuItemUseCase', () => {
@@ -41,6 +41,8 @@ describe('CreateMenuItemUseCase', () => {
       delete: jest.fn(),
       findAll: jest.fn(),
       reactivate: jest.fn(),
+      markForPasswordReset: jest.fn(),
+      markEmailVerified: jest.fn(),
     };
 
     createMenuItemUseCase = new CreateMenuItemUseCase(
@@ -76,6 +78,11 @@ describe('CreateMenuItemUseCase', () => {
         null,
         true,
         UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
         new Date(),
         new Date()
       );
@@ -145,6 +152,11 @@ describe('CreateMenuItemUseCase', () => {
         null,
         true,
         UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
         new Date(),
         new Date()
       );

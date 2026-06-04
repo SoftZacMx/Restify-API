@@ -4,3 +4,4 @@ export { listUsersController } from './list-users.controller';
 export { updateUserController } from './update-user.controller';
 export { deleteUserController } from './delete-user.controller';
 export { reactivateUserController } from './reactivate-user.controller';
+export { resetUserPasswordController } from './reset-user-password.controller';

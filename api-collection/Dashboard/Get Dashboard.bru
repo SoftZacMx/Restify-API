@@ -1,0 +1,19 @@
+meta {
+  name: Get Dashboard
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/dashboard
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/dashboard — Métricas del dashboard. Requiere MANAGER o superior.
+}

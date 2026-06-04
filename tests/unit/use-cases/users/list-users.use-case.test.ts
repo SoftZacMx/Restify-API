@@ -1,7 +1,15 @@
 import { ListUsersUseCase } from '../../../../src/core/application/use-cases/users/list-users.use-case';
 import { IUserRepository } from '../../../../src/core/domain/interfaces/user-repository.interface';
 import { User } from '../../../../src/core/domain/entities/user.entity';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
+
+// Helper para construir un User con los 16 args del constructor.
+function makeUser(id: string, name: string, last: string, email: string, hash: string, rol: UserRole): User {
+  return new User(
+    id, name, last, null, email, hash, null, true, rol,
+    'org-1', UserAccountStatus.ACTIVE, 0, null, false, new Date(), new Date()
+  );
+}
 
 describe('ListUsersUseCase', () => {
   let listUsersUseCase: ListUsersUseCase;
@@ -16,6 +24,8 @@ describe('ListUsersUseCase', () => {
       delete: jest.fn(),
       findAll: jest.fn(),
       reactivate: jest.fn(),
+      markForPasswordReset: jest.fn(),
+      markEmailVerified: jest.fn(),
     };
 
     listUsersUseCase = new ListUsersUseCase(mockUserRepository);
@@ -28,8 +38,8 @@ describe('ListUsersUseCase', () => {
   describe('execute', () => {
     it('should return all users when no filters provided', async () => {
       const mockUsers = [
-        new User('1', 'John', 'Doe', null, 'john@example.com', 'hash1', null, true, UserRole.WAITER, new Date(), new Date()),
-        new User('2', 'Jane', 'Smith', null, 'jane@example.com', 'hash2', null, true, UserRole.MANAGER, new Date(), new Date()),
+        makeUser('1', 'John', 'Doe', 'john@example.com', 'hash1', UserRole.WAITER),
+        makeUser('2', 'Jane', 'Smith', 'jane@example.com', 'hash2', UserRole.MANAGER),
       ];
 
       mockUserRepository.findAll.mockResolvedValue(mockUsers);
@@ -44,7 +54,7 @@ describe('ListUsersUseCase', () => {
 
     it('should return filtered users by role', async () => {
       const mockUsers = [
-        new User('1', 'John', 'Doe', null, 'john@example.com', 'hash1', null, true, UserRole.WAITER, new Date(), new Date()),
+        makeUser('1', 'John', 'Doe', 'john@example.com', 'hash1', UserRole.WAITER),
       ];
 
       mockUserRepository.findAll.mockResolvedValue(mockUsers);
@@ -62,7 +72,7 @@ describe('ListUsersUseCase', () => {
 
     it('should return filtered users by status', async () => {
       const mockUsers = [
-        new User('1', 'John', 'Doe', null, 'john@example.com', 'hash1', null, true, UserRole.WAITER, new Date(), new Date()),
+        makeUser('1', 'John', 'Doe', 'john@example.com', 'hash1', UserRole.WAITER),
       ];
 
       mockUserRepository.findAll.mockResolvedValue(mockUsers);
@@ -80,7 +90,7 @@ describe('ListUsersUseCase', () => {
 
     it('should not return passwords in results', async () => {
       const mockUsers = [
-        new User('1', 'John', 'Doe', null, 'john@example.com', 'hash1', null, true, UserRole.WAITER, new Date(), new Date()),
+        makeUser('1', 'John', 'Doe', 'john@example.com', 'hash1', UserRole.WAITER),
       ];
 
       mockUserRepository.findAll.mockResolvedValue(mockUsers);

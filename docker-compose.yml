@@ -46,7 +46,7 @@ services:
       - "4566:4566"
       - "4510-4559:4510-4559"
     environment:
-      - SERVICES=sqs,dynamodb,eventbridge,secretsmanager
+      - SERVICES=sqs,dynamodb,eventbridge,secretsmanager,ses
       - DEBUG=1
       - DATA_DIR=/var/lib/localstack/data
       - DOCKER_HOST=unix:///var/run/docker.sock

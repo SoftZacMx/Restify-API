@@ -2,13 +2,13 @@
 
 // Mock tsyringe before any imports
 jest.mock('tsyringe', () => {
-  const mockFindFirst = jest.fn();
+  const mockFindUnique = jest.fn();
   return {
     container: {
       resolve: jest.fn().mockReturnValue({
         getClient: () => ({
           subscription: {
-            findFirst: mockFindFirst,
+            findUnique: mockFindUnique,
           },
         }),
       }),
@@ -16,7 +16,7 @@ jest.mock('tsyringe', () => {
     singleton: () => (target: any) => target,
     injectable: () => (target: any) => target,
     inject: () => () => undefined,
-    __mockFindFirst: mockFindFirst,
+    __mockFindUnique: mockFindUnique,
   };
 });
 
@@ -24,7 +24,7 @@ import { SubscriptionMiddleware } from '../../../src/server/middleware/subscript
 
 // Get the mock function
 const tsyringe = require('tsyringe');
-const mockFindFirst = tsyringe.__mockFindFirst;
+const mockFindFirst = tsyringe.__mockFindUnique;
 
 describe('SubscriptionMiddleware', () => {
   let mockReq: any;
@@ -32,7 +32,8 @@ describe('SubscriptionMiddleware', () => {
   let mockNext: jest.Mock;
 
   beforeEach(() => {
-    mockReq = {};
+    process.env.BILLING_ENABLED = 'true';
+    mockReq = { user: { org: 'org-1' } };
     mockRes = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn().mockReturnThis(),

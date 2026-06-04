@@ -1,0 +1,29 @@
+meta {
+  name: Verify Subscription Checkout
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/subscription/verify-checkout
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "sessionId": "cs_test_xxx"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  POST /api/subscription/verify-checkout — Verifica y actualiza el estado de la suscripción tras el pago (Stripe Checkout Session).
+}

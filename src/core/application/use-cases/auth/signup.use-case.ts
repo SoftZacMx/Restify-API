@@ -6,7 +6,9 @@ import { SignupInput } from '../../dto/auth.dto';
 import { AppError } from '../../../../shared/errors';
 import { CreateFirstBranchUseCase } from '../branches/create-first-branch.use-case';
 import { BootstrapBranchService } from '../../services/bootstrap-branch.service';
+import { SendVerificationEmailUseCase } from './send-verification-email.use-case';
 import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
+import { logger } from '../../../../shared/utils/logger';
 
 export interface SignupResult {
   token: string;
@@ -33,7 +35,9 @@ export class SignupUseCase {
   constructor(
     @inject('PrismaClient') private readonly prisma: PrismaClient,
     @inject(CreateFirstBranchUseCase) private readonly createFirstBranch: CreateFirstBranchUseCase,
-    @inject(BootstrapBranchService) private readonly bootstrapBranch: BootstrapBranchService
+    @inject(BootstrapBranchService) private readonly bootstrapBranch: BootstrapBranchService,
+    @inject(SendVerificationEmailUseCase)
+    private readonly sendVerificationEmail: SendVerificationEmailUseCase
   ) {}
 
   async execute(input: SignupInput): Promise<SignupResult> {
@@ -104,6 +108,22 @@ export class SignupUseCase {
         return { org, user, branch };
       });
     });
+
+    // Enviar correo de verificación (4.1.E). Fuera de la transacción y best-effort:
+    // un fallo del email no debe abortar el alta ya persistida. El usuario puede
+    // reenviarlo con /auth/resend-verification.
+    try {
+      await this.sendVerificationEmail.execute({
+        userId: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+      });
+    } catch (error) {
+      logger.error(
+        { err: error, userId: result.user.id },
+        '[Signup] No se pudo enviar el correo de verificación (alta no afectada)'
+      );
+    }
 
     // Generar JWT
     const token = JwtUtil.generateToken({

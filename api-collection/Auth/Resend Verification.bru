@@ -1,0 +1,30 @@
+meta {
+  name: Resend Verification
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/auth/resend-verification
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "owner3@demo.com"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  POST /api/auth/resend-verification — Reenvía el correo de verificación (4.1.E). Respuesta uniforme anti-enumeración: siempre 200, exista o no el email y aunque ya esté verificado (en esos casos es un no-op silencioso). Si el usuario existe y no está verificado, despacha un token nuevo. Rate limit: 3 intentos / 15 min.
+}

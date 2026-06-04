@@ -1,0 +1,23 @@
+meta {
+  name: Get Public Order Status
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/public/orders/:trackingToken/status
+  body: none
+  auth: none
+}
+
+params:path {
+  trackingToken:
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/public/orders/:trackingToken/status — Seguimiento público del pedido por su tracking token. Sin auth, con rate limit.
+}

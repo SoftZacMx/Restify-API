@@ -11,3 +11,6 @@ container.registerSingleton(PrismaService);
  * Cast seguro: en runtime el client extendido tiene todos los métodos de PrismaClient.
  */
 export const prismaClient = getPrisma() as unknown as PrismaClient;
+
+// Token 'PrismaClient' para use-cases que inyectan el cliente directamente (ej. SignupUseCase).
+container.registerInstance<PrismaClient>('PrismaClient', prismaClient);

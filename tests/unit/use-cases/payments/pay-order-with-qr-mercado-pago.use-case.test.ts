@@ -37,6 +37,7 @@ describe('PayOrderWithQRMercadoPagoUseCase', () => {
     null,
     userId,
     null, null, null, null, null, null, null, null,
+    null,
     new Date(),
     new Date()
   );
@@ -47,6 +48,7 @@ describe('PayOrderWithQRMercadoPagoUseCase', () => {
       findByTrackingToken: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
+      createWithItems: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       createOrderItem: jest.fn(),
@@ -174,7 +176,7 @@ describe('PayOrderWithQRMercadoPagoUseCase', () => {
   it('should throw ORDER_ALREADY_PAID when order is already paid', async () => {
     const paidOrder = new Order(
       orderId, new Date(), true, 1, 150.50, 129.74, 20.76,
-      false, null, 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, new Date(), new Date()
+      false, null, 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
     );
     mockOrderRepository.findById.mockResolvedValue(paidOrder);
 

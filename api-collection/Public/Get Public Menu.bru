@@ -1,0 +1,23 @@
+meta {
+  name: Get Public Menu
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/public/menu?branchId={{branchId}}
+  body: none
+  auth: none
+}
+
+params:query {
+  branchId: {{branchId}}
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/public/menu?branchId=xxx — Menú público (items activos agrupados por categoría). Sin auth, con rate limit.
+}

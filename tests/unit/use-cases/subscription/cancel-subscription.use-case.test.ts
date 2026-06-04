@@ -13,6 +13,7 @@ describe('CancelSubscriptionUseCase', () => {
   beforeEach(() => {
     mockSubscriptionRepository = {
       find: jest.fn(),
+      findByStripeSubscriptionId: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     };
@@ -41,6 +42,7 @@ describe('CancelSubscriptionUseCase', () => {
   it('should cancel active subscription at period end', async () => {
     const activeSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       'sub_test_123',
       SubscriptionStatus.ACTIVE,
@@ -54,6 +56,7 @@ describe('CancelSubscriptionUseCase', () => {
 
     const updatedSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       'sub_test_123',
       SubscriptionStatus.ACTIVE,
@@ -96,6 +99,7 @@ describe('CancelSubscriptionUseCase', () => {
   it('should throw error when subscription is not active', async () => {
     const expiredSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       'sub_test_123',
       SubscriptionStatus.EXPIRED,
@@ -121,6 +125,7 @@ describe('CancelSubscriptionUseCase', () => {
   it('should throw error when subscription has no stripe subscription id', async () => {
     const noStripeSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       null, // no stripeSubscriptionId
       SubscriptionStatus.ACTIVE,

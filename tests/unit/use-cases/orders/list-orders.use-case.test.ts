@@ -32,6 +32,7 @@ describe('ListOrdersUseCase', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      createWithItems: jest.fn(),
       createOrderItem: jest.fn(),
       updateOrderItem: jest.fn(),
       deleteOrderItem: jest.fn(),
@@ -70,7 +71,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),
@@ -90,6 +91,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-456',
+          null,
           null,
           null,
           null,
@@ -135,7 +137,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),
@@ -190,7 +192,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),
@@ -235,7 +237,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),
@@ -280,7 +282,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),
@@ -325,7 +327,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),
@@ -372,7 +374,7 @@ describe('ListOrdersUseCase', () => {
           false,
           null,
           'user-123',
-          null, null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null, null,
           new Date(),
           new Date()
         ),

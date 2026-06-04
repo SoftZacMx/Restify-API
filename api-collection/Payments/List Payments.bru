@@ -1,17 +1,22 @@
 meta {
   name: List Payments
   type: http
-  seq: 7
+  seq: 5
 }
 
 get {
-  url: {{baseUrl}}/api/payment
+  url: {{baseUrl}}/api/payments
   body: none
   auth: inherit
 }
 
-headers {
-  Content-Type: application/json
+params:query {
+  ~orderId:
+  ~userId:
+  ~status:
+  ~paymentMethod:
+  ~dateFrom:
+  ~dateTo:
 }
 
 settings {
@@ -19,5 +24,5 @@ settings {
 }
 
 docs {
-  GET /api/payment/
+  GET /api/payments — Lista pagos. Filtros opcionales: orderId, userId, status, paymentMethod, dateFrom, dateTo.
 }

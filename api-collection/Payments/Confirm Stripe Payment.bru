@@ -1,12 +1,12 @@
 meta {
   name: Confirm Stripe Payment
   type: http
-  seq: 6
+  seq: 2
 }
 
 post {
-  url: {{baseUrl}}/api/payment/stripe/confirm
-  body: none
+  url: {{baseUrl}}/api/payments/stripe/confirm
+  body: json
   auth: inherit
 }
 
@@ -14,10 +14,17 @@ headers {
   Content-Type: application/json
 }
 
+body:json {
+  {
+    "paymentIntentId": "pi_xxxxxxxx",
+    "status": "succeeded"
+  }
+}
+
 settings {
   encodeUrl: true
 }
 
 docs {
-  POST /api/payment/stripe/confirm
+  POST /api/payments/stripe/confirm — Confirma el resultado de un pago Stripe. status: succeeded | failed.
 }

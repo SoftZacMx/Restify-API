@@ -26,6 +26,7 @@ describe('GetOrderUseCase', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      createWithItems: jest.fn(),
       createOrderItem: jest.fn(),
       updateOrderItem: jest.fn(),
       deleteOrderItem: jest.fn(),
@@ -96,7 +97,7 @@ describe('GetOrderUseCase', () => {
         false,
         null,
         'user-123',
-        null, null, null, null, null, null, null, null,
+        null, null, null, null, null, null, null, null, null,
         new Date(),
         new Date()
       );
@@ -186,7 +187,7 @@ describe('GetOrderUseCase', () => {
         false,
         null,
         'user-123',
-        null, null, null, null, null, null, null, null,
+        null, null, null, null, null, null, null, null, null,
         new Date(),
         new Date()
       );

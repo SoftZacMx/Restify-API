@@ -25,6 +25,7 @@ describe('DeleteOrderUseCase', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      createWithItems: jest.fn(),
       createOrderItem: jest.fn(),
       updateOrderItem: jest.fn(),
       deleteOrderItem: jest.fn(),
@@ -70,7 +71,7 @@ describe('DeleteOrderUseCase', () => {
       return new Order(
         'order-123', new Date(), false, 1, 23.20, 20.00, 3.20, false,
         tableId, 0, 'Local', null, false, null, 'user-123',
-        null, null, null, null, null, null, null, null,
+        null, null, null, null, null, null, null, null, null,
         new Date(), new Date()
       );
     }

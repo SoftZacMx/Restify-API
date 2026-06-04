@@ -1,0 +1,48 @@
+meta {
+  name: Signup
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/auth/signup
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "user": {
+      "email": "owner5@demo.com",
+      "password": "Passw0rd",
+      "name": "Juan2",
+      "lastName": "Perez2"
+    },
+    "organization": {
+      "name": "Tacos El Demo 5"
+    },
+    "branch": {
+      "name": "Sucursal Centro",
+      "state": "CDMX",
+      "city": "CDMX",
+      "street": "Reforma",
+      "exteriorNumber": "100",
+      "phone": "5551234567",
+      "timezone": "America/Mexico_City"
+    },
+    "timezone": "America/Mexico_City"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  POST /api/auth/signup — Alta pública: crea organización + owner + primera sucursal (+ bootstrap) y devuelve un JWT. Setea cookie HttpOnly. Rate limit: 5 intentos / 15 min. Password: mín. 8 caracteres con mayúscula, minúscula y número.
+}

@@ -1,0 +1,27 @@
+meta {
+  name: Reactivate User
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/api/users/:user_id/reactivate
+  body: none
+  auth: inherit
+}
+
+params:path {
+  user_id:
+}
+
+headers {
+  Content-Type: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  PATCH /api/users/:user_id/reactivate — Reactiva un usuario desactivado. Requiere MANAGER o superior.
+}

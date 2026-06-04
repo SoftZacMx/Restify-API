@@ -1,0 +1,30 @@
+meta {
+  name: Verify Email
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/auth/verify-email
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1MTUwOTUxYS03OGRmLTRmMmItYmM3NC0wNTY3NjE3NjNkNzAiLCJlbWFpbCI6Im93bmVyNEBkZW1vLmNvbSIsInB1cnBvc2UiOiJlbWFpbF92ZXJpZmljYXRpb24iLCJpYXQiOjE3ODA1MDY5NDUsImV4cCI6MTc4MDU5MzM0NX0.j-68cD_mcLIP6Bvll_7qZAoaNWxwMsPTokLAjItNk5A"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  POST /api/auth/verify-email — Confirma la titularidad del correo (4.1.E). El `token` es el JWT que llega en el link del correo de verificación (también disponible como GET /api/auth/verify-email?token=...). Idempotente: la primera vez responde { email, alreadyVerified: false }; con un token ya usado responde { alreadyVerified: true }. Token inválido/expirado/purpose incorrecto → 401 INVALID_TOKEN. Rate limit: 3 intentos / 15 min.
+}

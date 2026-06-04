@@ -1,12 +1,20 @@
 import { CreateOrderUseCase } from '../../../../src/core/application/use-cases/orders/create-order.use-case';
 import { IUserRepository } from '../../../../src/core/domain/interfaces/user-repository.interface';
 import { ITableRepository } from '../../../../src/core/domain/interfaces/table-repository.interface';
-import { ICompanyRepository } from '../../../../src/core/domain/interfaces/company-repository.interface';
+import { IBranchRepository } from '../../../../src/core/domain/interfaces/branch-repository.interface';
 import { PrismaService } from '../../../../src/core/infrastructure/config/prisma.config';
 import { User } from '../../../../src/core/domain/entities/user.entity';
 import { Table } from '../../../../src/core/domain/entities/table.entity';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
+
+// El use case hace los bulk-loads (menuItem/product findMany) vía getPrisma()
+// (cliente con tenant extension), no vía PrismaService. Lo redirigimos al
+// mockClient activo para poder controlar/assertar esas lecturas.
+let activePrismaClient: any;
+jest.mock('../../../../src/core/infrastructure/database/prisma/get-prisma', () => ({
+  getPrisma: () => activePrismaClient,
+}));
 
 // Mock prisma client + transaction. Soporta el flujo bulk-load (findMany fuera de tx)
 // y createMany dentro de tx que usa la versión refactorizada del use case.
@@ -77,6 +85,9 @@ function createMockPrismaService(overrides: Record<string, any> = {}) {
     },
   };
 
+  // getPrisma() (bulk-loads) debe resolver a este mismo mockClient.
+  activePrismaClient = mockClient;
+
   return {
     getClient: jest.fn().mockReturnValue(mockClient),
     connect: jest.fn(),
@@ -91,12 +102,13 @@ describe('CreateOrderUseCase', () => {
   let createOrderUseCase: CreateOrderUseCase;
   let mockUserRepository: jest.Mocked<IUserRepository>;
   let mockTableRepository: jest.Mocked<ITableRepository>;
-  let mockCompanyRepository: jest.Mocked<ICompanyRepository>;
+  let mockBranchRepository: jest.Mocked<IBranchRepository>;
   let mockPrismaService: ReturnType<typeof createMockPrismaService>;
 
   const mockUser = new User(
     'user-123', 'John', 'Doe', null, 'john@example.com',
-    'hashed_password', null, true, UserRole.WAITER, new Date(), new Date()
+    'hashed_password', null, true, UserRole.WAITER, 'org-123',
+    UserAccountStatus.ACTIVE, 0, new Date(), false, new Date(), new Date()
   );
 
   // Filas Prisma "raw" (no entidades de dominio) — coinciden con lo que devuelven
@@ -141,6 +153,8 @@ describe('CreateOrderUseCase', () => {
       delete: jest.fn(),
       findAll: jest.fn(),
       reactivate: jest.fn(),
+      markForPasswordReset: jest.fn(),
+      markEmailVerified: jest.fn(),
     };
 
     mockTableRepository = {
@@ -152,8 +166,13 @@ describe('CreateOrderUseCase', () => {
       delete: jest.fn(),
     };
 
-    mockCompanyRepository = {
-      findFirst: jest.fn().mockResolvedValue(null),
+    mockBranchRepository = {
+      findById: jest.fn().mockResolvedValue(null),
+      findByIdAndOrganizationId: jest.fn(),
+      findAllIdsByOrganizationId: jest.fn(),
+      findManyByOrganizationId: jest.fn(),
+      findManyForList: jest.fn(),
+      countActiveByOrganizationId: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     };
@@ -169,7 +188,7 @@ describe('CreateOrderUseCase', () => {
     createOrderUseCase = new CreateOrderUseCase(
       mockUserRepository,
       mockTableRepository,
-      mockCompanyRepository,
+      mockBranchRepository,
       mockPrismaService as any,
       mockStockService,
     );
@@ -244,7 +263,7 @@ describe('CreateOrderUseCase', () => {
       const useCaseWithTable = new CreateOrderUseCase(
         mockUserRepository,
         mockTableRepository,
-        mockCompanyRepository,
+        mockBranchRepository,
         mockPrismaWithTable as any,
         mockStockServiceLocal,
       );
@@ -331,7 +350,7 @@ describe('CreateOrderUseCase', () => {
       const useCase = new CreateOrderUseCase(
         mockUserRepository,
         mockTableRepository,
-        mockCompanyRepository,
+        mockBranchRepository,
         mockPrismaNoProduct as any,
         mockStockServiceLocal,
       );
@@ -368,7 +387,7 @@ describe('CreateOrderUseCase', () => {
       const useCase = new CreateOrderUseCase(
         mockUserRepository,
         mockTableRepository,
-        mockCompanyRepository,
+        mockBranchRepository,
         mockPrismaNoMenuItem as any,
         mockStockServiceLocal,
       );

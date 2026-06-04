@@ -1,0 +1,42 @@
+meta {
+  name: Create Public Order
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/public/orders
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "branchId": "{{branchId}}",
+    "customerName": "Cliente Demo",
+    "customerPhone": "8112345678",
+    "orderType": "DELIVERY",
+    "deliveryAddress": "Av. Constitución 123, Monterrey",
+    "latitude": 25.6866,
+    "longitude": -100.3161,
+    "items": [
+      {
+        "menuItemId": "{{menuItemId}}",
+        "quantity": 2,
+        "note": "Sin cebolla"
+      }
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  POST /api/public/orders — Crea un pedido público (sin auth, branchId en el body). orderType: DELIVERY | PICKUP. Para PICKUP, deliveryAddress/lat/long pueden omitirse.
+}

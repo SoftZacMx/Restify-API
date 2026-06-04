@@ -1,0 +1,30 @@
+meta {
+  name: Close Organization
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/organization/close
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "confirmationName": "Tacos El Demo 5"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  POST /api/organization/close — Cierra la organización (solo OWNER). El `confirmationName` debe coincidir exactamente con el nombre de la organización. Marca `deletedAt = now()` + status CANCELLED e invalida las sesiones de todos los usuarios (incrementa su tokenVersion). El hard-delete real ocurre por cron a los 30 días. El owner puede reactivarla dentro de esa ventana con /reactivate.
+}

@@ -1,0 +1,24 @@
+meta {
+  name: Get Reports Summary
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/reports/summary?dateFrom=2026-01-01&dateTo=2026-12-31
+  body: none
+  auth: inherit
+}
+
+params:query {
+  dateFrom: 2026-01-01
+  dateTo: 2026-12-31
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/reports/summary — Resumen de reportes en un rango de fechas. Requiere MANAGER o superior.
+}

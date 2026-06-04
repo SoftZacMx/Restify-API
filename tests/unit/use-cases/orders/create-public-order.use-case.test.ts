@@ -1,7 +1,15 @@
 import { CreatePublicOrderUseCase } from '../../../../src/core/application/use-cases/orders/create-public-order.use-case';
-import { ICompanyRepository } from '../../../../src/core/domain/interfaces/company-repository.interface';
+import { IMenuItemRepository } from '../../../../src/core/domain/interfaces/menu-item-repository.interface';
+import { IBranchRepository } from '../../../../src/core/domain/interfaces/branch-repository.interface';
+import { Branch } from '../../../../src/core/domain/entities/branch.entity';
 import { PrismaService } from '../../../../src/core/infrastructure/config/prisma.config';
 import { AppError } from '../../../../src/shared/errors';
+
+// Los bulk-loads (menuItem/product findMany) corren vía getPrisma(), no PrismaService.
+let activePrismaClient: any;
+jest.mock('../../../../src/core/infrastructure/database/prisma/get-prisma', () => ({
+  getPrisma: () => activePrismaClient,
+}));
 
 // Filas Prisma "raw" — coinciden con lo que devuelve menuItem.findMany con include.
 const mockMenuItemRow = {
@@ -85,6 +93,9 @@ function createMockPrismaService(
     },
   };
 
+  // getPrisma() (bulk-loads) debe resolver a este mismo mockClient.
+  activePrismaClient = mockClient;
+
   return {
     getClient: jest.fn().mockReturnValue(mockClient),
     connect: jest.fn(),
@@ -97,22 +108,50 @@ function createMockPrismaService(
 
 describe('CreatePublicOrderUseCase', () => {
   let useCase: CreatePublicOrderUseCase;
-  let mockCompanyRepository: jest.Mocked<ICompanyRepository>;
+  let mockMenuItemRepository: jest.Mocked<IMenuItemRepository>;
+  let mockBranchRepository: jest.Mocked<IBranchRepository>;
   let mockPrismaService: ReturnType<typeof createMockPrismaService>;
   let mockStockService: any;
 
   function buildUseCase(prismaOverrides: Parameters<typeof createMockPrismaService>[0] = {}): CreatePublicOrderUseCase {
     mockPrismaService = createMockPrismaService(prismaOverrides);
     return new CreatePublicOrderUseCase(
-      mockCompanyRepository,
+      mockMenuItemRepository,
+      mockBranchRepository,
       mockPrismaService as any,
       mockStockService,
     );
   }
 
+  // Branch base: sin horarios de operación (permite cualquier hora).
+  function makeBranch(overrides: Partial<{ startOperations: string | null; endOperations: string | null }> = {}): Branch {
+    return new Branch(
+      'branch-1', 'org-1', 'Sucursal Centro', 'CDMX', 'CDMX', 'Calle 1', '10',
+      '5512345678', null, null,
+      overrides.startOperations ?? null,
+      overrides.endOperations ?? null,
+      null, null, 'America/Mexico_City', 'MXN', 'active',
+      new Date(), new Date(), null
+    );
+  }
+
   beforeEach(() => {
-    mockCompanyRepository = {
-      findFirst: jest.fn().mockResolvedValue(null),
+    mockMenuItemRepository = {
+      findById: jest.fn(),
+      findByIds: jest.fn(),
+      findAll: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+
+    mockBranchRepository = {
+      findById: jest.fn().mockResolvedValue(makeBranch()),
+      findByIdAndOrganizationId: jest.fn(),
+      findAllIdsByOrganizationId: jest.fn(),
+      findManyByOrganizationId: jest.fn(),
+      findManyForList: jest.fn(),
+      countActiveByOrganizationId: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     };
@@ -131,6 +170,7 @@ describe('CreatePublicOrderUseCase', () => {
 
   it('should create a delivery order with userId null and trackingToken', async () => {
     const result = await useCase.execute({
+      branchId: 'branch-1',
       customerName: 'Juan',
       customerPhone: '5512345678',
       orderType: 'DELIVERY',
@@ -157,6 +197,7 @@ describe('CreatePublicOrderUseCase', () => {
     useCase = buildUseCase({ menuItems: [mockMenuItemRow], order: { origin: 'online-pickup' } });
 
     const result = await useCase.execute({
+      branchId: 'branch-1',
       customerName: 'Maria',
       customerPhone: '5598765432',
       orderType: 'PICKUP',
@@ -168,6 +209,7 @@ describe('CreatePublicOrderUseCase', () => {
 
   it('should throw error when items array is empty', async () => {
     await expect(useCase.execute({
+      branchId: 'branch-1',
       customerName: 'Juan',
       customerPhone: '5512345678',
       orderType: 'DELIVERY',
@@ -179,6 +221,7 @@ describe('CreatePublicOrderUseCase', () => {
     useCase = buildUseCase({ menuItems: [] });
 
     await expect(useCase.execute({
+      branchId: 'branch-1',
       customerName: 'Juan',
       customerPhone: '5512345678',
       orderType: 'DELIVERY',
@@ -190,6 +233,7 @@ describe('CreatePublicOrderUseCase', () => {
     useCase = buildUseCase({ menuItems: [{ ...mockMenuItemRow, status: false }] });
 
     await expect(useCase.execute({
+      branchId: 'branch-1',
       customerName: 'Juan',
       customerPhone: '5512345678',
       orderType: 'DELIVERY',
@@ -201,6 +245,7 @@ describe('CreatePublicOrderUseCase', () => {
     useCase = buildUseCase({ menuItems: [mockExtraRow] });
 
     await expect(useCase.execute({
+      branchId: 'branch-1',
       customerName: 'Juan',
       customerPhone: '5512345678',
       orderType: 'DELIVERY',
@@ -210,6 +255,7 @@ describe('CreatePublicOrderUseCase', () => {
 
   it('should use transaction for order + items creation', async () => {
     await useCase.execute({
+      branchId: 'branch-1',
       customerName: 'Juan',
       customerPhone: '5512345678',
       orderType: 'DELIVERY',
@@ -225,6 +271,7 @@ describe('CreatePublicOrderUseCase', () => {
     useCase = buildUseCase({ menuItems: [mockMenuItemRow, mockExtraRow] });
 
     await useCase.execute({
+      branchId: 'branch-1',
       customerName: 'Juan',
       customerPhone: '5512345678',
       orderType: 'DELIVERY',
@@ -243,25 +290,12 @@ describe('CreatePublicOrderUseCase', () => {
   });
 
   it('should throw OUTSIDE_OPERATING_HOURS when current time is outside hours', async () => {
-    mockCompanyRepository.findFirst.mockResolvedValue({
-      id: 'company-1',
-      name: 'Test',
-      state: '',
-      city: '',
-      street: '',
-      exteriorNumber: '',
-      phone: '',
-      rfc: null,
-      logoUrl: null,
-      startOperations: '09:00',
-      endOperations: '22:00',
-      ticketConfig: null,
-      paymentConfig: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    mockBranchRepository.findById.mockResolvedValue(
+      makeBranch({ startOperations: '09:00', endOperations: '22:00' })
+    );
 
     await expect(useCase.execute({
+      branchId: 'branch-1',
       customerName: 'Juan',
       customerPhone: '5512345678',
       orderType: 'PICKUP',
@@ -271,9 +305,10 @@ describe('CreatePublicOrderUseCase', () => {
   });
 
   it('should allow order when no operating hours configured', async () => {
-    mockCompanyRepository.findFirst.mockResolvedValue(null);
+    mockBranchRepository.findById.mockResolvedValue(makeBranch());
 
     const result = await useCase.execute({
+      branchId: 'branch-1',
       customerName: 'Juan',
       customerPhone: '5512345678',
       orderType: 'DELIVERY',

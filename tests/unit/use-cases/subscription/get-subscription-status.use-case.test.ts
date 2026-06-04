@@ -12,6 +12,7 @@ describe('GetSubscriptionStatusUseCase', () => {
   beforeEach(() => {
     mockSubscriptionRepository = {
       find: jest.fn(),
+      findByStripeSubscriptionId: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     };
@@ -45,6 +46,7 @@ describe('GetSubscriptionStatusUseCase', () => {
     const futureDate = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000); // 15 days from now
     const activeSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       'sub_test_123',
       SubscriptionStatus.ACTIVE,
@@ -71,6 +73,7 @@ describe('GetSubscriptionStatusUseCase', () => {
     const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const trialSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       'sub_test_123',
       SubscriptionStatus.TRIALING,
@@ -93,6 +96,7 @@ describe('GetSubscriptionStatusUseCase', () => {
   it('should return isActive: false for CANCELED subscription', async () => {
     const canceledSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       'sub_test_123',
       SubscriptionStatus.CANCELED,
@@ -117,6 +121,7 @@ describe('GetSubscriptionStatusUseCase', () => {
     const pastDate = new Date(Date.now() - 1000);
     const expiredSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       'sub_test_123',
       SubscriptionStatus.ACTIVE,
@@ -142,6 +147,7 @@ describe('GetSubscriptionStatusUseCase', () => {
     const futureDate = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
     const cancelingSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       'sub_test_123',
       SubscriptionStatus.ACTIVE,

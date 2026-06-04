@@ -1,12 +1,12 @@
 meta {
   name: Pay With Stripe Card
   type: http
-  seq: 4
+  seq: 1
 }
 
 post {
-  url: {{baseUrl}}/api/payment/card-stripe
-  body: none
+  url: {{baseUrl}}/api/payments/card-stripe
+  body: json
   auth: inherit
 }
 
@@ -14,10 +14,17 @@ headers {
   Content-Type: application/json
 }
 
+body:json {
+  {
+    "orderId": "{{orderId}}",
+    "connectionId": null
+  }
+}
+
 settings {
   encodeUrl: true
 }
 
 docs {
-  POST /api/payment/card-stripe
+  POST /api/payments/card-stripe — Inicia un pago con tarjeta vía Stripe para un pedido.
 }

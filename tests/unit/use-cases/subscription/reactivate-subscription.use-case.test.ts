@@ -13,6 +13,7 @@ describe('ReactivateSubscriptionUseCase', () => {
   beforeEach(() => {
     mockSubscriptionRepository = {
       find: jest.fn(),
+      findByStripeSubscriptionId: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     };
@@ -39,6 +40,7 @@ describe('ReactivateSubscriptionUseCase', () => {
   it('should reactivate a subscription pending cancellation', async () => {
     const cancelingSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       'sub_test_123',
       SubscriptionStatus.ACTIVE,
@@ -52,6 +54,7 @@ describe('ReactivateSubscriptionUseCase', () => {
 
     const reactivatedSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       'sub_test_123',
       SubscriptionStatus.ACTIVE,
@@ -91,6 +94,7 @@ describe('ReactivateSubscriptionUseCase', () => {
   it('should throw error when subscription is not pending cancellation', async () => {
     const activeSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       'sub_test_123',
       SubscriptionStatus.ACTIVE,
@@ -116,6 +120,7 @@ describe('ReactivateSubscriptionUseCase', () => {
   it('should throw error when subscription is canceled (not just pending)', async () => {
     const canceledSub = new Subscription(
       'sub-id-1',
+      'org-1',
       'cus_test_123',
       'sub_test_123',
       SubscriptionStatus.CANCELED,

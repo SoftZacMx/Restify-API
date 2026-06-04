@@ -1,0 +1,23 @@
+meta {
+  name: Get Employee Salary
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/employee-salaries/:employee_salary_payment_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  employee_salary_payment_id:
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  GET /api/employee-salaries/:employee_salary_payment_id — Detalle de un pago de salario. Requiere MANAGER o superior.
+}

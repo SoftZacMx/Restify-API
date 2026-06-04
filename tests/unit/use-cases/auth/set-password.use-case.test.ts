@@ -2,7 +2,7 @@ import { SetPasswordUseCase } from '../../../../src/core/application/use-cases/a
 import { IUserRepository } from '../../../../src/core/domain/interfaces/user-repository.interface';
 import { User } from '../../../../src/core/domain/entities/user.entity';
 import { BcryptUtil } from '../../../../src/shared/utils/bcrypt.util';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 
 jest.mock('../../../../src/shared/utils/bcrypt.util');
@@ -19,6 +19,8 @@ describe('SetPasswordUseCase', () => {
       update: jest.fn(),
       delete: jest.fn(),
       reactivate: jest.fn(),
+      markForPasswordReset: jest.fn(),
+      markEmailVerified: jest.fn(),
       findAll: jest.fn(),
     };
 
@@ -46,6 +48,11 @@ describe('SetPasswordUseCase', () => {
         null,
         true,
         UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
         new Date(),
         new Date()
       );

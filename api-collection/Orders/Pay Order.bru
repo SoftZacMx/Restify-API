@@ -1,0 +1,38 @@
+meta {
+  name: Pay Order
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/orders/:order_id/pay
+  body: json
+  auth: inherit
+}
+
+params:path {
+  order_id:
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "orderId": "{{orderId}}",
+    "paymentMethod": "CASH",
+    "amount": 250.00
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  POST /api/orders/:order_id/pay — Paga un pedido.
+
+  Pago simple: { paymentMethod: CASH | TRANSFER | CARD_PHYSICAL, amount, transferNumber? }
+  Pago dividido (split): { firstPayment: {amount, paymentMethod}, secondPayment: {amount, paymentMethod} } — métodos distintos.
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Delete Employee Salary
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/employee-salaries/:employee_salary_payment_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  employee_salary_payment_id:
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  DELETE /api/employee-salaries/:employee_salary_payment_id — Elimina un pago de salario. Requiere MANAGER o superior.
+}

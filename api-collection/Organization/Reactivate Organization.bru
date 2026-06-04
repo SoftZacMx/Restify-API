@@ -1,0 +1,31 @@
+meta {
+  name: Reactivate Organization
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/organization/reactivate
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "owner5@demo.com",
+    "password": "Passw0rd"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  POST /api/organization/reactivate — Ruta PÚBLICA (sin auth): tras cerrar la org el JWT queda invalidado, así que se re-valida email+password como un login. Solo el OWNER puede reactivar, y solo dentro de la ventana de 30 días desde el cierre. Reactiva la org (deletedAt = null, status ACTIVE), emite un JWT nuevo y setea cookie HttpOnly. Rate limit: 5 intentos / 15 min.
+}

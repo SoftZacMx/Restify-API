@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/user/:user_id
+  url: {{baseUrl}}/api/users/:user_id
   body: none
   auth: inherit
 }
 
 params:path {
-  user_id: {{user_id}}
+  user_id: 2da6d5a1-5b98-44b3-bcd9-929eb9ccea0b
 }
 
 headers {
@@ -20,6 +20,7 @@ headers {
 
 settings {
   encodeUrl: true
+  timeout: 0
 }
 
 docs {

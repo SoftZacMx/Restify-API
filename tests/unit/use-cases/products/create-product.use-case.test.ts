@@ -3,7 +3,7 @@ import { IProductRepository } from '../../../../src/core/domain/interfaces/produ
 import { IUserRepository } from '../../../../src/core/domain/interfaces/user-repository.interface';
 import { Product } from '../../../../src/core/domain/entities/product.entity';
 import { User } from '../../../../src/core/domain/entities/user.entity';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('CreateProductUseCase', () => {
@@ -29,6 +29,8 @@ describe('CreateProductUseCase', () => {
       delete: jest.fn(),
       findAll: jest.fn(),
       reactivate: jest.fn(),
+      markForPasswordReset: jest.fn(),
+      markEmailVerified: jest.fn(),
     };
 
     createProductUseCase = new CreateProductUseCase(
@@ -60,6 +62,11 @@ describe('CreateProductUseCase', () => {
         null,
         true,
         UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
         new Date(),
         new Date()
       );
@@ -111,6 +118,11 @@ describe('CreateProductUseCase', () => {
         null,
         true,
         UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
         new Date(),
         new Date()
       );

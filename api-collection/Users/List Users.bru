@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/user
+  url: {{baseUrl}}/api/users
   body: none
   auth: inherit
 }
@@ -16,6 +16,7 @@ headers {
 
 settings {
   encodeUrl: true
+  timeout: 0
 }
 
 docs {

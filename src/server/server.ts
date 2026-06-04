@@ -23,6 +23,7 @@ import { WebSocketServer } from './websocket/websocket.server';
 import { container } from 'tsyringe';
 import { PrismaService } from '../core/infrastructure/config/prisma.config';
 import { logger } from '../shared/utils/logger';
+import { startCronJobs, stopCronJobs } from '../core/infrastructure/scheduler/cron-scheduler';
 import '../core/infrastructure/config/dependency-injection';
 
 class LocalServer {
@@ -134,12 +135,18 @@ class LocalServer {
       logger.error({ err: error }, 'Error al conectar con la base de datos');
     }
 
+    // Jobs programados (crons). Se ejecutan dentro de este proceso.
+    startCronJobs();
+
     this.setupGracefulShutdown();
   }
 
   private setupGracefulShutdown(): void {
     const shutdown = async (signal: string) => {
       logger.info(`${signal} recibido. Cerrando servidor...`);
+
+      // 0. Detener crons para que no arranquen trabajo durante el apagado
+      stopCronJobs();
 
       // 1. Dejar de aceptar nuevas conexiones y esperar las que están en curso
       this.httpServer.close(() => {

@@ -28,6 +28,17 @@ const envSchema = z.object({
 
   // Encriptación de config de pagos
   PAYMENT_CONFIG_ENCRYPTION_KEY: z.string().length(64, 'Must be 64-char hex (32 bytes)'),
+
+  // Email (4.1.D — AWS SES). Apagable: por defecto deshabilitado (no-op que loggea).
+  EMAIL_ENABLED: z.enum(['true', 'false']).default('false'),
+  EMAIL_FROM: z.string().email('EMAIL_FROM must be a valid email').optional(),
+
+  // Crons (4.1.F). Por defecto habilitados; en escalado horizontal poner RUN_CRONS=false
+  // en todas las instancias menos una para evitar ejecuciones duplicadas.
+  RUN_CRONS: z.enum(['true', 'false']).default('true'),
+  UNVERIFIED_RETENTION_DAYS: z.string().optional(),
+  CLEANUP_UNVERIFIED_CRON: z.string().optional(),
+  CRON_TIMEZONE: z.string().optional(),
 });
 
 export function validateEnv(): void {
