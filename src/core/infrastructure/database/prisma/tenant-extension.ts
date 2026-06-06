@@ -10,10 +10,10 @@ import { getTenant } from '../../tenant/tenant-context';
 
 // Models that require organization-level filtering
 // Usar nombres exactos como llegan de Prisma (PascalCase)
-const ORG_LEVEL_MODELS = new Set(['User', 'Subscription']);
+export const ORG_LEVEL_MODELS = new Set(['User', 'Subscription']);
 
 // Models that require branch-level filtering
-const BRANCH_LEVEL_MODELS = new Set([
+export const BRANCH_LEVEL_MODELS = new Set([
   'Order',
   'OrderItem',
   'OrderItemExtra',
@@ -33,7 +33,12 @@ const BRANCH_LEVEL_MODELS = new Set([
 ]);
 
 // Models that should NOT be filtered (global data)
-const GLOBAL_MODELS = new Set(['Organization', 'Branch', 'UserBranchAccess', 'SubscriptionPlan']);
+export const GLOBAL_MODELS = new Set([
+  'Organization',
+  'Branch',
+  'UserBranchAccess',
+  'SubscriptionPlan',
+]);
 
 /**
  * Creates Prisma extension with tenant filtering
@@ -97,12 +102,7 @@ export function createTenantExtension(client: PrismaClient) {
 /**
  * Apply tenant filtering based on model type
  */
-function applyTenantFilter(
-  model: string,
-  args: any,
-  query: any,
-  operation: string
-): any {
+function applyTenantFilter(model: string, args: any, query: any, operation: string): any {
   const tenant = getTenant();
 
   // Sin contexto de tenant → no filtrar (rutas públicas: login, signup, webhooks)
@@ -131,8 +131,13 @@ function applyTenantFilter(
     return applyBranchFilter(args, query, tenant.branchId, operation);
   }
 
-  // Unknown model - no filtering (permissive for new models)
-  return query(args);
+  // Modelo no clasificado → fallar-seguro. NO dejar pasar sin filtro:
+  // un modelo nuevo sin clasificar significa datos potencialmente sin aislar entre tenants.
+  // Clasifícalo en ORG_LEVEL_MODELS / BRANCH_LEVEL_MODELS / GLOBAL_MODELS.
+  throw new Error(
+    `TENANT_MODEL_UNCLASSIFIED: El modelo "${model}" no está clasificado en la tenant extension. ` +
+      `Agrégalo a ORG_LEVEL_MODELS, BRANCH_LEVEL_MODELS o GLOBAL_MODELS en tenant-extension.ts.`
+  );
 }
 
 /**

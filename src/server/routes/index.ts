@@ -16,6 +16,7 @@ import stockRoutes from './stock.routes';
 import dashboardRoutes from './dashboard.routes';
 import branchRoutes from './branch.routes';
 import organizationRoutes from './organization.routes';
+import uploadRoutes from './upload.routes';
 import healthRoutes from './health.routes';
 import subscriptionRoutes from './subscription.routes';
 import settingsRoutes from './settings.routes';
@@ -72,6 +73,7 @@ router.use('/api/reports', reportRoutes);
 router.use('/api/stock', stockRoutes);
 router.use('/api/dashboard', dashboardRoutes);
 router.use('/api/settings', settingsRoutes);
+router.use('/api/uploads', uploadRoutes);
 
 export default router;
 

@@ -13,7 +13,9 @@ export class Product {
     // Stock config (Fase 6.3) — defaults seguros para productos pre-migración / sin tracking
     public readonly trackStock: boolean = false,
     public readonly unitOfMeasure: UnitOfMeasure | null = null,
-    public readonly minStockAlert: number | null = null
+    public readonly minStockAlert: number | null = null,
+    // Transversal — Storage de imágenes (S3): URL pública de la imagen del producto.
+    public readonly imageUrl: string | null = null
   ) {}
 }
 

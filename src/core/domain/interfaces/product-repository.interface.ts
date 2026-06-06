@@ -19,11 +19,13 @@ export interface IProductRepository {
     trackStock?: boolean;
     unitOfMeasure?: UnitOfMeasure | null;
     minStockAlert?: number | null;
+    imageUrl?: string | null;
   }): Promise<Product>;
   update(id: string, data: {
     name?: string;
     description?: string | null;
     status?: boolean;
+    imageUrl?: string | null;
   }): Promise<Product>;
   delete(id: string): Promise<void>;
 }

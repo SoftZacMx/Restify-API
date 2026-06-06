@@ -12,6 +12,7 @@ export interface UpdateProductResult {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+  imageUrl: string | null;
 }
 
 @injectable()
@@ -33,6 +34,7 @@ export class UpdateProductUseCase {
     if (input.name !== undefined) updateData.name = input.name;
     if (input.description !== undefined) updateData.description = input.description;
     if (input.status !== undefined) updateData.status = input.status;
+    if (input.imageUrl !== undefined) updateData.imageUrl = input.imageUrl;
 
     // Update product
     const product = await this.productRepository.update(productId, updateData);
@@ -46,6 +48,7 @@ export class UpdateProductUseCase {
       userId: product.userId,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
+      imageUrl: product.imageUrl,
     };
   }
 }

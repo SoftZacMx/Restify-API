@@ -8,6 +8,7 @@ export const createMenuItemSchema = z.object({
   isExtra: z.boolean().optional().default(false), // true = extra/complemento, false = platillo principal
   categoryId: z.string().uuid('Invalid category ID format').optional().nullable(),
   userId: z.string().uuid('Invalid user ID format'),
+  imageUrl: z.string().url('Invalid image URL').optional().nullable(),
 });
 
 // Update Menu Item Schema
@@ -18,6 +19,7 @@ export const updateMenuItemSchema = z.object({
   isExtra: z.boolean().optional(), // true = extra/complemento, false = platillo principal
   categoryId: z.string().uuid('Invalid category ID format').optional(),
   userId: z.string().uuid('Invalid user ID format').optional(),
+  imageUrl: z.string().url('Invalid image URL').optional().nullable(),
 });
 
 // Get Menu Item Schema (path parameter)

@@ -1,0 +1,53 @@
+meta {
+  name: Upload Image
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/uploads
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{login-token}}
+}
+
+body:multipart-form {
+  kind: product_image
+  file: @file(/Users/brrodriguez/Downloads/etst.webp)
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  POST /api/uploads — Sube una imagen (multipart/form-data).
+  
+  Campos:
+  - file: el archivo binario (jpeg/png/webp, máx 5MB). Haz clic en el campo
+    `file` y selecciona una imagen de tu disco con el botón de archivo.
+  - kind: tipo de imagen, uno de:
+      org_logo         → organizations/{orgId}/logo.{ext}
+      branch_logo      → branches/{branchId}/logo.{ext}
+      product_image    → branches/{branchId}/products/{uuid}.{ext}
+      menu_item_image  → branches/{branchId}/menu-items/{uuid}.{ext}
+  
+  El org/branch sale del CONTEXTO del token (JWT), nunca del body.
+  Los kind a nivel sucursal (branch_logo, product_image, menu_item_image)
+  requieren que el token tenga `branch` (si no → 400 IMAGE_BRANCH_CONTEXT_REQUIRED).
+  
+  Respuesta 200: { "url": "https://...", "key": "branches/{branchId}/products/{uuid}.webp" }
+  
+  Errores:
+  - 400 INVALID_IMAGE_TYPE          → MIME no permitido
+  - 413 IMAGE_SIZE_EXCEEDS_LIMIT    → archivo > 5MB
+  - 400 IMAGE_FILE_REQUIRED         → falta el campo "file"
+  - 400 IMAGE_BRANCH_CONTEXT_REQUIRED → kind de sucursal sin branch en el token
+  
+  Flujo: la `url` devuelta se guarda luego en el recurso vía su POST/PATCH
+  (p.ej. `imageUrl` en POST /api/products o /api/menu-items).
+}

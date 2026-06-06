@@ -3,7 +3,7 @@ import { container } from 'tsyringe';
 import { IBranchRepository } from '../../core/domain/interfaces/branch-repository.interface';
 import { runWithTenant } from '../../core/infrastructure/tenant/tenant-context';
 import { AppError } from '../../shared/errors';
-
+import { IOrganizationRepository } from '@/core/domain/interfaces/organization-repository.interface';
 /**
  * Middleware for public routes that need tenant context.
  * Extracts branchId from query param or request body and establishes tenant context.
@@ -20,6 +20,9 @@ export class PublicTenantMiddleware {
         }
 
         const branchRepository = container.resolve<IBranchRepository>('IBranchRepository');
+        const organizationRepository =
+          container.resolve<IOrganizationRepository>('IOrganizationRepository');
+
         const branch = await branchRepository.findById(branchId);
 
         if (!branch || !branch.isActive()) {
@@ -27,10 +30,13 @@ export class PublicTenantMiddleware {
           return;
         }
 
-        runWithTenant(
-          { organizationId: branch.organizationId, branchId: branch.id },
-          () => next()
-        );
+        const org = await organizationRepository.findById(branch.organizationId);
+        if (!org || org.status !== 'ACTIVE') {
+          next(new AppError('ORGANIZATION_INACTIVE'));
+          return;
+        }
+
+        runWithTenant({ organizationId: branch.organizationId, branchId: branch.id }, () => next());
       } catch (error) {
         next(error);
       }

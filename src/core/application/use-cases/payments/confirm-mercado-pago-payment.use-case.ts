@@ -3,6 +3,7 @@ import { IPaymentRepository } from '../../../domain/interfaces/payment-repositor
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
+import { IOrganizationRepository } from '../../../domain/interfaces/organization-repository.interface';
 import { PaymentStatus, PaymentGateway } from '@prisma/client';
 import { MercadoPagoService } from '../../../infrastructure/payment-gateways/mercado-pago.service';
 import { CreateMercadoPagoFeeExpenseUseCase } from '../expenses/create-mercado-pago-fee-expense.use-case';
@@ -51,6 +52,7 @@ export class ConfirmMercadoPagoPaymentUseCase {
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
     @inject('IBranchRepository') private readonly branchRepository: IBranchRepository,
+    @inject('IOrganizationRepository') private readonly organizationRepository: IOrganizationRepository,
     @inject('MercadoPagoService') private readonly mercadoPagoService: MercadoPagoService,
     @inject(CreateMercadoPagoFeeExpenseUseCase)
     private readonly createMpFeeExpenseUseCase: CreateMercadoPagoFeeExpenseUseCase,
@@ -75,6 +77,11 @@ export class ConfirmMercadoPagoPaymentUseCase {
     if (branchId) {
       const branch = await this.branchRepository.findById(branchId);
       if (branch) {
+        // No procesar pagos de organizaciones canceladas/suspendidas
+        const org = await this.organizationRepository.findById(branch.organizationId);
+        if (!org || org.status !== 'ACTIVE') {
+          return null;
+        }
         return runWithTenant(
           { organizationId: branch.organizationId, branchId: branch.id },
           () => this.processPayment(orderId, mpPayment)

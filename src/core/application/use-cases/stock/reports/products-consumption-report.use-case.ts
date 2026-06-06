@@ -1,6 +1,6 @@
-import { inject, injectable } from 'tsyringe';
+import { injectable } from 'tsyringe';
 import { Prisma, StockMovementType } from '@prisma/client';
-import { PrismaService } from '../../../../infrastructure/config/prisma.config';
+import { getPrisma } from '../../../../infrastructure/database/prisma/get-prisma';
 
 export interface ProductsConsumptionReportInput {
   from?: Date;
@@ -14,10 +14,9 @@ export interface ProductsConsumptionReportInput {
  */
 @injectable()
 export class ProductsConsumptionReportUseCase {
-  private readonly prisma;
-
-  constructor(@inject(PrismaService) prismaService: PrismaService) {
-    this.prisma = prismaService.getClient();
+  // Cliente extendido (tenant-filtered): filtra StockMovement/Product por branchId del contexto.
+  private get prisma() {
+    return getPrisma();
   }
 
   async execute(input: ProductsConsumptionReportInput = {}) {

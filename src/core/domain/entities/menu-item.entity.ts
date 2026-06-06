@@ -12,7 +12,9 @@ export class MenuItem {
     // Stock integration (Fase 7 — Bloque D): permite al UI mostrar el indicador
     // "directo / receta / sin tracking" sin pegar el endpoint de receta por cada item.
     public readonly productId: string | null = null,
-    public readonly hasRecipe: boolean = false
+    public readonly hasRecipe: boolean = false,
+    // Transversal — Storage de imágenes (S3): URL pública de la imagen del menu item.
+    public readonly imageUrl: string | null = null
   ) {}
 }
 

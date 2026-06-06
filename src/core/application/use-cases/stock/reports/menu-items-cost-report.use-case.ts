@@ -1,5 +1,5 @@
-import { inject, injectable } from 'tsyringe';
-import { PrismaService } from '../../../../infrastructure/config/prisma.config';
+import { injectable } from 'tsyringe';
+import { getPrisma } from '../../../../infrastructure/database/prisma/get-prisma';
 
 /**
  * Reporte de costo teórico y margen por MenuItem con receta.
@@ -12,10 +12,9 @@ import { PrismaService } from '../../../../infrastructure/config/prisma.config';
  */
 @injectable()
 export class MenuItemsCostReportUseCase {
-  private readonly prisma;
-
-  constructor(@inject(PrismaService) prismaService: PrismaService) {
-    this.prisma = prismaService.getClient();
+  // Cliente extendido (tenant-filtered): filtra MenuItem por branchId del contexto.
+  private get prisma() {
+    return getPrisma();
   }
 
   async execute() {

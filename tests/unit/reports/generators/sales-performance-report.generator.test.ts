@@ -1,29 +1,25 @@
 import { SalesPerformanceReportGenerator } from '../../../../src/core/application/reports/generators/sales-performance-report.generator';
 import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
 import { IMenuItemRepository } from '../../../../src/core/domain/interfaces/menu-item-repository.interface';
-import { PrismaService } from '../../../../src/core/infrastructure/config/prisma.config';
 import { ReportType } from '../../../../src/core/domain/interfaces/report-generator.interface';
 import { MenuItem } from '../../../../src/core/domain/entities/menu-item.entity';
 
-// Mock Prisma Client
+// Mock Prisma Client (cliente extendido tenant-filtered)
 const mockPrismaClient = {
   orderItem: {
     findMany: jest.fn(),
   },
 };
 
-// Mock PrismaService
-jest.mock('../../../../src/core/infrastructure/config/prisma.config', () => ({
-  PrismaService: jest.fn().mockImplementation(() => ({
-    getClient: () => mockPrismaClient,
-  })),
+// El generador usa getPrisma() (cliente con tenant extension), no PrismaService inyectado.
+jest.mock('../../../../src/core/infrastructure/database/prisma/get-prisma', () => ({
+  getPrisma: () => mockPrismaClient,
 }));
 
 describe('SalesPerformanceReportGenerator', () => {
   let generator: SalesPerformanceReportGenerator;
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockMenuItemRepository: jest.Mocked<IMenuItemRepository>;
-  let mockPrismaService: jest.Mocked<PrismaService>;
 
   beforeEach(() => {
     mockOrderRepository = {
@@ -56,12 +52,9 @@ describe('SalesPerformanceReportGenerator', () => {
       delete: jest.fn(),
     };
 
-    mockPrismaService = new PrismaService() as any;
-
     generator = new SalesPerformanceReportGenerator(
       mockOrderRepository,
-      mockMenuItemRepository,
-      mockPrismaService
+      mockMenuItemRepository
     );
   });
 

@@ -6,6 +6,7 @@ export interface PublicMenuItem {
   id: string;
   name: string;
   price: number;
+  imageUrl: string | null;
 }
 
 export interface PublicMenuCategory {
@@ -37,7 +38,7 @@ export class ListPublicMenuUseCase {
     for (const item of items) {
       if (!item.categoryId) continue;
       const list = categoryMap.get(item.categoryId) || [];
-      list.push({ id: item.id, name: item.name, price: item.price });
+      list.push({ id: item.id, name: item.name, price: item.price, imageUrl: item.imageUrl });
       categoryMap.set(item.categoryId, list);
     }
 
@@ -51,7 +52,7 @@ export class ListPublicMenuUseCase {
 
     return {
       categories: result,
-      extras: extras.map((e) => ({ id: e.id, name: e.name, price: e.price })),
+      extras: extras.map((e) => ({ id: e.id, name: e.name, price: e.price, imageUrl: e.imageUrl })),
     };
   }
 }

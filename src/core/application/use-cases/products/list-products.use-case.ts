@@ -17,6 +17,7 @@ export interface ListProductsResult {
   trackStock: boolean;
   unitOfMeasure: UnitOfMeasure | null;
   minStockAlert: number | null;
+  imageUrl: string | null;
 }
 
 @injectable()
@@ -48,6 +49,7 @@ export class ListProductsUseCase {
       trackStock: product.trackStock,
       unitOfMeasure: product.unitOfMeasure,
       minStockAlert: product.minStockAlert,
+      imageUrl: product.imageUrl,
     }));
   }
 }

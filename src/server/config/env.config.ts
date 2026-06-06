@@ -33,6 +33,16 @@ const envSchema = z.object({
   EMAIL_ENABLED: z.enum(['true', 'false']).default('false'),
   EMAIL_FROM: z.string().email('EMAIL_FROM must be a valid email').optional(),
 
+  // S3 storage de imágenes (Transversal). Apagable: por defecto deshabilitado (no-op que loggea).
+  // En dev S3 vive en MinIO (:9000), separado de LocalStack. S3_ENDPOINT_URL / S3_ACCESS_KEY_ID /
+  // S3_SECRET_ACCESS_KEY son opcionales y, si no se setean, caen a los AWS_* genéricos.
+  S3_ENABLED: z.enum(['true', 'false']).default('false'),
+  S3_BUCKET_NAME: z.string().optional(),
+  S3_PUBLIC_BASE_URL: z.string().url('S3_PUBLIC_BASE_URL must be a valid URL').optional(),
+  S3_ENDPOINT_URL: z.string().url('S3_ENDPOINT_URL must be a valid URL').optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+
   // Crons (4.1.F). Por defecto habilitados; en escalado horizontal poner RUN_CRONS=false
   // en todas las instancias menos una para evitar ejecuciones duplicadas.
   RUN_CRONS: z.enum(['true', 'false']).default('true'),

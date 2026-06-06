@@ -1,10 +1,9 @@
 import { inject, injectable } from 'tsyringe';
-import { PrismaClient } from '@prisma/client';
 import { BaseReportGenerator } from '../base-report.generator';
 import { ReportType, BaseReportFilters, BaseReportResult } from '../../../domain/interfaces/report-generator.interface';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
-import { PrismaService } from '../../../infrastructure/config/prisma.config';
+import { getPrisma } from '../../../infrastructure/database/prisma/get-prisma';
 
 export interface SalesPerformanceReportData {
   sales: Array<{
@@ -29,15 +28,16 @@ export interface SalesPerformanceReportData {
 
 @injectable()
 export class SalesPerformanceReportGenerator extends BaseReportGenerator {
-  private prisma: PrismaClient;
+  // Cliente extendido (tenant-filtered): filtra OrderItem por branchId del contexto.
+  private get prisma() {
+    return getPrisma();
+  }
 
   constructor(
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
-    @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
-    @inject(PrismaService) private readonly prismaService: PrismaService
+    @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository
   ) {
     super();
-    this.prisma = this.prismaService.getClient();
   }
 
   getType(): ReportType {

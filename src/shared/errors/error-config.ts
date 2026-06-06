@@ -492,6 +492,35 @@ export const ERROR_CONFIG = {
     statusCode: 503,
     category: 'SYSTEM',
   },
+
+  // ============================================
+  // Image Upload Errors (Storage / S3)
+  // ============================================
+  INVALID_IMAGE_TYPE: {
+    message: 'Image type not allowed (jpeg, png, webp)',
+    statusCode: 400,
+    category: 'VALIDATION',
+  },
+  IMAGE_SIZE_EXCEEDS_LIMIT: {
+    message: 'Image exceeds the 5MB size limit',
+    statusCode: 413,
+    category: 'VALIDATION',
+  },
+  IMAGE_UPLOAD_FAILED: {
+    message: 'Failed to upload image',
+    statusCode: 500,
+    category: 'SYSTEM',
+  },
+  IMAGE_BRANCH_CONTEXT_REQUIRED: {
+    message: 'A branch context is required to upload this image kind',
+    statusCode: 400,
+    category: 'VALIDATION',
+  },
+  IMAGE_FILE_REQUIRED: {
+    message: 'Image file is required (field "file")',
+    statusCode: 400,
+    category: 'VALIDATION',
+  },
 } as const;
 
 /**

@@ -19,6 +19,7 @@ export interface IMenuItemRepository {
     isExtra: boolean;
     categoryId: string | null;
     userId: string;
+    imageUrl?: string | null;
   }): Promise<MenuItem>;
   update(id: string, data: {
     name?: string;
@@ -27,6 +28,7 @@ export interface IMenuItemRepository {
     isExtra?: boolean;
     categoryId?: string;
     userId?: string;
+    imageUrl?: string | null;
   }): Promise<MenuItem>;
   delete(id: string): Promise<void>;
 }

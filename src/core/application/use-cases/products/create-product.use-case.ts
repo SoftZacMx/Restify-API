@@ -17,6 +17,7 @@ export interface CreateProductResult {
   trackStock: boolean;
   unitOfMeasure: UnitOfMeasure | null;
   minStockAlert: number | null;
+  imageUrl: string | null;
 }
 
 @injectable()
@@ -42,6 +43,7 @@ export class CreateProductUseCase {
       trackStock: input.trackStock,
       unitOfMeasure: input.unitOfMeasure,
       minStockAlert: input.minStockAlert,
+      imageUrl: input.imageUrl,
     });
 
     return {
@@ -56,6 +58,7 @@ export class CreateProductUseCase {
       trackStock: product.trackStock,
       unitOfMeasure: product.unitOfMeasure,
       minStockAlert: product.minStockAlert,
+      imageUrl: product.imageUrl,
     };
   }
 }

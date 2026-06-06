@@ -4,6 +4,7 @@ import { IPaymentRepository } from '../../../../src/core/domain/interfaces/payme
 import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
 import { ITableRepository } from '../../../../src/core/domain/interfaces/table-repository.interface';
 import { IBranchRepository } from '../../../../src/core/domain/interfaces/branch-repository.interface';
+import { IOrganizationRepository } from '../../../../src/core/domain/interfaces/organization-repository.interface';
 import { MercadoPagoService } from '../../../../src/core/infrastructure/payment-gateways/mercado-pago.service';
 import { Payment } from '../../../../src/core/domain/entities/payment.entity';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
@@ -17,6 +18,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockTableRepository: jest.Mocked<ITableRepository>;
   let mockBranchRepository: jest.Mocked<IBranchRepository>;
+  let mockOrganizationRepository: jest.Mocked<IOrganizationRepository>;
   let mockMercadoPagoService: jest.Mocked<MercadoPagoService>;
   let mockCreateMpFeeExpenseUseCase: jest.Mocked<CreateMercadoPagoFeeExpenseUseCase>;
 
@@ -86,6 +88,11 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       update: jest.fn(),
     } as any;
 
+    mockOrganizationRepository = {
+      // Por defecto la org está activa; los tests que necesiten una org inactiva lo sobreescriben.
+      findById: jest.fn().mockResolvedValue({ id: 'org-789', status: 'ACTIVE' }),
+    } as any;
+
     mockMercadoPagoService = {
       createPreference: jest.fn(),
       getPreference: jest.fn(),
@@ -102,6 +109,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       mockOrderRepository,
       mockTableRepository,
       mockBranchRepository,
+      mockOrganizationRepository,
       mockMercadoPagoService,
       mockCreateMpFeeExpenseUseCase,
     );

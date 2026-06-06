@@ -150,6 +150,7 @@ model Product {
   id               String         @id @default(uuid())
   name             String
   description      String?
+  imageUrl         String?
   registrationDate DateTime       @default(now())
   status           Boolean        @default(true)
   userId           String
@@ -447,6 +448,7 @@ model MenuItem {
   id         String   @id @default(uuid())
   name       String
   price      Decimal  @db.Decimal(10, 2)
+  imageUrl   String?
   status     Boolean  @default(true)
   isExtra    Boolean  @default(false) // Flag to identify extras
   categoryId String? // Optional - menu item can exist without a category

@@ -26,7 +26,8 @@ export class MenuItemRepository implements IMenuItemRepository {
       menuItem.createdAt,
       menuItem.updatedAt,
       menuItem.productId,
-      menuItem._count.ingredients > 0
+      menuItem._count.ingredients > 0,
+      menuItem.imageUrl
     );
   }
 
@@ -50,7 +51,8 @@ export class MenuItemRepository implements IMenuItemRepository {
           menuItem.createdAt,
           menuItem.updatedAt,
           menuItem.productId,
-          menuItem._count.ingredients > 0
+          menuItem._count.ingredients > 0,
+          menuItem.imageUrl
         )
     );
   }
@@ -99,7 +101,8 @@ export class MenuItemRepository implements IMenuItemRepository {
           menuItem.createdAt,
           menuItem.updatedAt,
           menuItem.productId,
-          menuItem._count.ingredients > 0
+          menuItem._count.ingredients > 0,
+          menuItem.imageUrl
         )
     );
   }
@@ -111,6 +114,7 @@ export class MenuItemRepository implements IMenuItemRepository {
     isExtra: boolean;
     categoryId: string | null;
     userId: string;
+    imageUrl?: string | null;
   }): Promise<MenuItem> {
     const menuItem = await this.prisma.menuItem.create({
       data: {
@@ -120,7 +124,9 @@ export class MenuItemRepository implements IMenuItemRepository {
         isExtra: data.isExtra,
         categoryId: data.categoryId,
         userId: data.userId,
+        ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
       },
+      include: { _count: { select: { ingredients: true } } },
     });
 
     return new MenuItem(
@@ -132,7 +138,10 @@ export class MenuItemRepository implements IMenuItemRepository {
       menuItem.categoryId,
       menuItem.userId,
       menuItem.createdAt,
-      menuItem.updatedAt
+      menuItem.updatedAt,
+      menuItem.productId,
+      menuItem._count.ingredients > 0,
+      menuItem.imageUrl
     );
   }
 
@@ -145,6 +154,7 @@ export class MenuItemRepository implements IMenuItemRepository {
       isExtra?: boolean;
       categoryId?: string;
       userId?: string;
+      imageUrl?: string | null;
     }
   ): Promise<MenuItem> {
     const updateData: any = {};
@@ -155,10 +165,12 @@ export class MenuItemRepository implements IMenuItemRepository {
     if (data.isExtra !== undefined) updateData.isExtra = data.isExtra;
     if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
     if (data.userId !== undefined) updateData.userId = data.userId;
+    if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
 
     const menuItem = await this.prisma.menuItem.update({
       where: { id },
       data: updateData,
+      include: { _count: { select: { ingredients: true } } },
     });
 
     return new MenuItem(
@@ -170,7 +182,10 @@ export class MenuItemRepository implements IMenuItemRepository {
       menuItem.categoryId,
       menuItem.userId,
       menuItem.createdAt,
-      menuItem.updatedAt
+      menuItem.updatedAt,
+      menuItem.productId,
+      menuItem._count.ingredients > 0,
+      menuItem.imageUrl
     );
   }
 

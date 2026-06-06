@@ -232,6 +232,25 @@ Sin contexto en modelo de dominio → **error**, no query silenciosa.
 
 ---
 
+#### Endurecimiento de robustez (auditoría 2026-06-06)
+
+Auditoría del aislamiento multi-tenant. Cambios aplicados y decisiones:
+
+- [x] **Fail-secure en el middleware de tenant** (`tenant.middleware.ts`): un token válido sin `org` ahora se **rechaza** (`ORGANIZATION_NOT_FOUND`) en vez de resolver a "la primera org activa" (riesgo de fuga entre clientes, herencia single-tenant). Eliminado el fallback `findFirstActive()`.
+- [x] **Fail-secure ante modelos no clasificados** (`tenant-extension.ts`): un modelo Prisma que no esté en `ORG_LEVEL_MODELS` / `BRANCH_LEVEL_MODELS` / `GLOBAL_MODELS` ahora **lanza** `TENANT_MODEL_UNCLASSIFIED` en vez de pasar sin filtro. Respaldo en CI: `tests/unit/infrastructure/tenant-extension-coverage.test.ts` (corre en `pre-push`) verifica que todo modelo esté clasificado en exactamente una lista.
+- [x] **Validación de organización activa** donde antes solo se validaba la sucursal — una org `CANCELLED`/suspendida ya no puede operar:
+  - `public-tenant.middleware.ts` (menú + órdenes públicas por QR) → `ORGANIZATION_INACTIVE`.
+  - `switch-branch.use-case.ts` (valida org activa antes de emitir el nuevo JWT).
+  - `confirm-mercado-pago-payment.use-case.ts` (webhook MP ignora el pago — `return null` — si la org no está activa).
+- [~] **Revocación inmediata de sesiones** (`AuthMiddleware.validateTokenAndStatus`): **diferida (MVP).** Ver Fase 1.3 — el código existe pero no se aplica; el token sigue válido hasta expirar (8h) tras un close/reset. Activar cuando se quiera revocación inmediata (implica revalidar contra DB o tokens stateful).
+
+**Riesgos estructurales conocidos (vigilar, sin acción para el MVP):**
+- `include:` no filtra relaciones anidadas; hoy mitigado porque padre e hijo comparten `branchId`.
+- Dentro de `$transaction` la extension no se propaga; los caminos vivos (orders, stock) asignan `branchId` explícito a mano.
+- `upsert` en la extension no inyecta el tenantId en el `create` (no se usa `upsert` en código de negocio hoy).
+
+---
+
 ### Fase 1.3 — Auth, permisos y JWT
 
 **Tareas:**
@@ -240,7 +259,7 @@ Sin contexto en modelo de dominio → **error**, no query silenciosa.
 - [x] Login: validar user/org activos; emitir JWT 8h con nuevo payload.
 - [x] `POST /auth/switch-branch` — validar acceso (usa `UserBranchAccess`).
 - [x] `requireRole` / `requireAnyRole` (existe `AuthMiddleware.authorize`).
-- [x] Middleware: validar org/user activos + `tokenVersion` (`AuthMiddleware.validateTokenAndStatus`).
+- [~] Middleware `AuthMiddleware.validateTokenAndStatus` (valida org/user activos + `tokenVersion`) — **implementado pero NO aplicado a propósito (decisión MVP).** Aplicarlo en cada request implicaría revalidar contra DB o gestión de tokens stateful (invalidación real de sesiones). Para el MVP se acepta que un token siga válido hasta su expiración (8h) tras un close/reset. El código queda listo para activarse cuando se quiera revocación inmediata.
 - [x] `GET /api/config` público (retorna `billingEnabled`, `environment`, `apiVersion`).
 - [x] Tests auth/JWT (`tests/integration/auth-multi-tenant.test.ts`).
 - [ ] Password policy, change-password (usa campos `mustChangePassword`, `emailVerifiedAt` en User) - Pendiente para futuro.
@@ -308,7 +327,7 @@ const token = jwt.sign(
 #### Checklist Fase 1.3
 
 - [ ] Login emite shape JWT correcto.
-- [ ] `tokenVersion` desincronizado → 401.
+- [~] `tokenVersion` desincronizado → 401. **Diferido (MVP):** depende de `validateTokenAndStatus`, que no se aplica por ahora (ver Fase 1.3). El token sigue válido hasta expirar (8h).
 - [ ] `BILLING_ENABLED=false` → guard no bloquea.
 - [ ] `GET /api/config` devuelve `billingEnabled` desde env.
 
@@ -805,7 +824,7 @@ Limpieza en cron hard-delete org (Etapa C.3): borrar prefijos de todas las sucur
 
 **Objetivo:** Que todo el código del POS (órdenes, menú, mesas, pagos, etc.) use el filtrado automático por organización y sucursal que ya construimos en la Etapa 1.
 
-**Estado: ✅ ~90%** — `prisma.module.ts` YA inyecta `getPrisma()` (con tenant extension) a todos los repositorios (Tarea 3.1 hecha). Webhooks ajustados (Tarea 3.4 hecha): MP usa `external_reference` con `orderId:branchId` y Stripe busca por `findByStripeSubscriptionId`. Falta cerrar la validación formal de repos (3.2/3.3) y los tests de aislamiento end-to-end del POS (3.5).
+**Estado: ✅ Completa** — `prisma.module.ts` YA inyecta `getPrisma()` (con tenant extension) a todos los repositorios (Tarea 3.1 hecha). Webhooks ajustados (Tarea 3.4 hecha): MP usa `external_reference` con `orderId:branchId` y Stripe busca por `findByStripeSubscriptionId`. Tests de aislamiento end-to-end del POS (3.5) implementados (`tests/integration/pos-isolation.test.ts`, 8/8 verde contra DB real). La validación formal de repos (3.2/3.3) queda cubierta por esos tests E2E.
 
 **No hay crons ni jobs programados.** Solo existen 2 webhooks (Stripe y Mercado Pago), ya ajustados.
 
@@ -882,11 +901,14 @@ export const prismaClient = getPrisma();
 
 **Qué:** Verificar que una organización nunca ve datos de otra.
 
-- [ ] Crear 2 organizaciones con 2 sucursales cada una (puede ser con seed de test)
-- [ ] Desde org A, intentar listar/crear/editar datos → solo ve los suyos
-- [ ] Desde org A sucursal 1, intentar ver datos de sucursal 2 → no los ve
-- [ ] Intentar acceder con un `branchId` de otra org → error (no leak de existencia)
-- [ ] Smoke test manual: operar el POS completo y confirmar que todo funciona
+**Estado: ✅ Completa** — `tests/integration/pos-isolation.test.ts` (8/8 verde contra DB real). Ejercita los **use-cases reales** del POS resueltos desde el contenedor de DI (`CreateOrderUseCase`, `ListOrdersUseCase`, `ListMenuItemsUseCase`, `ListTablesUseCase`), no la tenant extension cruda.
+
+- [x] Crear 2 organizaciones con 2 sucursales cada una (seed con `basePrisma`, bypassa la extension)
+- [x] Desde org A, listar/crear datos → solo ve los suyos (órdenes, menú, mesas con IDs disjuntos)
+- [x] Desde org A sucursal A1, intentar ver datos de sucursal A2 → no los ve
+- [x] Intentar acceder con un `branchId` de otra org → no hay leak (filtra por branchId literal; devuelve solo lo de esa branch)
+- [x] Crear orden inyecta el `branchId` del contexto automáticamente
+- [x] Operar el POS sin branch en contexto → `TENANT_BRANCH_REQUIRED` (create + list)
 
 ---
 
@@ -1048,7 +1070,9 @@ SET sm.branchId = p.branchId;
 - [ ] Crear orden en sucursal A genera movements con `branchId = A`
 - [ ] Query a stock/recetas sin `branchId` en contexto → `TENANT_BRANCH_REQUIRED`
 
-**Salida:** stock y recetas completamente aislados por sucursal, consistentes con el resto del POS. (Reportes de stock se ajustan en una fase posterior.)
+**Salida:** stock y recetas completamente aislados por sucursal, consistentes con el resto del POS.
+
+> **Reportes de stock/ventas — aislados (2026-06-04):** tres reportes usaban el cliente Prisma base (`prismaService.getClient()`) y agregaban datos de todas las sucursales. Migrados a `getPrisma()` (cliente extendido): `ProductsConsumptionReportUseCase`, `MenuItemsCostReportUseCase` y `SalesPerformanceReportGenerator`. Cubierto por `tests/integration/reports-isolation.test.ts` (4/4 verde contra DB real). Nota: `WasteReportUseCase`, `GetReportsSummaryUseCase` y `GetDashboardUseCase` ya estaban aislados (usan repos/StockService con el cliente extendido).
 
 ---
 
@@ -1283,22 +1307,153 @@ interface SignupRequest {
 
 ---
 
-## Transversal — Storage R2
+## Transversal — Storage de imágenes (S3)
+
+**Objetivo:** subida real de imágenes (logo de sucursal, imagen de producto, imagen de menu item). Hoy `Branch.logoUrl` solo acepta una URL externa y `Product`/`MenuItem` **no tienen campo de imagen**; no hay storage configurado.
+
+**Estado: ✅ Completa (backend) — 2026-06-05.** T1–T9 implementadas; endpoint `POST /api/uploads` operativo + `imageUrl` persistido en Product/MenuItem + 6/6 tests de integración verdes contra DB real.
+
+**Decisiones (2026-06-05):**
+- **Proveedor:** **AWS S3** (`@aws-sdk/client-s3`), consistente con SES/SQS/DynamoDB ya presentes. LocalStack en dev/test vía `AWS_ENDPOINT_URL`. Apagable con `S3_ENABLED=false` (no-op que loggea, igual que `EmailService`).
+- **Mecanismo:** el frontend manda `multipart/form-data`; el backend recibe el buffer con **multer** (`memoryStorage`), valida tipo/tamaño y sube a S3. (No presigned URL.)
+- **Persistencia:** endpoint **genérico** que sube y **devuelve `{ url, key }`**; el recurso guarda la URL en su `POST`/`PATCH` existente. **Sin tabla de imágenes** en BD.
+- **Abstracción:** interfaz de dominio `IFileStorage` (`upload`/`delete`) + implementación `S3FileStorage` en `infrastructure/storage/`, para que el use-case no dependa de S3 directamente (mismo patrón que los demás repos).
+
+**Layout de claves (prefijo por tenant para aislamiento y limpieza):**
 
 ```text
-organizations/{organizationId}/logo.{ext}    # Etapa 4
-branches/{branchId}/logo.{ext}             # Etapa 2
+organizations/{organizationId}/logo.{ext}
+branches/{branchId}/logo.{ext}
+branches/{branchId}/products/{uuid}.{ext}
+branches/{branchId}/menu-items/{uuid}.{ext}
 ```
 
-**Endpoint firmado (ejemplo):**
+**Contrato del endpoint:**
 
 ```typescript
-// POST /api/uploads/signed-url
-// Body: { "kind": "org_logo", "resourceId": "org-uuid" }
-// Valida: resourceId === JWT.org
+// POST /api/uploads   (auth + tenant; multipart/form-data, campo "file")
+// Body (campos de texto): { "kind": "branch_logo" | "org_logo" | "product_image" | "menu_item_image" }
+// Valida: tipo MIME (jpeg/png/webp), tamaño (≤5MB), y que el branchId/orgId salga del CONTEXTO (no del body)
+// Response 200: { "url": "https://...", "key": "branches/{branchId}/products/{uuid}.webp" }
 ```
 
-Limpieza al hard-delete org: ver Fase C.3 (incluye prefijos de sucursales vía Etapa 2).
+**Tareas (backend) — atómicas, en orden de dependencia:**
+
+Cada tarea es pequeña, autocontenida y commiteable por separado. T1–T2 son base sin lógica; T3–T6 construyen de abajo hacia arriba (dominio → infra → DTO → use-case); T7 expone el endpoint; T8 persiste en los recursos; T9 valida. Patrones de referencia ya en el repo: `EmailService` (no-op apagable), `branch.module.ts` (registro DI por token), `create-branch.use-case.ts` (inyección + `getOrganizationId()`), `make-controller.ts` (factory de controllers).
+
+---
+
+- [x] **T1 — Dependencias + variables de entorno** *(base, sin lógica)*
+  - **Instalar:** `npm i @aws-sdk/client-s3 multer && npm i -D @types/multer`
+  - **Editar** `src/server/config/env.config.ts` → añadir al `envSchema` (junto al bloque Email, mismo estilo `z.enum(['true','false']).default('false')`):
+    ```typescript
+    // S3 storage de imágenes. Apagable: por defecto deshabilitado (no-op que loggea).
+    S3_ENABLED: z.enum(['true', 'false']).default('false'),
+    S3_BUCKET_NAME: z.string().optional(),
+    S3_PUBLIC_BASE_URL: z.string().url().optional(),
+    ```
+    > Reusa `AWS_REGION`, credenciales y `AWS_ENDPOINT_URL` ya existentes (mismo cliente que SES/SQS).
+  - **Editar** `env.example.txt` → documentar `S3_ENABLED`, `S3_BUCKET_NAME`, `S3_PUBLIC_BASE_URL`.
+  - **Done:** `npm run build` y arranque OK con las vars; sin uso todavía.
+
+- [x] **T2 — Errores nuevos** *(aislado)*
+  - **Editar** `src/shared/errors/error-config.ts` → añadir al `ERROR_CONFIG`:
+    ```typescript
+    INVALID_IMAGE_TYPE:        { message: 'Image type not allowed (jpeg, png, webp)', statusCode: 400, category: 'VALIDATION' },
+    IMAGE_SIZE_EXCEEDS_LIMIT:  { message: 'Image exceeds the 5MB size limit',          statusCode: 413, category: 'VALIDATION' },
+    IMAGE_UPLOAD_FAILED:       { message: 'Failed to upload image',                    statusCode: 500, category: 'INTERNAL' },
+    ```
+    > Verificar que `413` esté contemplado en `error-handler.middleware.ts` (si mapea por `statusCode` del config, no requiere cambio).
+  - **Done:** códigos disponibles para T6/T7.
+
+- [x] **T3 — Interfaz de dominio `IFileStorage`** *(contrato, sin impl)*
+  - **Crear** `src/core/domain/interfaces/file-storage.interface.ts`:
+    ```typescript
+    export interface UploadResult { url: string; key: string; }
+    export interface IFileStorage {
+      upload(key: string, body: Buffer, contentType: string): Promise<UploadResult>;
+      delete(key: string): Promise<void>;
+    }
+    ```
+  - **Done:** contrato disponible; depende de nada.
+
+- [x] **T4 — Implementación `S3FileStorage` + registro DI** *(infra)*
+  - **Crear** `src/core/infrastructure/storage/s3-file-storage.ts` — `@injectable()`, implementa `IFileStorage`. Constructor calca a `EmailService`: lee `S3_ENABLED`, `S3_BUCKET_NAME`, `AWS_REGION`, `AWS_ENDPOINT_URL`, credenciales; crea `S3Client`.
+    - `upload(key, body, contentType)`: si `!enabled` → `logger.info(...)` no-op y devuelve `{ key, url: <S3_PUBLIC_BASE_URL>/<key> ó stub local }`; si habilitado → `PutObjectCommand` y construye `url` desde `S3_PUBLIC_BASE_URL` o el endpoint. Captura errores → `throw new AppError('IMAGE_UPLOAD_FAILED')`.
+    - `delete(key)`: `DeleteObjectCommand` (no-op si deshabilitado).
+  - **Crear** `src/core/infrastructure/config/dependency-injection/s3.module.ts`:
+    ```typescript
+    import { container } from 'tsyringe';
+    import { S3FileStorage } from '../../storage/s3-file-storage';
+    import { IFileStorage } from '../../../domain/interfaces/file-storage.interface';
+    container.register<IFileStorage>('IFileStorage', { useClass: S3FileStorage });
+    ```
+  - **Editar** `src/core/infrastructure/config/dependency-injection/index.ts` → `import './s3.module';` (junto a `email.module`).
+  - **Done:** `container.resolve('IFileStorage')` funciona; testeable aislado con `S3_ENABLED=false`.
+
+- [x] **T5 — DTO Zod `image.dto.ts`** *(validación)*
+  - **Crear** `src/core/application/dto/image.dto.ts`:
+    ```typescript
+    export const uploadImageSchema = z.object({
+      kind: z.enum(['branch_logo', 'org_logo', 'product_image', 'menu_item_image']),
+    });
+    export type UploadImageInput = z.infer<typeof uploadImageSchema>;
+    export const ALLOWED_IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp'] as const;
+    export const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
+    ```
+  - **Done:** valida `kind`; constantes de tipo/tamaño reutilizables en T6/T7.
+
+- [x] **T6 — `UploadImageUseCase`** *(lógica pura, sin HTTP)*
+  - **Crear** `src/core/application/use-cases/uploads/upload-image.use-case.ts` — `@injectable()`, `@inject('IFileStorage')`. Patrón de `create-branch.use-case.ts`.
+    - Input: `{ kind, buffer, mimeType, size }`.
+    - Valida: `mimeType ∈ ALLOWED_IMAGE_MIME` (si no → `AppError('INVALID_IMAGE_TYPE')`); `size ≤ MAX_IMAGE_BYTES` (si no → `AppError('IMAGE_SIZE_EXCEEDS_LIMIT')`).
+    - Deriva key del `kind` usando **contexto**, nunca del body (`getOrganizationId()` / `getBranchId()` de `tenant-context.ts`; si `kind` requiere branch y `getBranchId()` es `undefined` → error de contexto):
+      - `org_logo` → `organizations/{orgId}/logo.{ext}`
+      - `branch_logo` → `branches/{branchId}/logo.{ext}`
+      - `product_image` → `branches/{branchId}/products/{uuid}.{ext}`
+      - `menu_item_image` → `branches/{branchId}/menu-items/{uuid}.{ext}`
+      - `ext` derivado del `mimeType` (`jpeg→jpg`, `png`, `webp`); `uuid` con `crypto.randomUUID()`.
+    - Llama `this.fileStorage.upload(key, buffer, mimeType)`; devuelve `{ url, key }`.
+  - **Editar** `s3.module.ts` (o el módulo correspondiente) → `container.register(UploadImageUseCase, UploadImageUseCase);`
+  - **Done:** ejecutable y testeable sin Express (mockeando `IFileStorage` + `runWithTenant`).
+
+- [x] **T7 — Controller + ruta `POST /api/uploads`** *(transporte)*
+  - **Crear** `src/server/middleware/upload.middleware.ts` → instancia de `multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_IMAGE_BYTES } })`; exporta `uploadSingle = upload.single('file')`.
+    > El límite de multer corta >5MB antes del controller; mapear su `LIMIT_FILE_SIZE` (MulterError) a `IMAGE_SIZE_EXCEEDS_LIMIT` (413) en `error-handler.middleware.ts` o en un wrapper.
+  - **Crear** `src/controllers/uploads/upload-image.controller.ts` — usa `makeController(UploadImageUseCase, { mapper })` con mapper custom (multer pone el archivo en `req.file`, no en `req.body`):
+    ```typescript
+    mapper: (req) => ({
+      kind: req.body.kind,
+      buffer: req.file?.buffer,
+      mimeType: req.file?.mimetype,
+      size: req.file?.size,
+    })
+    ```
+    > Si `req.file` es undefined → `AppError('INVALID_IMAGE_TYPE')` (o `FILE_REQUIRED`). Añadir `src/controllers/uploads/index.ts` con el re-export.
+  - **Crear** `src/server/routes/upload.routes.ts`:
+    ```typescript
+    router.post('/', uploadSingle, zodValidator({ schema: uploadImageSchema, source: 'body' }), uploadImageController);
+    ```
+    > `uploadSingle` va **antes** del `zodValidator` para que multer parsee el multipart y popule `req.body.kind`.
+  - **Editar** `src/server/routes/index.ts` → `import uploadRoutes from './upload.routes';` y `router.use('/api/uploads', uploadRoutes);` **dentro del bloque global** (después de `AuthMiddleware.authenticate` + `TenantMiddleware.attach` + `SubscriptionMiddleware`).
+  - **Done:** `POST /api/uploads` (multipart, campo `file` + `kind`) responde `200 { url, key }` end-to-end.
+
+- [x] **T8 — Persistencia en recursos (migración Prisma + DTO/mappers)**
+  - **Editar** `src/core/infrastructure/database/prisma/schema.prisma` → `imageUrl String?` en `model Product` y `model MenuItem`.
+  - **Migración:** `npx prisma migrate dev --name add_image_url_to_product_and_menu_item` (+ `prisma generate`).
+  - **Editar** DTO create/update de Product y MenuItem (`src/core/application/dto/product.dto.ts`, `menu-item.dto.ts`) → `imageUrl: z.string().url().optional()`.
+  - **Editar** los use-cases create/update correspondientes para persistir `imageUrl`, y los mappers de respuesta (`*-response.mapper.ts`) para exponerlo.
+  - **Done:** el cliente sube (T7) y guarda la `url` en el `POST`/`PATCH` del recurso; sin tabla de imágenes.
+
+- [x] **T9 — Tests de integración**
+  - **Crear** `tests/integration/uploads.test.ts` (junto a `pos-isolation.test.ts` / `reports-isolation.test.ts`):
+    - tipo inválido (ej. `application/pdf`) → **400** `INVALID_IMAGE_TYPE`.
+    - archivo >5MB → **413** `IMAGE_SIZE_EXCEEDS_LIMIT`.
+    - aislamiento: la `key` devuelta lleva el `branchId`/`orgId` del **contexto** del request (no del body) — verifica prefijo correcto por `kind`.
+    - `S3_ENABLED=false` → no-op: responde 200 sin tocar S3 real (loggea), no rompe.
+  - **Done:** fase verificada; suite verde.
+
+Limpieza al hard-delete org: ver Fase C.3 (borrar prefijos `organizations/{orgId}/` y `branches/{branchId}/` de todas las sucursales de la org).
 
 ---
 
@@ -1313,63 +1468,14 @@ Limpieza al hard-delete org: ver Fase C.3 (incluye prefijos de sucursales vía E
 
 - Solo owner dentro de 30 días; otros roles rechazados.
 
-### Fase C.3 — Cron hard-delete (diario 4am)
+### Fase C.3 — Cron hard-delete (diario 4am) — ⏸️ DIFERIDO
+
+**Diferido (2026-06-05):** el deploy nuevo arranca con DB vacía y bajo volumen, así que las orgs en soft-close (que ya quedan `CANCELLED` + `deletedAt` y con sesiones invalidadas) no se acumulan a un ritmo problemático para el go-live. El soft-close de C.1 cubre la necesidad inmediata. Reactivar esta fase cuando: (a) el volumen de orgs cerradas crezca, o (b) se monte el storage R2 (necesario para limpiar los logos al borrar). Ver [Apéndice — Decisiones diferidas](#apéndice--decisiones-diferidas).
+
+Cuando se retome:
 
 - Orgs con `deleted_at < now() - 30 days`.
 - Borrar R2 org + sucursales (Etapa 2).
 - `DELETE` organization (cascades según schema).
 
 ---
-
-## Etapa 5 — Go-live
-
-### Fase 5.1 — QA global
-
-**Tareas:**
-
-- [ ] E2E: signup → operar → (Etapa 2: segunda sucursal + switch).
-- [ ] Aislamiento IDOR entre orgs.
-- [ ] Pen test JWT (`org` / `branch` manipulados).
-- [ ] Carga liviana: 50 orgs × 3 sucursales.
-- [ ] Checklist OWASP multi-tenant.
-
-### Fase 5.2 — Rollout
-
-**Tareas:**
-
-- [ ] DB vacía + env (`BILLING_ENABLED=false`, `JWT_SECRET`, …).
-- [ ] `prisma migrate deploy` + `db seed`.
-- [ ] Healthcheck; logs sin `TENANT_*_REQUIRED` inesperados.
-- [ ] Feature flag signup público OFF → ON.
-- [ ] Plan rollback (revert deploy; legacy intacto).
-
-```bash
-npx prisma migrate deploy
-npx prisma db seed
-```
-
----
-
-## Definition of Done (programa completo)
-
-### Etapa 1
-
-- [x] Tenant obligatorio en modelos de dominio.
-- [x] JWT con `org` + `branch` + `tokenVersion`.
-- [x] `GET /api/config` y guards operativos.
-
-### Etapa 2
-
-- [ ] Ver [Checklist Etapa 2](#checklist-etapa-2-dod) arriba.
-
-### Etapa 3–5
-
-- [ ] POS filtrado por sucursal activa.
-- [ ] Signup crea org + owner + primera sucursal en una transacción.
-- [ ] Deploy nuevo pasa migrate + seed desde cero.
-
----
-
-## Apéndice — Decisiones diferidas
-
-Billing Stripe activo, multi-org por user, menú compartido entre sucursales, invitación por email, custom domains, DB dedicada enterprise, `audit_log`, export GDPR, refresh tokens, captcha en signup.

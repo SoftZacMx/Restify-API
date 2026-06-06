@@ -15,6 +15,7 @@ export interface UpdateMenuItemResult {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+  imageUrl: string | null;
 }
 
 @injectable()
@@ -57,6 +58,7 @@ export class UpdateMenuItemUseCase {
     if (input.isExtra !== undefined) updateData.isExtra = input.isExtra;
     if (input.categoryId !== undefined) updateData.categoryId = input.categoryId;
     if (input.userId !== undefined) updateData.userId = input.userId;
+    if (input.imageUrl !== undefined) updateData.imageUrl = input.imageUrl;
 
     // Update menu item
     const menuItem = await this.menuItemRepository.update(menuItemId, updateData);
@@ -71,6 +73,7 @@ export class UpdateMenuItemUseCase {
       userId: menuItem.userId,
       createdAt: menuItem.createdAt,
       updatedAt: menuItem.updatedAt,
+      imageUrl: menuItem.imageUrl,
     };
   }
 }

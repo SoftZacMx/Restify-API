@@ -19,5 +19,6 @@ import './report.module';
 import './ticket.module';
 import './websocket.module';
 import './email.module';
+import './s3.module';
 
 export { container } from 'tsyringe';

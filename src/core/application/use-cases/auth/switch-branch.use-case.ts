@@ -2,6 +2,7 @@ import { inject, injectable } from 'tsyringe';
 import { IUserRepository } from '../../../domain/interfaces/user-repository.interface';
 import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
 import { IUserBranchAccessRepository } from '../../../domain/interfaces/user-branch-access-repository.interface';
+import { IOrganizationRepository } from '../../../domain/interfaces/organization-repository.interface';
 import { JwtUtil, JwtPayload } from '../../../../shared/utils/jwt.util';
 import { AppError } from '../../../../shared/errors';
 
@@ -23,7 +24,8 @@ export class SwitchBranchUseCase {
   constructor(
     @inject('IUserRepository') private readonly userRepository: IUserRepository,
     @inject('IBranchRepository') private readonly branchRepository: IBranchRepository,
-    @inject('IUserBranchAccessRepository') private readonly userBranchAccessRepository: IUserBranchAccessRepository
+    @inject('IUserBranchAccessRepository') private readonly userBranchAccessRepository: IUserBranchAccessRepository,
+    @inject('IOrganizationRepository') private readonly organizationRepository: IOrganizationRepository
   ) {}
 
   async execute(input: SwitchBranchInput): Promise<SwitchBranchResult> {
@@ -37,6 +39,12 @@ export class SwitchBranchUseCase {
 
     if (!user.isAccountActive()) {
       throw new AppError('ACCOUNT_DISABLED', 'Account has been disabled');
+    }
+
+    // Validate organization is active (cancelled/suspended orgs cannot operate)
+    const org = await this.organizationRepository.findById(user.organizationId);
+    if (!org || org.status !== 'ACTIVE') {
+      throw new AppError('ORGANIZATION_INACTIVE', 'Organization is not active');
     }
 
     // Validate branch exists and belongs to user's organization

@@ -15,6 +15,7 @@ export interface CreateMenuItemResult {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+  imageUrl: string | null;
 }
 
 @injectable()
@@ -48,6 +49,7 @@ export class CreateMenuItemUseCase {
       isExtra: input.isExtra ?? false,
       categoryId: input.categoryId || null,
       userId: input.userId,
+      imageUrl: input.imageUrl,
     });
 
     return {
@@ -60,6 +62,7 @@ export class CreateMenuItemUseCase {
       userId: menuItem.userId,
       createdAt: menuItem.createdAt,
       updatedAt: menuItem.updatedAt,
+      imageUrl: menuItem.imageUrl,
     };
   }
 }
