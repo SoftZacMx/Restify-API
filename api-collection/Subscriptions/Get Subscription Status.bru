@@ -7,15 +7,20 @@ meta {
 get {
   url: {{baseUrl}}/api/subscription/status
   body: none
-  auth: inherit
+  auth: bearer
 }
 
 headers {
   Authorization: Bearer {{token}}
 }
 
+auth:bearer {
+  token: {{login-token}}
+}
+
 settings {
   encodeUrl: true
+  timeout: 0
 }
 
 docs {

@@ -5,6 +5,7 @@ import { IOrganizationRepository } from '../../../domain/interfaces/organization
 import { IUserRepository } from '../../../domain/interfaces/user-repository.interface';
 import { StripeSubscriptionService } from '../../../infrastructure/payment-gateways/stripe-subscription.service';
 import { AppError } from '../../../../shared/errors';
+import { OWNER_ADMIN } from '../../../../shared/constants/roles.constants';
 
 export interface CreateSubscriptionCheckoutInput {
   userId: string;
@@ -19,17 +20,22 @@ export interface CreateSubscriptionCheckoutResult {
 @injectable()
 export class CreateSubscriptionCheckoutUseCase {
   constructor(
-    @inject('ISubscriptionRepository') private readonly subscriptionRepository: ISubscriptionRepository,
-    @inject('ISubscriptionPlanRepository') private readonly planRepository: ISubscriptionPlanRepository,
-    @inject('IOrganizationRepository') private readonly organizationRepository: IOrganizationRepository,
+    @inject('ISubscriptionRepository')
+    private readonly subscriptionRepository: ISubscriptionRepository,
+    @inject('ISubscriptionPlanRepository')
+    private readonly planRepository: ISubscriptionPlanRepository,
+    @inject('IOrganizationRepository')
+    private readonly organizationRepository: IOrganizationRepository,
     @inject('IUserRepository') private readonly userRepository: IUserRepository,
-    @inject(StripeSubscriptionService) private readonly stripeSubscriptionService: StripeSubscriptionService
+    @inject(StripeSubscriptionService)
+    private readonly stripeSubscriptionService: StripeSubscriptionService
   ) {}
 
   async execute(input: CreateSubscriptionCheckoutInput): Promise<CreateSubscriptionCheckoutResult> {
     // 0. Validar que sea ADMIN
     const user = await this.userRepository.findById(input.userId);
-    if (!user || user.rol !== 'ADMIN') {
+
+    if (!user || !OWNER_ADMIN.includes(user.rol as any)) {
       throw new AppError('FORBIDDEN', 'Solo el administrador puede gestionar la suscripción');
     }
 
@@ -65,7 +71,8 @@ export class CreateSubscriptionCheckoutUseCase {
     }
 
     // 6. Crear Checkout Session con el stripePriceId del plan
-    const baseSuccessUrl = process.env.STRIPE_SUCCESS_URL || 'http://localhost:5173/subscription/success';
+    const baseSuccessUrl =
+      process.env.STRIPE_SUCCESS_URL || 'http://localhost:5173/subscription/success';
     const successUrl = `${baseSuccessUrl}?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = process.env.STRIPE_CANCEL_URL || 'http://localhost:5173/subscription/cancel';
 
