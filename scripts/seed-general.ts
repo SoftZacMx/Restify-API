@@ -9,15 +9,21 @@
  * Antes: npx prisma migrate deploy
  */
 
-import { PrismaClient, UserRole, ExpenseType } from '@prisma/client';
+import { PrismaClient, UserRole, ExpenseType, SubscriptionStatus } from '@prisma/client';
 import { BcryptUtil } from '../src/shared/utils/bcrypt.util';
 
 const prisma = new PrismaClient();
 
 const DEFAULT_PASSWORD = 'Restify123!';
 
+// --- Organización y sucursal (multi-tenancy) ---
+const ORG_NAME = 'Restify Demo';
+const ORG_SLUG = 'restify-demo';
+const BRANCH_NAME = 'Sucursal Principal';
+
 // --- Usuarios (por si acaso; upsert por email) ---
 const seedUsers = [
+  { name: 'Owner', last_name: 'System', email: 'owner@restify.com', rol: UserRole.OWNER },
   { name: 'Admin', last_name: 'System', email: 'admin@restify.com', rol: UserRole.ADMIN },
   { name: 'Manager', last_name: 'Test', email: 'manager@restify.com', rol: UserRole.MANAGER },
   { name: 'Juan', last_name: 'Pérez', email: 'waiter@restify.com', rol: UserRole.WAITER },
@@ -93,19 +99,81 @@ const seedExpenses: { title: string; type: ExpenseType; total: number; subtotal:
 ];
 
 async function main(): Promise<void> {
-  console.log('🌱 Seed general: usuarios, categorías, platillos, mesas, productos, gastos (sin órdenes)\n');
+  console.log('🌱 Seed general: organización, sucursal, usuarios, categorías, platillos, mesas, productos, gastos (sin órdenes)\n');
 
-  const adminId = await seedUsersSection();
-  const categoryIds = await seedCategoriesSection();
-  await seedMenuItemsSection(adminId, categoryIds);
-  await seedTablesSection(adminId);
-  const productIds = await seedProductsSection(adminId);
-  await seedExpensesSection(adminId, productIds);
+  const { organizationId, branchId } = await seedOrganizationSection();
+  await seedSubscriptionSection(organizationId);
+  const adminId = await seedUsersSection(organizationId);
+  const categoryIds = await seedCategoriesSection(branchId);
+  await seedMenuItemsSection(adminId, branchId, categoryIds);
+  await seedTablesSection(adminId, branchId);
+  const productIds = await seedProductsSection(adminId, branchId);
+  await seedExpensesSection(adminId, branchId, productIds);
 
   console.log('\n✨ Seed general terminado correctamente.');
 }
 
-async function seedUsersSection(): Promise<string> {
+async function seedOrganizationSection(): Promise<{ organizationId: string; branchId: string }> {
+  console.log('🏢 Organización y sucursal...');
+
+  let org = await prisma.organization.findFirst({ where: { slug: ORG_SLUG } });
+  if (!org) {
+    org = await prisma.organization.create({
+      data: { name: ORG_NAME, slug: ORG_SLUG },
+    });
+  }
+  console.log(`   Organización: ${org.name} (${org.slug})`);
+
+  let branch = await prisma.branch.findFirst({
+    where: { organizationId: org.id, name: BRANCH_NAME },
+  });
+  if (!branch) {
+    branch = await prisma.branch.create({
+      data: {
+        organizationId: org.id,
+        name: BRANCH_NAME,
+        state: 'CDMX',
+        city: 'Ciudad de México',
+        street: 'Av. Reforma',
+        exteriorNumber: '100',
+        phone: '5555555555',
+      },
+    });
+  }
+  console.log(`   Sucursal: ${branch.name}`);
+  console.log('');
+  return { organizationId: org.id, branchId: branch.id };
+}
+
+async function seedSubscriptionSection(organizationId: string): Promise<void> {
+  console.log('💳 Suscripción...');
+
+  // currentPeriodEnd siempre en el futuro (1 año desde hoy).
+  const now = new Date();
+  const oneYearFromNow = new Date(now);
+  oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+
+  const sub = await prisma.subscription.upsert({
+    where: { organizationId },
+    create: {
+      organizationId,
+      status: SubscriptionStatus.ACTIVE,
+      currentPeriodStart: now,
+      currentPeriodEnd: oneYearFromNow,
+      cancelAtPeriodEnd: false,
+    },
+    update: {
+      status: SubscriptionStatus.ACTIVE,
+      currentPeriodStart: now,
+      currentPeriodEnd: oneYearFromNow,
+      cancelAtPeriodEnd: false,
+    },
+  });
+  console.log(`   Suscripción ${sub.status} — vence ${oneYearFromNow.toISOString().slice(0, 10)}`);
+  console.log('');
+}
+
+async function seedUsersSection(organizationId: string): Promise<string> {
   console.log('👥 Usuarios (upsert por email)...');
   let adminId = '';
 
@@ -120,6 +188,7 @@ async function seedUsersSection(): Promise<string> {
         password: hashed,
         rol: u.rol,
         status: true,
+        organizationId,
       },
       update: {},
     });
@@ -127,7 +196,7 @@ async function seedUsersSection(): Promise<string> {
     console.log(`   ${user.email} (${user.rol})`);
   }
   if (!adminId) {
-    const admin = await prisma.user.findFirst({ where: { rol: UserRole.ADMIN } });
+    const admin = await prisma.user.findFirst({ where: { rol: UserRole.ADMIN, organizationId } });
     if (admin) adminId = admin.id;
   }
   if (!adminId) throw new Error('No hay usuario ADMIN para asociar mesas/productos/platillos/gastos.');
@@ -135,14 +204,14 @@ async function seedUsersSection(): Promise<string> {
   return adminId;
 }
 
-async function seedCategoriesSection(): Promise<string[]> {
+async function seedCategoriesSection(branchId: string): Promise<string[]> {
   console.log('📁 Categorías de menú...');
   const ids: string[] = [];
 
   for (const c of seedCategories) {
-    let cat = await prisma.menuCategory.findFirst({ where: { name: c.name } });
+    let cat = await prisma.menuCategory.findFirst({ where: { name: c.name, branchId } });
     if (!cat) {
-      cat = await prisma.menuCategory.create({ data: { name: c.name, status: c.status } });
+      cat = await prisma.menuCategory.create({ data: { name: c.name, status: c.status, branchId } });
     }
     ids.push(cat.id);
     console.log(`   ${c.name}`);
@@ -151,15 +220,15 @@ async function seedCategoriesSection(): Promise<string[]> {
   return ids;
 }
 
-async function seedMenuItemsSection(userId: string, categoryIds: string[]): Promise<void> {
+async function seedMenuItemsSection(userId: string, branchId: string, categoryIds: string[]): Promise<void> {
   console.log('🍽️  Platillos por categoría...');
 
   for (const d of seedDishes) {
     const categoryId = categoryIds[d.categoryIndex] ?? null;
-    const existing = await prisma.menuItem.findFirst({ where: { name: d.name, isExtra: false } });
+    const existing = await prisma.menuItem.findFirst({ where: { name: d.name, isExtra: false, branchId } });
     if (!existing) {
       await prisma.menuItem.create({
-        data: { name: d.name, price: d.price, status: true, isExtra: false, categoryId, userId },
+        data: { name: d.name, price: d.price, status: true, isExtra: false, categoryId, userId, branchId },
       });
       console.log(`   ${d.name} - $${d.price}`);
     }
@@ -167,10 +236,10 @@ async function seedMenuItemsSection(userId: string, categoryIds: string[]): Prom
 
   console.log('➕ Extras...');
   for (const e of seedExtras) {
-    const existing = await prisma.menuItem.findFirst({ where: { name: e.name, isExtra: true } });
+    const existing = await prisma.menuItem.findFirst({ where: { name: e.name, isExtra: true, branchId } });
     if (!existing) {
       await prisma.menuItem.create({
-        data: { name: e.name, price: e.price, status: true, isExtra: true, categoryId: null, userId },
+        data: { name: e.name, price: e.price, status: true, isExtra: true, categoryId: null, userId, branchId },
       });
       console.log(`   ${e.name} - $${e.price}`);
     }
@@ -178,13 +247,13 @@ async function seedMenuItemsSection(userId: string, categoryIds: string[]): Prom
   console.log('');
 }
 
-async function seedTablesSection(userId: string): Promise<void> {
+async function seedTablesSection(userId: string, branchId: string): Promise<void> {
   console.log('🪑 Mesas...');
   for (const name of tableNames) {
-    const existing = await prisma.table.findFirst({ where: { name } });
+    const existing = await prisma.table.findFirst({ where: { name, branchId } });
     if (!existing) {
       await prisma.table.create({
-        data: { name, userId, status: true, availabilityStatus: true },
+        data: { name, userId, branchId, status: true, availabilityStatus: true },
       });
       console.log(`   Mesa ${name}`);
     }
@@ -192,15 +261,15 @@ async function seedTablesSection(userId: string): Promise<void> {
   console.log('');
 }
 
-async function seedProductsSection(userId: string): Promise<string[]> {
+async function seedProductsSection(userId: string, branchId: string): Promise<string[]> {
   console.log('📦 Productos...');
   const ids: string[] = [];
 
   for (const p of seedProducts) {
-    let prod = await prisma.product.findFirst({ where: { name: p.name } });
+    let prod = await prisma.product.findFirst({ where: { name: p.name, branchId } });
     if (!prod) {
       prod = await prisma.product.create({
-        data: { name: p.name, description: p.description ?? null, userId, status: true },
+        data: { name: p.name, description: p.description ?? null, userId, branchId, status: true },
       });
       console.log(`   ${p.name}`);
     }
@@ -210,12 +279,12 @@ async function seedProductsSection(userId: string): Promise<string[]> {
   return ids;
 }
 
-async function seedExpensesSection(userId: string, productIds: string[]): Promise<void> {
+async function seedExpensesSection(userId: string, branchId: string, productIds: string[]): Promise<void> {
   console.log('💰 Gastos...');
 
   for (const e of seedExpenses) {
     const existing = await prisma.expense.findFirst({
-      where: { title: e.title, userId, date: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+      where: { title: e.title, userId, branchId, date: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
     });
     if (!existing) {
       await prisma.expense.create({
@@ -228,6 +297,7 @@ async function seedExpensesSection(userId: string, productIds: string[]): Promis
           paymentMethod: e.paymentMethod,
           description: e.description ?? null,
           userId,
+          branchId,
         },
       });
       console.log(`   ${e.title} - $${e.total}`);
@@ -237,7 +307,7 @@ async function seedExpensesSection(userId: string, productIds: string[]): Promis
   // Un gasto tipo MERCHANDISE con ítems (productos)
   const merchTitle = 'Compra mercancía semanal';
   const existingMerch = await prisma.expense.findFirst({
-    where: { title: merchTitle, type: ExpenseType.MERCHANDISE, userId },
+    where: { title: merchTitle, type: ExpenseType.MERCHANDISE, userId, branchId },
   });
   if (!existingMerch && productIds.length >= 2) {
     const subtotal = 150;
@@ -252,12 +322,13 @@ async function seedExpensesSection(userId: string, productIds: string[]): Promis
         total,
         paymentMethod: 2,
         userId,
+        branchId,
       },
     });
     await prisma.expenseItem.createMany({
       data: [
-        { expenseId: exp.id, productId: productIds[0], amount: 50, subtotal: 50, total: 50 },
-        { expenseId: exp.id, productId: productIds[1], amount: 100, subtotal: 100, total: 100 },
+        { expenseId: exp.id, productId: productIds[0], amount: 50, subtotal: 50, total: 50, branchId },
+        { expenseId: exp.id, productId: productIds[1], amount: 100, subtotal: 100, total: 100, branchId },
       ],
     });
     console.log(`   ${merchTitle} - $${total}`);

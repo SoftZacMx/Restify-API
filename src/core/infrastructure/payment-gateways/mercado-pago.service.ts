@@ -3,6 +3,7 @@ import { inject, injectable } from 'tsyringe';
 import { createHmac } from 'crypto';
 import { PaymentConfigService } from '../../application/services/payment-config.service';
 import { AppError } from '../../../shared/errors';
+import { getBranchId } from '../tenant/tenant-context';
 
 // --- Interfaces ---
 
@@ -56,32 +57,54 @@ export interface ValidateWebhookParams {
 
 // --- Service ---
 
+interface MPClients {
+  preference: Preference;
+  payment: PaymentMP;
+}
+
+// Key para el cache de clientes cuando no hay tenant context (config desde env)
+const ENV_CLIENT_KEY = '__env__';
+
 @injectable()
 export class MercadoPagoService {
-  private client: MercadoPagoConfig | null = null;
-  private preference: Preference | null = null;
-  private paymentClient: PaymentMP | null = null;
+  // Un cliente por branch: cada branch puede tener su propia cuenta de MP.
+  private clients: Map<string, MPClients> = new Map();
 
   constructor(
     @inject(PaymentConfigService) private readonly paymentConfigService: PaymentConfigService
   ) {}
 
-  private async initClient(): Promise<void> {
-    if (this.client) return;
+  private async getClients(): Promise<MPClients> {
+    const key = getBranchId() ?? ENV_CLIENT_KEY;
+    const cached = this.clients.get(key);
+    if (cached) return cached;
+
     const config = await this.paymentConfigService.get();
     if (!config.mercadoPago.accessToken) {
       throw new AppError('PAYMENT_CONFIG_NOT_CONFIGURED', 'Mercado Pago access token no configurado');
     }
-    this.client = new MercadoPagoConfig({ accessToken: config.mercadoPago.accessToken });
-    this.preference = new Preference(this.client);
-    this.paymentClient = new PaymentMP(this.client);
+    const client = new MercadoPagoConfig({ accessToken: config.mercadoPago.accessToken });
+    const clients: MPClients = {
+      preference: new Preference(client),
+      payment: new PaymentMP(client),
+    };
+    this.clients.set(key, clients);
+    return clients;
+  }
+
+  clearClient(branchId?: string): void {
+    if (branchId) {
+      this.clients.delete(branchId);
+    } else {
+      this.clients.clear();
+    }
   }
 
   async createPreference(params: CreateMPPreferenceParams): Promise<MPPreferenceResult> {
-    await this.initClient();
+    const { preference: preferenceClient } = await this.getClients();
     const backUrl = process.env.MP_BACK_URL || 'https://restify.app';
 
-    const preference = await this.preference!.create({
+    const preference = await preferenceClient.create({
       body: {
         items: [
           {
@@ -124,8 +147,8 @@ export class MercadoPagoService {
   }
 
   async getPreference(preferenceId: string): Promise<MPPreferenceResult> {
-    await this.initClient();
-    const preference = await this.preference!.get({ preferenceId });
+    const { preference: preferenceClient } = await this.getClients();
+    const preference = await preferenceClient.get({ preferenceId });
 
     return {
       id: preference.id!,
@@ -136,8 +159,8 @@ export class MercadoPagoService {
   }
 
   async getPayment(paymentId: string): Promise<MPPaymentResult> {
-    await this.initClient();
-    const payment = await this.paymentClient!.get({ id: paymentId });
+    const { payment: paymentClient } = await this.getClients();
+    const payment = await paymentClient.get({ id: paymentId });
 
     const rawFees = (payment as { fee_details?: Array<{ type?: string; amount?: number; fee_payer?: string }> }).fee_details ?? [];
     const feeDetails: MPFeeDetail[] = rawFees

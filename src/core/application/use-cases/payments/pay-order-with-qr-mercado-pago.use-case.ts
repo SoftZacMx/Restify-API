@@ -14,6 +14,16 @@ export interface PayOrderWithQRMercadoPagoResult {
   expiresAt: Date;
 }
 
+// El webhook usa el branchId de la URL para establecer el tenant context
+// ANTES de consultar la API de MP (las credenciales son por branch).
+export function buildNotificationUrl(branchId?: string): string {
+  const base = process.env.MP_NOTIFICATION_URL || '';
+  if (!base || !branchId) return base;
+  const url = new URL(base);
+  url.searchParams.set('branchId', branchId);
+  return url.toString();
+}
+
 @injectable()
 export class PayOrderWithQRMercadoPagoUseCase {
   constructor(
@@ -72,7 +82,7 @@ export class PayOrderWithQRMercadoPagoUseCase {
 
     // 4. Crear Preference en Mercado Pago
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
-    const notificationUrl = process.env.MP_NOTIFICATION_URL || '';
+    const notificationUrl = buildNotificationUrl(order.branchId ?? undefined);
 
     const preference = await this.mercadoPagoService.createPreference({
       orderId: order.id,

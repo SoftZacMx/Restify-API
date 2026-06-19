@@ -1,5 +1,7 @@
 import { MercadoPagoService } from '../../../src/core/infrastructure/payment-gateways/mercado-pago.service';
 import { PaymentConfigService } from '../../../src/core/application/services/payment-config.service';
+import { runWithTenant } from '../../../src/core/infrastructure/tenant/tenant-context';
+import { MercadoPagoConfig } from 'mercadopago';
 
 // Mock mercadopago SDK
 const mockPreferenceCreate = jest.fn();
@@ -182,6 +184,62 @@ describe('MercadoPagoService', () => {
         { type: 'mercadopago_fee', amount: 5.25, feePayer: 'collector' },
         { type: 'shipping_fee', amount: 1.10, feePayer: 'collector' },
       ]);
+    });
+  });
+
+  describe('clientes por branch (multitenancy)', () => {
+    const branchA = { organizationId: 'org-1', branchId: 'branch-a' };
+    const branchB = { organizationId: 'org-2', branchId: 'branch-b' };
+
+    beforeEach(() => {
+      mockPreferenceGet.mockResolvedValue({
+        id: 'pref-x',
+        init_point: 'https://mp.com/checkout',
+        sandbox_init_point: 'https://sandbox.mp.com/checkout',
+        expiration_date_to: null,
+      });
+    });
+
+    it('crea un cliente distinto por branch, cada uno con el token de su config', async () => {
+      mockPaymentConfigService.get
+        .mockResolvedValueOnce({ mercadoPago: { accessToken: 'TOKEN-A', webhookSecret: '' } })
+        .mockResolvedValueOnce({ mercadoPago: { accessToken: 'TOKEN-B', webhookSecret: '' } });
+
+      await runWithTenant(branchA, () => service.getPreference('pref-1'));
+      await runWithTenant(branchB, () => service.getPreference('pref-2'));
+
+      expect(MercadoPagoConfig).toHaveBeenCalledTimes(2);
+      expect(MercadoPagoConfig).toHaveBeenNthCalledWith(1, { accessToken: 'TOKEN-A' });
+      expect(MercadoPagoConfig).toHaveBeenNthCalledWith(2, { accessToken: 'TOKEN-B' });
+    });
+
+    it('reutiliza el cliente cacheado para el mismo branch', async () => {
+      await runWithTenant(branchA, () => service.getPreference('pref-1'));
+      await runWithTenant(branchA, () => service.getPreference('pref-2'));
+
+      expect(MercadoPagoConfig).toHaveBeenCalledTimes(1);
+      expect(mockPaymentConfigService.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('clearClient(branchId) fuerza re-crear el cliente con la config nueva', async () => {
+      mockPaymentConfigService.get
+        .mockResolvedValueOnce({ mercadoPago: { accessToken: 'TOKEN-VIEJO', webhookSecret: '' } })
+        .mockResolvedValueOnce({ mercadoPago: { accessToken: 'TOKEN-NUEVO', webhookSecret: '' } });
+
+      await runWithTenant(branchA, () => service.getPreference('pref-1'));
+      service.clearClient(branchA.branchId);
+      await runWithTenant(branchA, () => service.getPreference('pref-2'));
+
+      expect(MercadoPagoConfig).toHaveBeenCalledTimes(2);
+      expect(MercadoPagoConfig).toHaveBeenNthCalledWith(2, { accessToken: 'TOKEN-NUEVO' });
+    });
+
+    it('sin tenant context usa la config del env (key propia, no colisiona con branches)', async () => {
+      await service.getPreference('pref-1'); // sin contexto
+      await runWithTenant(branchA, () => service.getPreference('pref-2'));
+
+      // Dos clientes: uno para env, otro para branch-a
+      expect(MercadoPagoConfig).toHaveBeenCalledTimes(2);
     });
   });
 

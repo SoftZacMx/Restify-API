@@ -11,6 +11,7 @@ import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { Table } from '../../../../src/core/domain/entities/table.entity';
 import { Branch } from '../../../../src/core/domain/entities/branch.entity';
 import { PaymentStatus, PaymentMethod, PaymentGateway } from '@prisma/client';
+import { getTenant } from '../../../../src/core/infrastructure/tenant/tenant-context';
 
 describe('ConfirmMercadoPagoPaymentUseCase', () => {
   let useCase: ConfirmMercadoPagoPaymentUseCase;
@@ -25,6 +26,14 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
   const orderId = 'order-123';
   const userId = 'user-123';
   const paymentId = 'payment-123';
+  const branchId = 'branch-456';
+  const orgId = 'org-789';
+
+  const mockBranch = new Branch(
+    branchId, orgId, 'Sucursal Centro', 'CDMX', 'CDMX', 'Reforma', '100',
+    '5551234567', null, null, null, null, null, null,
+    'America/Mexico_City', 'MXN', 'active', new Date(), new Date(), null
+  );
 
   const pendingPayment = new Payment(
     paymentId, orderId, userId, 150.50, 'MXN',
@@ -93,6 +102,9 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       findById: jest.fn().mockResolvedValue({ id: 'org-789', status: 'ACTIVE' }),
     } as any;
 
+    // Por defecto el branch existe; los tests de branch inexistente lo sobreescriben.
+    mockBranchRepository.findById.mockResolvedValue(mockBranch);
+
     mockMercadoPagoService = {
       createPreference: jest.fn(),
       getPreference: jest.fn(),
@@ -125,7 +137,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         id: 99999,
         status: 'approved',
         statusDetail: 'accredited',
-        externalReference: orderId,
+        externalReference: `${orderId}:${branchId}`,
         transactionAmount: 150.50,
         currencyId: 'MXN',
         paymentMethodId: 'visa',
@@ -183,7 +195,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         id: 99999,
         status: 'rejected',
         statusDetail: 'cc_rejected_other_reason',
-        externalReference: orderId,
+        externalReference: `${orderId}:${branchId}`,
         transactionAmount: 150.50,
         currencyId: 'MXN',
         paymentMethodId: 'visa',
@@ -216,7 +228,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         id: 99999,
         status: 'pending',
         statusDetail: 'pending_waiting_transfer',
-        externalReference: orderId,
+        externalReference: `${orderId}:${branchId}`,
         transactionAmount: 150.50,
         currencyId: 'MXN',
         paymentMethodId: 'bank_transfer',
@@ -248,7 +260,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         id: 99999,
         status: 'cancelled',
         statusDetail: 'expired',
-        externalReference: orderId,
+        externalReference: `${orderId}:${branchId}`,
         transactionAmount: 150.50,
         currencyId: 'MXN',
         paymentMethodId: 'visa',
@@ -280,7 +292,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         id: 99999,
         status: 'in_process',
         statusDetail: 'pending_review_manual',
-        externalReference: orderId,
+        externalReference: `${orderId}:${branchId}`,
         transactionAmount: 150.50,
         currencyId: 'MXN',
         paymentMethodId: 'visa',
@@ -311,7 +323,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         id: 99999,
         status: 'approved',
         statusDetail: 'accredited',
-        externalReference: orderId,
+        externalReference: `${orderId}:${branchId}`,
         transactionAmount: 150.50,
         currencyId: 'MXN',
         paymentMethodId: 'visa',
@@ -355,7 +367,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         id: 99999,
         status: 'some_unknown_status',
         statusDetail: 'unknown',
-        externalReference: orderId,
+        externalReference: `${orderId}:${branchId}`,
         transactionAmount: 150.50,
         currencyId: 'MXN',
         paymentMethodId: 'visa',
@@ -385,7 +397,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         id: 99999,
         status: 'approved',
         statusDetail: 'accredited',
-        externalReference: orderId,
+        externalReference: `${orderId}:${branchId}`,
         transactionAmount: 150.50,
         currencyId: 'MXN',
         paymentMethodId: 'visa',
@@ -430,7 +442,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         id: 99999,
         status: 'approved',
         statusDetail: 'accredited',
-        externalReference: orderId,
+        externalReference: `${orderId}:${branchId}`,
         transactionAmount: 150.50,
         currencyId: 'MXN',
         paymentMethodId: 'account_money',
@@ -481,7 +493,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         id: 99999,
         status: 'approved',
         statusDetail: 'accredited',
-        externalReference: orderId,
+        externalReference: `${orderId}:${branchId}`,
         transactionAmount: 150.50,
         currencyId: 'MXN',
         paymentMethodId: 'visa',
@@ -529,7 +541,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         id: 99999,
         status: 'approved',
         statusDetail: 'accredited',
-        externalReference: orderId,
+        externalReference: `${orderId}:${branchId}`,
         transactionAmount: 150.50,
         currencyId: 'MXN',
         paymentMethodId: 'visa',
@@ -567,7 +579,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         id: 99999,
         status: 'approved',
         statusDetail: 'accredited',
-        externalReference: orderId,
+        externalReference: `${orderId}:${branchId}`,
         transactionAmount: 150.50,
         currencyId: 'MXN',
         paymentMethodId: 'visa',
@@ -606,17 +618,104 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
     });
   });
 
-  describe('multi-tenant: external_reference with branchId', () => {
-    const branchId = 'branch-456';
-    const orgId = 'org-789';
+  describe('multi-tenant: branchId desde la notification_url', () => {
+    function mockApprovedPayment(externalReference: string) {
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'approved',
+        statusDetail: 'accredited',
+        externalReference,
+        transactionAmount: 150.50,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: '2026-05-30T12:00:00.000Z',
+        feeDetails: [],
+      });
+    }
 
-    const mockBranch = new Branch(
-      branchId, orgId, 'Sucursal Centro', 'CDMX', 'CDMX', 'Reforma', '100',
-      '5551234567', null, null, null, null, null, null,
-      'America/Mexico_City', 'MXN', 'active', new Date(), new Date(), null
-    );
+    function mockSuccessfulProcessing() {
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+      const updatedPayment = new Payment(
+        paymentId, orderId, userId, 150.50, 'MXN',
+        PaymentStatus.SUCCEEDED, PaymentMethod.QR_MERCADO_PAGO,
+        PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date()
+      );
+      mockPaymentRepository.update.mockResolvedValue(updatedPayment);
+      mockOrderRepository.findById.mockResolvedValue(mockOrder);
+      mockOrderRepository.update.mockResolvedValue(
+        new Order(
+          orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
+          false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
+        )
+      );
+      mockTableRepository.update.mockResolvedValue(
+        new Table('table-1', 'Mesa 1', userId, true, true, new Date(), new Date())
+      );
+    }
 
-    it('should establish tenant context when external_reference contains branchId', async () => {
+    it('establece el tenant context ANTES de llamar a getPayment', async () => {
+      let tenantDuringGetPayment: ReturnType<typeof getTenant>;
+      mockSuccessfulProcessing();
+      mockMercadoPagoService.getPayment.mockImplementation(async () => {
+        tenantDuringGetPayment = getTenant();
+        return {
+          id: 99999,
+          status: 'approved',
+          statusDetail: 'accredited',
+          externalReference: `${orderId}:${branchId}`,
+          transactionAmount: 150.50,
+          currencyId: 'MXN',
+          paymentMethodId: 'visa',
+          paymentTypeId: 'credit_card',
+          dateApproved: '2026-05-30T12:00:00.000Z',
+          feeDetails: [],
+        };
+      });
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated', branchId });
+
+      expect(tenantDuringGetPayment).toEqual({ organizationId: orgId, branchId });
+      expect(result).not.toBeNull();
+      expect(result!.payment.status).toBe(PaymentStatus.SUCCEEDED);
+    });
+
+    it('ignora el webhook si el branchId de la URL no coincide con el del external_reference', async () => {
+      mockApprovedPayment(`${orderId}:otro-branch`);
+      mockSuccessfulProcessing();
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated', branchId });
+
+      expect(result).toBeNull();
+      expect(mockPaymentRepository.update).not.toHaveBeenCalled();
+      expect(mockOrderRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('ignora el webhook (sin llamar a MP) si el branch de la URL no existe', async () => {
+      mockBranchRepository.findById.mockResolvedValue(null);
+
+      const result = await useCase.execute({
+        mpPaymentId: 99999,
+        action: 'payment.updated',
+        branchId: 'nonexistent-branch',
+      });
+
+      expect(result).toBeNull();
+      expect(mockMercadoPagoService.getPayment).not.toHaveBeenCalled();
+    });
+
+    it('ignora el webhook si la organización no está ACTIVE', async () => {
+      mockOrganizationRepository.findById.mockResolvedValue({ id: orgId, status: 'CANCELLED' } as any);
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated', branchId });
+
+      expect(result).toBeNull();
+      expect(mockMercadoPagoService.getPayment).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('multi-tenant: fallback sin branchId en la URL (preferencias pre-cambio)', () => {
+    it('resuelve el tenant desde el external_reference y procesa', async () => {
       mockMercadoPagoService.getPayment.mockResolvedValue({
         id: 99999,
         status: 'approved',
@@ -629,23 +728,21 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         dateApproved: '2026-05-30T12:00:00.000Z',
         feeDetails: [],
       });
-
-      mockBranchRepository.findById.mockResolvedValue(mockBranch);
       mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
-
-      const updatedPayment = new Payment(
-        paymentId, orderId, userId, 150.50, 'MXN',
-        PaymentStatus.SUCCEEDED, PaymentMethod.QR_MERCADO_PAGO,
-        PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date()
+      mockPaymentRepository.update.mockResolvedValue(
+        new Payment(
+          paymentId, orderId, userId, 150.50, 'MXN',
+          PaymentStatus.SUCCEEDED, PaymentMethod.QR_MERCADO_PAGO,
+          PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date()
+        )
       );
-      mockPaymentRepository.update.mockResolvedValue(updatedPayment);
       mockOrderRepository.findById.mockResolvedValue(mockOrder);
-
-      const updatedOrder = new Order(
-        orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
-        false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
+      mockOrderRepository.update.mockResolvedValue(
+        new Order(
+          orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
+          false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
+        )
       );
-      mockOrderRepository.update.mockResolvedValue(updatedOrder);
       mockTableRepository.update.mockResolvedValue(
         new Table('table-1', 'Mesa 1', userId, true, true, new Date(), new Date())
       );
@@ -657,7 +754,28 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       expect(result!.payment.status).toBe(PaymentStatus.SUCCEEDED);
     });
 
-    it('should process without tenant context when branch not found (deleted branch)', async () => {
+    it('NUNCA procesa external_reference legacy sin branchId', async () => {
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'approved',
+        statusDetail: 'accredited',
+        externalReference: orderId, // formato legacy: solo orderId
+        transactionAmount: 150.50,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: '2026-05-30T12:00:00.000Z',
+        feeDetails: [],
+      });
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
+
+      expect(result).toBeNull();
+      expect(mockPaymentRepository.findAll).not.toHaveBeenCalled();
+      expect(mockPaymentRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('ignora el webhook si el branch del external_reference no existe', async () => {
       mockMercadoPagoService.getPayment.mockResolvedValue({
         id: 99999,
         status: 'approved',
@@ -670,73 +788,12 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         dateApproved: '2026-05-30T12:00:00.000Z',
         feeDetails: [],
       });
-
       mockBranchRepository.findById.mockResolvedValue(null);
-      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
-
-      const updatedPayment = new Payment(
-        paymentId, orderId, userId, 150.50, 'MXN',
-        PaymentStatus.SUCCEEDED, PaymentMethod.QR_MERCADO_PAGO,
-        PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date()
-      );
-      mockPaymentRepository.update.mockResolvedValue(updatedPayment);
-      mockOrderRepository.findById.mockResolvedValue(mockOrder);
-      mockOrderRepository.update.mockResolvedValue(
-        new Order(
-          orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
-          false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
-        )
-      );
-      mockTableRepository.update.mockResolvedValue(
-        new Table('table-1', 'Mesa 1', userId, true, true, new Date(), new Date())
-      );
 
       const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
 
-      expect(mockBranchRepository.findById).toHaveBeenCalledWith('nonexistent-branch');
-      expect(result).not.toBeNull();
-      expect(result!.payment.status).toBe(PaymentStatus.SUCCEEDED);
-    });
-
-    it('should handle legacy format (orderId only, no branchId)', async () => {
-      mockMercadoPagoService.getPayment.mockResolvedValue({
-        id: 99999,
-        status: 'approved',
-        statusDetail: 'accredited',
-        externalReference: orderId, // sin :branchId
-        transactionAmount: 150.50,
-        currencyId: 'MXN',
-        paymentMethodId: 'visa',
-        paymentTypeId: 'credit_card',
-        dateApproved: '2026-05-30T12:00:00.000Z',
-        feeDetails: [],
-      });
-
-      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
-
-      const updatedPayment = new Payment(
-        paymentId, orderId, userId, 150.50, 'MXN',
-        PaymentStatus.SUCCEEDED, PaymentMethod.QR_MERCADO_PAGO,
-        PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date()
-      );
-      mockPaymentRepository.update.mockResolvedValue(updatedPayment);
-      mockOrderRepository.findById.mockResolvedValue(mockOrder);
-      mockOrderRepository.update.mockResolvedValue(
-        new Order(
-          orderId, new Date(), true, 4, 150.50, 129.74, 20.76,
-          false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date()
-        )
-      );
-      mockTableRepository.update.mockResolvedValue(
-        new Table('table-1', 'Mesa 1', userId, true, true, new Date(), new Date())
-      );
-
-      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
-
-      // No debe buscar branch cuando no hay branchId en external_reference
-      expect(mockBranchRepository.findById).not.toHaveBeenCalled();
-      expect(result).not.toBeNull();
-      expect(result!.payment.status).toBe(PaymentStatus.SUCCEEDED);
+      expect(result).toBeNull();
+      expect(mockPaymentRepository.update).not.toHaveBeenCalled();
     });
   });
 });

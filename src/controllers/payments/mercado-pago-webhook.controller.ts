@@ -11,10 +11,12 @@ export const mercadoPagoWebhookController = async (req: Request, res: Response, 
     const body = req.body;
 
     if (body.type === 'payment' && body.data?.id) {
+      const branchId = typeof req.query.branchId === 'string' ? req.query.branchId : undefined;
       const confirmUseCase = container.resolve(ConfirmMercadoPagoPaymentUseCase);
       const result = await confirmUseCase.execute({
         mpPaymentId: body.data.id,
         action: body.action,
+        branchId,
       });
 
       // Notificar al POS si es una orden online pagada

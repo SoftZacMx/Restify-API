@@ -7,6 +7,7 @@ import { PaymentStatus, PaymentMethod, PaymentGateway } from '@prisma/client';
 import { AppError } from '../../../../shared/errors';
 import { MercadoPagoService } from '../../../infrastructure/payment-gateways/mercado-pago.service';
 import { runWithTenant, withoutTenant } from '../../../infrastructure/tenant/tenant-context';
+import { buildNotificationUrl } from './pay-order-with-qr-mercado-pago.use-case';
 
 export interface PayPublicOrderInput {
   orderId: string;
@@ -95,7 +96,7 @@ export class PayPublicOrderUseCase {
 
     // Crear Preference en Mercado Pago
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-    const notificationUrl = process.env.MP_NOTIFICATION_URL || '';
+    const notificationUrl = buildNotificationUrl(order.branchId ?? undefined);
     const backUrl = process.env.MP_PUBLIC_BACK_URL || process.env.MP_BACK_URL || '';
 
     const preference = await this.mercadoPagoService.createPreference({
