@@ -3,6 +3,7 @@ import { IBranchRepository } from '../../../../src/core/domain/interfaces/branch
 import { BranchLimitService } from '../../../../src/core/application/services/branch-limit.service';
 import { Branch } from '../../../../src/core/domain/entities/branch.entity';
 import { AppError } from '../../../../src/shared/errors';
+import { slugify } from '../../../../src/shared/utils/slug.util';
 
 jest.mock('../../../../src/core/infrastructure/tenant/tenant-context', () => ({
   getOrganizationId: jest.fn(() => 'org-1'),
@@ -51,6 +52,7 @@ describe('CreateBranchUseCase', () => {
   beforeEach(() => {
     mockBranchRepository = {
       findById: jest.fn(),
+      findBySlug: jest.fn().mockResolvedValue(null),
       findByIdAndOrganizationId: jest.fn(),
       findAllIdsByOrganizationId: jest.fn(),
       findManyByOrganizationId: jest.fn(),
@@ -76,7 +78,24 @@ describe('CreateBranchUseCase', () => {
 
     expect(result.id).toBe('branch-1');
     expect(mockBranchRepository.create).toHaveBeenCalledWith(
-      expect.objectContaining({ organizationId: 'org-1', name: validInput.name })
+      expect.objectContaining({ organizationId: 'org-1', name: validInput.name, slug: expect.any(String) })
+    );
+  });
+
+  it('should append a suffix to the slug when the base is taken', async () => {
+    mockBranchRepository.countActiveByOrganizationId.mockResolvedValue(0);
+    mockBranchLimitService.getMaxBranches.mockResolvedValue(3);
+    mockBranchRepository.create.mockResolvedValue(mockBranch);
+
+    const baseSlug = slugify(validInput.name);
+    mockBranchRepository.findBySlug.mockImplementation(async (candidate: string) =>
+      candidate === baseSlug ? mockBranch : null
+    );
+
+    await useCase.execute(validInput);
+
+    expect(mockBranchRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: `${baseSlug}-2` })
     );
   });
 

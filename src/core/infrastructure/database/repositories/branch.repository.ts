@@ -16,6 +16,11 @@ export class BranchRepository implements IBranchRepository {
     return row ? this.toEntity(row) : null;
   }
 
+  async findBySlug(slug: string): Promise<Branch | null> {
+    const row = await this.prisma.branch.findUnique({ where: { slug } });
+    return row ? this.toEntity(row) : null;
+  }
+
   async findByIdAndOrganizationId(id: string, organizationId: string): Promise<Branch | null> {
     const row = await this.prisma.branch.findFirst({
       where: { id, organizationId },
@@ -112,6 +117,7 @@ export class BranchRepository implements IBranchRepository {
       data: {
         organizationId: data.organizationId,
         name: data.name,
+        slug: data.slug ?? null,
         state: data.state,
         city: data.city,
         street: data.street,
@@ -141,6 +147,7 @@ export class BranchRepository implements IBranchRepository {
       where: { id },
       data: {
         ...(data.name !== undefined && { name: data.name }),
+        ...(data.slug !== undefined && { slug: data.slug }),
         ...(data.state !== undefined && { state: data.state }),
         ...(data.city !== undefined && { city: data.city }),
         ...(data.street !== undefined && { street: data.street }),
@@ -194,6 +201,7 @@ export class BranchRepository implements IBranchRepository {
     createdAt: Date;
     updatedAt: Date;
     deletedAt: Date | null;
+    slug: string | null;
   }): Branch {
     return new Branch(
       row.id,
@@ -215,7 +223,8 @@ export class BranchRepository implements IBranchRepository {
       this.toDomainStatus(row.status),
       row.createdAt,
       row.updatedAt,
-      row.deletedAt
+      row.deletedAt,
+      row.slug
     );
   }
 }

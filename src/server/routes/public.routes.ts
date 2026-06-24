@@ -3,12 +3,17 @@ import { listPublicMenuController } from '../../controllers/menu-items/list-publ
 import { createPublicOrderController } from '../../controllers/orders/create-public-order.controller';
 import { getPublicOrderStatusController } from '../../controllers/orders/get-public-order-status.controller';
 import { payPublicOrderController } from '../../controllers/payments/pay-public-order.controller';
+import { resolvePublicBranchController } from '../../controllers/branches/resolve-public-branch.controller';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
 import { createPublicOrderSchema, payPublicOrderParamsSchema, getPublicOrderStatusParamsSchema } from '../../core/application/dto/order.dto';
+import { publicBranchSlugParamSchema } from '../../core/application/dto/branch.dto';
 import { publicMenuRateLimiter, publicOrderRateLimiter, publicStatusRateLimiter } from '../middleware/rate-limit.middleware';
 import { PublicTenantMiddleware } from '../middleware/public-tenant.middleware';
 
 const router = Router();
+
+/** GET /api/public/branch/:slug — Resuelve un slug público a los datos mínimos de la sucursal (incluido branchId) */
+router.get('/branch/:slug', publicMenuRateLimiter, zodValidator({ schema: publicBranchSlugParamSchema, source: 'params' }), resolvePublicBranchController);
 
 /** GET /api/public/menu?branchId=xxx — Menú público (items activos agrupados por categoría) */
 router.get('/menu', publicMenuRateLimiter, PublicTenantMiddleware.fromBranch, listPublicMenuController);

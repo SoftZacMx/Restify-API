@@ -21,7 +21,8 @@ export class Branch {
     public readonly status: BranchStatus,
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
-    public readonly deletedAt: Date | null
+    public readonly deletedAt: Date | null,
+    public readonly slug: string | null = null
   ) {}
 
   isActive(): boolean {

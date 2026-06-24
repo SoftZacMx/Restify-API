@@ -15,6 +15,7 @@ import { CreateFirstBranchUseCase } from '../../../application/use-cases/branche
 import { UpdateBranchUseCase } from '../../../application/use-cases/branches/update-branch.use-case';
 import { DisableBranchUseCase } from '../../../application/use-cases/branches/disable-branch.use-case';
 import { EnableBranchUseCase } from '../../../application/use-cases/branches/enable-branch.use-case';
+import { ResolvePublicBranchUseCase } from '../../../application/use-cases/branches/resolve-public-branch.use-case';
 import { prismaClient } from './prisma.module';
 
 container.register<IBranchRepository>('IBranchRepository', {
@@ -40,3 +41,4 @@ container.register(CreateFirstBranchUseCase, CreateFirstBranchUseCase);
 container.register(UpdateBranchUseCase, UpdateBranchUseCase);
 container.register(DisableBranchUseCase, DisableBranchUseCase);
 container.register(EnableBranchUseCase, EnableBranchUseCase);
+container.register(ResolvePublicBranchUseCase, ResolvePublicBranchUseCase);

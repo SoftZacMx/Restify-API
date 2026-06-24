@@ -3,6 +3,7 @@ import { Branch, BranchStatus } from '../entities/branch.entity';
 export interface CreateBranchData {
   organizationId: string;
   name: string;
+  slug?: string | null;
   state: string;
   city: string;
   street: string;
@@ -21,6 +22,7 @@ export interface CreateBranchData {
 
 export interface UpdateBranchData {
   name?: string;
+  slug?: string | null;
   state?: string;
   city?: string;
   street?: string;
@@ -53,6 +55,7 @@ export interface BranchListItemRow {
 
 export interface IBranchRepository {
   findById(id: string): Promise<Branch | null>;
+  findBySlug(slug: string): Promise<Branch | null>;
   findByIdAndOrganizationId(id: string, organizationId: string): Promise<Branch | null>;
   findAllIdsByOrganizationId(organizationId: string): Promise<string[]>;
   findManyByOrganizationId(organizationId: string, options?: ListBranchesOptions): Promise<Branch[]>;

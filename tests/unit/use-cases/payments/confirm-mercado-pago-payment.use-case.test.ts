@@ -88,6 +88,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
     mockBranchRepository = {
       findById: jest.fn(),
+      findBySlug: jest.fn(),
       findByIdAndOrganizationId: jest.fn(),
       findAllIdsByOrganizationId: jest.fn(),
       findManyByOrganizationId: jest.fn(),

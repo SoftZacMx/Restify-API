@@ -37,6 +37,14 @@ export const branchIdParamSchema = z.object({
   branch_id: z.string().uuid('ID de sucursal inválido'),
 });
 
+export const publicBranchSlugParamSchema = z.object({
+  slug: z
+    .string()
+    .min(1, 'Slug requerido')
+    .max(60, 'Slug demasiado largo')
+    .regex(/^[a-z0-9-]+$/, 'Slug inválido'),
+});
+
 export type CreateBranchInput = z.infer<typeof createBranchSchema>;
 export type UpdateBranchInput = z.infer<typeof updateBranchSchema>;
 export type ListBranchesQuery = z.infer<typeof listBranchesQuerySchema>;

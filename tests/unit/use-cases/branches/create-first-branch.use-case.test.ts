@@ -13,6 +13,7 @@ describe('CreateFirstBranchUseCase', () => {
     useCase = new CreateFirstBranchUseCase();
     mockTx = {
       branch: {
+        findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn(),
       },
     };
@@ -55,6 +56,7 @@ describe('CreateFirstBranchUseCase', () => {
         data: {
           organizationId: validInput.organizationId,
           name: validInput.name,
+          slug: 'sucursal-principal',
           state: validInput.state,
           city: validInput.city,
           street: validInput.street,

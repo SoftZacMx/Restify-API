@@ -5,6 +5,7 @@ import { BranchLimitService } from '../../services/branch-limit.service';
 import { BranchDetailResponse, toBranchDetail } from '../../mappers/branch-response.mapper';
 import { getOrganizationId } from '../../../infrastructure/tenant/tenant-context';
 import { AppError } from '../../../../shared/errors';
+import { slugify, ensureUniqueSlug } from '../../../../shared/utils/slug.util';
 
 @injectable()
 export class CreateBranchUseCase {
@@ -28,9 +29,14 @@ export class CreateBranchUseCase {
       });
     }
 
+    const slug = await ensureUniqueSlug(slugify(input.name), async (candidate) => {
+      return (await this.branchRepository.findBySlug(candidate)) !== null;
+    });
+
     const branch = await this.branchRepository.create({
       organizationId,
       name: input.name,
+      slug,
       state: input.state,
       city: input.city,
       street: input.street,

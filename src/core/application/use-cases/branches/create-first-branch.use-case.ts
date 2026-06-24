@@ -1,6 +1,7 @@
 import { injectable } from 'tsyringe';
 import { Prisma, BranchStatus as PrismaBranchStatus } from '@prisma/client';
 import { Branch, BranchStatus } from '../../../domain/entities/branch.entity';
+import { slugify, ensureUniqueSlug } from '../../../../shared/utils/slug.util';
 
 export interface CreateFirstBranchInput {
   organizationId: string;
@@ -38,10 +39,15 @@ export class CreateFirstBranchUseCase {
    * @returns Created branch entity
    */
   async execute(tx: any, input: CreateFirstBranchInput): Promise<Branch> {
+    const slug = await ensureUniqueSlug(slugify(input.name), async (candidate) => {
+      return (await tx.branch.findUnique({ where: { slug: candidate } })) !== null;
+    });
+
     const branchData = await tx.branch.create({
       data: {
         organizationId: input.organizationId,
         name: input.name,
+        slug,
         state: input.state,
         city: input.city,
         street: input.street,
@@ -80,7 +86,8 @@ export class CreateFirstBranchUseCase {
       this.toDomainStatus(branchData.status),
       branchData.createdAt,
       branchData.updatedAt,
-      branchData.deletedAt
+      branchData.deletedAt,
+      branchData.slug
     );
   }
 

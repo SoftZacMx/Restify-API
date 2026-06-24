@@ -168,6 +168,7 @@ describe('CreateOrderUseCase', () => {
 
     mockBranchRepository = {
       findById: jest.fn().mockResolvedValue(null),
+      findBySlug: jest.fn(),
       findByIdAndOrganizationId: jest.fn(),
       findAllIdsByOrganizationId: jest.fn(),
       findManyByOrganizationId: jest.fn(),
