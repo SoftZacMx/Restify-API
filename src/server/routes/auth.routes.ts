@@ -3,7 +3,6 @@ import { verifyUserController } from '../../controllers/auth/verify-user.control
 import { setPasswordController } from '../../controllers/auth/set-password.controller';
 import { changeMyPasswordController } from '../../controllers/auth/change-my-password.controller';
 import { logoutController } from '../../controllers/auth/logout.controller';
-import { switchBranchController } from '../../controllers/auth/switch-branch.controller';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
 import {
   loginSchema,
@@ -247,25 +246,38 @@ router.post(
   zodValidator({ schema: switchBranchSchema, source: 'body' }),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      await new Promise<void>((resolve, reject) => {
-        switchBranchController(req, res, (err: any) => {
-          if (err) reject(err);
-          else resolve();
-        });
+      if (!req.user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { container } = await import('tsyringe');
+      const { SwitchBranchUseCase } = await import(
+        '../../core/application/use-cases/auth/switch-branch.use-case'
+      );
+
+      const switchBranchUseCase = container.resolve(SwitchBranchUseCase);
+      const result = await switchBranchUseCase.execute({
+        branchId: req.body.branchId,
+        currentUser: req.user,
       });
 
-      // Set new token in cookie
-      const result = res.locals.data;
-      if (result?.token) {
-        const isProduction = process.env.NODE_ENV === 'production';
-        res.cookie('token', result.token, {
-          httpOnly: true,
-          secure: isProduction,
-          sameSite: 'strict',
-          maxAge: 24 * 60 * 60 * 1000,
-          path: '/',
-        });
-      }
+      // Re-emit the HttpOnly cookie with the new token (same attributes as /login).
+      // Without this, the browser keeps sending the old branch's cookie and the
+      // backend resolves the previous branch, so the switch has no effect.
+      const isProduction = process.env.NODE_ENV === 'production';
+      res.cookie('token', result.token, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000,
+        path: '/',
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+        timestamp: new Date().toISOString(),
+      });
     } catch (error) {
       next(error);
     }
