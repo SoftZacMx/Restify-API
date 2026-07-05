@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { verifyUserController } from '../../controllers/auth/verify-user.controller';
 import { setPasswordController } from '../../controllers/auth/set-password.controller';
+import { changeMyPasswordController } from '../../controllers/auth/change-my-password.controller';
 import { logoutController } from '../../controllers/auth/logout.controller';
 import { switchBranchController } from '../../controllers/auth/switch-branch.controller';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
@@ -11,6 +12,7 @@ import {
   switchBranchSchema,
   verifyEmailSchema,
   resendVerificationSchema,
+  changeMyPasswordSchema,
 } from '../../core/application/dto/auth.dto';
 import { authRateLimiter, passwordResetRateLimiter } from '../middleware/rate-limit.middleware';
 import { AuthMiddleware, AuthenticatedRequest } from '../middleware/auth.middleware';
@@ -144,6 +146,20 @@ router.post(
  * Protegido con rate limiting: 3 intentos por 15 minutos.
  */
 router.post('/recover-password/:user_id', passwordResetRateLimiter, setPasswordController);
+
+/**
+ * POST /api/auth/change-my-password
+ * Cambio de la propia contraseña (usuario autenticado). Pensado para el flujo forzado
+ * por `mustChangePassword`: guarda la nueva clave y baja el flag. El userId sale del JWT.
+ * Protegido con rate limiting: 3 intentos por 15 minutos.
+ */
+router.post(
+  '/change-my-password',
+  passwordResetRateLimiter,
+  AuthMiddleware.authenticate,
+  zodValidator({ schema: changeMyPasswordSchema, source: 'body' }),
+  changeMyPasswordController
+);
 
 /**
  * Verificación de email (4.1.E) — confirma la titularidad del correo.

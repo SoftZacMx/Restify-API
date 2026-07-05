@@ -92,6 +92,20 @@ export class UserRepository implements IUserRepository {
     return User.fromPrisma(user);
   }
 
+  async changePasswordAndClearFlag(id: string, hashedPassword: string): Promise<User> {
+    // Cambio de la propia contraseña: guarda la nueva y limpia el flag que obligaba
+    // a cambiarla. No incrementa tokenVersion: la sesión actual sigue siendo válida.
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        password: hashedPassword,
+        mustChangePassword: false,
+      },
+    });
+
+    return User.fromPrisma(user);
+  }
+
   async markEmailVerified(id: string): Promise<User> {
     // Confirma la titularidad del correo (4.1.E). La idempotencia (no re-verificar)
     // la maneja el use-case leyendo emailVerifiedAt antes de llamar aquí.

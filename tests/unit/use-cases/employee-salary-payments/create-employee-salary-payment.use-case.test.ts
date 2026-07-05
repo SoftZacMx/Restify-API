@@ -31,7 +31,8 @@ describe('CreateEmployeeSalaryPaymentUseCase', () => {
       reactivate: jest.fn(),
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
-    };
+
+      changePasswordAndClearFlag: jest.fn(),    };
 
     createEmployeeSalaryPaymentUseCase = new CreateEmployeeSalaryPaymentUseCase(
       mockEmployeeSalaryPaymentRepository,

@@ -155,7 +155,8 @@ describe('CreateOrderUseCase', () => {
       reactivate: jest.fn(),
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
-    };
+
+      changePasswordAndClearFlag: jest.fn(),    };
 
     mockTableRepository = {
       findById: jest.fn(),

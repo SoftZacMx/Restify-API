@@ -82,12 +82,16 @@ export function makeController<T extends { execute: (...args: any[]) => Promise<
 
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // DEBUG: log JWT payload and tenant context
+      // Traza mínima del request. No se loguean credenciales (JWT en Authorization/cookie)
+      // ni el payload completo del usuario: solo identificadores no sensibles de tenant.
+      const reqUser = (req as any).user;
       logger.info({
         useCaseName: UseCaseClass.name,
-        user: (req as any).user ?? 'NO USER (no auth)',
-        authHeader: req.headers.authorization ? 'Bearer ***' : 'NONE',
-        cookie: req.headers.cookie ?? 'NONE',
+        userId: reqUser?.sub,
+        rol: reqUser?.rol,
+        org: reqUser?.org,
+        branch: reqUser?.branch,
+        authenticated: !!reqUser,
       }, '[DEBUG] makeController invoked');
 
       const useCase = container.resolve(UseCaseClass);

@@ -19,6 +19,7 @@ export interface LoginResult {
     email: string;
     rol: string;
     organizationId: string;
+    organizationName: string;
     mustChangePassword: boolean;
     emailVerified: boolean;
   };
@@ -135,6 +136,7 @@ export class LoginUseCase {
         email: user.email,
         rol: user.rol,
         organizationId: user.organizationId,
+        organizationName: organization.name,
         mustChangePassword: user.mustChangePassword,
         emailVerified: user.isEmailVerified(),
       },

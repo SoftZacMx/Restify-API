@@ -21,7 +21,8 @@ describe('SetPasswordUseCase', () => {
       reactivate: jest.fn(),
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
-      findAll: jest.fn(),
+
+      changePasswordAndClearFlag: jest.fn(),      findAll: jest.fn(),
     };
 
     setPasswordUseCase = new SetPasswordUseCase(mockUserRepository);

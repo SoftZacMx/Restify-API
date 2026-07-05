@@ -14,6 +14,7 @@ export interface BranchListItemResponse {
 export interface BranchDetailResponse {
   id: string;
   organizationId: string;
+  slug: string | null;
   name: string;
   state: string;
   city: string;
@@ -50,6 +51,7 @@ export function toBranchDetail(branch: Branch): BranchDetailResponse {
   return {
     id: branch.id,
     organizationId: branch.organizationId,
+    slug: branch.slug,
     name: branch.name,
     state: branch.state,
     city: branch.city,

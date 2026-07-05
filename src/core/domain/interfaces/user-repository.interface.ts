@@ -11,6 +11,8 @@ export interface IUserRepository {
   findAll(filters?: UserFilters): Promise<User[]>;
   markForPasswordReset(id: string): Promise<User>;
   markEmailVerified(id: string): Promise<User>;
+  /** Guarda la nueva contraseña (ya hasheada) y baja el flag `mustChangePassword`. */
+  changePasswordAndClearFlag(id: string, hashedPassword: string): Promise<User>;
 }
 
 export interface UserFilters {

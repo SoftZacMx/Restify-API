@@ -43,7 +43,8 @@ describe('VerifyEmailUseCase', () => {
       reactivate: jest.fn(),
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
-    } as unknown as jest.Mocked<IUserRepository>;
+
+      changePasswordAndClearFlag: jest.fn(),    } as unknown as jest.Mocked<IUserRepository>;
 
     useCase = new VerifyEmailUseCase(mockUserRepository);
   });

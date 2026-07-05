@@ -55,11 +55,19 @@ Implementar en este orden:
 | 5 | **Adaptar POS**: Repos (orders, menu, payments, tables) + webhooks | ✅ Completo | 0 días (3.1 inyección + 3.4 webhooks hechos; falta smoke/tests aislamiento) |
 | 6 | **Aislar stock y recetas** (merge `qa`): `branchId` + extension + servicios | ✅ Completo | 0 días |
 | 7 | **Signup público**: Org + primera sucursal + bootstrap + email verification + cron limpieza (4.1.F ✅) + org close/reactivate (4.1.G ✅). Falta solo E2E (4.1.H) | 🔶 Casi | 0.5 día (E2E) |
-| 8 | **Frontend**: Selector sucursal + CRUD + onboarding + reemplazo Company | ⏳ Pendiente | 3 días |
+| 8 | **Frontend**: Selector sucursal + CRUD + onboarding + reemplazo Company | 🔶 Parcial | Selector + CRUD branches + reemplazo Company ✅; onboarding/verify-email/branchIds en usuarios/upload logo ⏳ |
 | 9 | **QA + Rollout**: Tests E2E + aislamiento + deploy | ⏳ Pendiente | 2 días |
 
 **Progreso:** 7/9 pasos completos (~82%)  
-**Total restante:** ~5.5 días (frontend + E2E + QA/rollout)
+**Total restante:** frontend (onboarding, verify-email, branchIds en usuarios, upload logo, org close/reactivate UI, paywall billingEnabled) + E2E + QA/rollout
+
+> **Auditoría frontend 2026-07-04 (código real):** el CRUD de sucursales, el selector de sucursal
+> (`SelectBranchPage` + `useActiveBranch`/`useBranchSwitch`), el signup de 2 pasos y el reemplazo de
+> `Company` (`CompanyConfigPage` ya usa `branchService`) están ✅ completos. Pendiente en frontend:
+> asignación de `branchIds` a empleados en `UserForm`, verificación de email (página + banner + resend),
+> cambio de password forzado (`mustChangePassword`), reset-password de empleados desde UI, org
+> close/reactivate en UI, wizard de onboarding, upload real de logo/imágenes (hoy es input de URL) y
+> ocultar paywall con `billingEnabled`.
 
 ---
 
@@ -381,8 +389,8 @@ const token = jwt.sign(
 | 2.2 | API REST | ✅ Completa | 0 días |
 | 2.3 | Acceso user ↔ sucursal | ✅ Funcionalmente completa | 0.25 día (refactoring + tests) |
 | 2.4 | Signup / bootstrap | ✅ Completa | 0 días (listo para integrar en 4.1) |
-| 2.5 | Frontend sucursales | ⏳ Pendiente | 2–3 días |
-| 2.6 | Migración `Company` → `Branch` | ⏳ Pendiente | 1 día |
+| 2.5 | Frontend sucursales | 🔶 Parcial | CRUD + selector ✅; `branchIds` en modal usuario ⏳ |
+| 2.6 | Migración `Company` → `Branch` | ✅ Completa | Backend + frontend hechos |
 | 2.7 | Tests del módulo | ⏳ Pendiente | 1 día |
 
 ---
@@ -690,15 +698,15 @@ export async function bootstrapBranchDefaults(tx: PrismaTx, branchId: string) {
 
 ---
 
-### Fase 2.5 — Frontend sucursales
+### Fase 2.5 — Frontend sucursales — 🔶 PARCIAL
 
 **Tareas:**
 
-- [ ] `BranchSwitcher` en header (visible si >1 sucursal)
-- [ ] Página `/settings/branches` (tabla CRUD, solo owner)
-- [ ] Signup paso 2: datos sucursal
-- [ ] `MultiSelect` sucursales en modal usuario (rol ≠ admin)
-- [ ] Query keys: `['branches', 'list']`, `['branches', id, 'detail']`
+- [x] `BranchSwitcher` en header (visible si >1 sucursal) — `SelectBranchPage` + "Cambiar de sucursal" en Sidebar (`useActiveBranch`/`useBranchSwitch`)
+- [x] Página CRUD sucursales (`/branches`, tabla CRUD, solo owner/admin) + `CompanyConfigPage` reapuntado a branch
+- [x] Signup paso 2: datos sucursal (`SignupPage` wizard 2 pasos)
+- [ ] `MultiSelect` sucursales en modal usuario (rol ≠ admin) — **el `UserForm` no tiene `branchIds`**
+- [x] Query keys: `['branches', 'list']`, `['branches', id, 'detail']`
 - [ ] Component tests
 
 ```typescript
@@ -719,7 +727,7 @@ queryClient.invalidateQueries({ queryKey: ['menu'] });
 
 ---
 
-### Fase 2.6 — Migración `Company` → `Branch`
+### Fase 2.6 — Migración `Company` → `Branch` — ✅ COMPLETA
 
 **Objetivo:** Eliminar módulo `Company` (legacy single-tenant) del deploy multi-tenant. Toda configuración operativa ahora vive en `Branch`.
 
@@ -761,9 +769,9 @@ queryClient.invalidateQueries({ queryKey: ['menu'] });
    - [x] Endpoints `/api/company` responden 404 (ruta eliminada)
    - [x] Endpoints `/api/branches/:id` funcionan
 
-4. **Frontend (Fase 2.5 - referencia):** ⏳ PENDIENTE — `CompanyConfigPage` y `company.service.ts` siguen presentes en `Restify-Frontend`
-   - [ ] Reemplazar `CompanyConfigPage` por listado/detalle sucursal
-   - [ ] Cambiar calls de API:
+4. **Frontend (Fase 2.5 - referencia):** ✅ HECHO — `company.service/repository/types` eliminados; `CompanyConfigPage` consume `branchService` + `useActiveBranch` (sin imports rotos)
+   - [x] Reemplazar `CompanyConfigPage` por detalle de sucursal activa
+   - [x] Cambiar calls de API:
      ```typescript
      // ANTES
      GET /api/company
@@ -791,7 +799,7 @@ queryClient.invalidateQueries({ queryKey: ['menu'] });
 
 ---
 
-### Fase 2.7 — Tests del módulo
+### Fase 2.7 — Tests del módulo — ⏳ PENDIENTE
 
 **Tareas:**
 
@@ -1290,15 +1298,15 @@ interface SignupRequest {
 
 ---
 
-### Fase 4.2 — Frontend onboarding y org
+### Fase 4.2 — Frontend onboarding y org — 🔶 PARCIAL
 
 **Tareas:**
 
-- [ ] Signup paso 1: owner + org (paso 2 sucursal → Etapa 2.5).
+- [x] Signup paso 1: owner + org (paso 2 sucursal → Etapa 2.5). — `SignupPage`
 - [ ] Wizard onboarding: timezone, logo org (R2), primer producto, primer empleado.
-- [ ] Pantalla org settings, usuarios, mi cuenta, cambio password forzado.
-- [ ] Banner email verification; cerrar / reactivar cuenta.
-- [ ] Paywall oculto si `billingEnabled=false`.
+- [ ] Pantalla org settings, usuarios, mi cuenta, cambio password forzado (`mustChangePassword`).
+- [ ] Banner email verification (verify-email + resend); cerrar / reactivar cuenta.
+- [ ] Paywall oculto si `billingEnabled=false` (sin uso de `GET /api/config` hoy).
 - [ ] Component tests (API mockeada).
 
 **No incluir aquí:** selector sucursales, pantalla Sucursales, `CompanyConfigPage` (Etapa 2.5–2.6).

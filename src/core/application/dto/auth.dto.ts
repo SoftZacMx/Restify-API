@@ -20,6 +20,22 @@ export const setPasswordSchema = z.object({
   user_id: z.string().uuid('Invalid user ID format'),
 });
 
+/**
+ * Cambio de la propia contraseña (flujo forzado por mustChangePassword).
+ * No pide la contraseña actual: el caso de uso es un reset del owner donde el
+ * usuario no la conoce. El userId sale del token, no del body.
+ */
+export const changeMyPasswordSchema = z.object({
+  password: z.string()
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .regex(/[a-z]/, 'Debe incluir al menos una minúscula')
+    .regex(/[A-Z]/, 'Debe incluir al menos una mayúscula')
+    .regex(/\d/, 'Debe incluir al menos un número')
+    .regex(/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/, 'Debe incluir al menos un carácter especial'),
+});
+
+export type ChangeMyPasswordInput = z.infer<typeof changeMyPasswordSchema>;
+
 export const switchBranchSchema = z.object({
   branchId: z.string().uuid('Invalid branch ID format'),
 });

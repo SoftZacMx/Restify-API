@@ -91,7 +91,8 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
       reactivate: jest.fn(),
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
-    };
+
+      changePasswordAndClearFlag: jest.fn(),    };
 
     mockStripeService = {
       createCustomer: jest.fn(),

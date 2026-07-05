@@ -19,7 +19,8 @@ describe('DeleteUserUseCase', () => {
       reactivate: jest.fn(),
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
-    };
+
+      changePasswordAndClearFlag: jest.fn(),    };
 
     deleteUserUseCase = new DeleteUserUseCase(mockUserRepository);
   });
