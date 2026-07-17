@@ -66,11 +66,23 @@ export class SignupUseCase {
           },
         });
 
-        // 2. Crear subscription free
+        // 2. Crear subscription free.
+        // Cuando el billing está deshabilitado (BILLING_ENABLED=false) no hay flujo de
+        // pago que asigne un período, así que la suscripción quedaría ACTIVE pero sin
+        // currentPeriodEnd → la lógica de estado la trataría como "expirada". Para evitarlo
+        // le damos un período largo (hoy + 3 años) que la mantiene activa sin intervención.
+        const billingDisabled = process.env.BILLING_ENABLED === 'false';
+        let currentPeriodEnd: Date | undefined;
+        if (billingDisabled) {
+          currentPeriodEnd = new Date();
+          currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 3);
+        }
+
         await tx.subscription.create({
           data: {
             organizationId: org.id,
             status: SubscriptionStatus.ACTIVE,
+            currentPeriodEnd,
           },
         });
 
