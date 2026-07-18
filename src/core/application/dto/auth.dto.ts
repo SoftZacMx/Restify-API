@@ -48,6 +48,28 @@ export const resendVerificationSchema = z.object({
   email: z.string().email('Invalid email format'),
 });
 
+/**
+ * Solicitud de restablecimiento de contraseña (forgot-password). Solo el email;
+ * la respuesta es uniforme (anti-enumeración) exista o no la cuenta.
+ */
+export const requestPasswordResetSchema = z.object({
+  email: z.string().email('Invalid email format'),
+});
+
+/**
+ * Confirmación del restablecimiento: token del correo + nueva contraseña.
+ * Reusa el mismo criterio de complejidad que setPasswordSchema.
+ */
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+  password: z.string()
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .regex(/[a-z]/, 'Debe incluir al menos una minúscula')
+    .regex(/[A-Z]/, 'Debe incluir al menos una mayúscula')
+    .regex(/\d/, 'Debe incluir al menos un número')
+    .regex(/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/, 'Debe incluir al menos un carácter especial'),
+});
+
 export const signupSchema = z.object({
   user: z.object({
     email: z.string().email('Invalid email format'),
@@ -83,4 +105,6 @@ export type SwitchBranchInput = z.infer<typeof switchBranchSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>;
+export type RequestPasswordResetInput = z.infer<typeof requestPasswordResetSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 

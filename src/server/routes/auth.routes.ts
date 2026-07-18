@@ -12,6 +12,8 @@ import {
   verifyEmailSchema,
   resendVerificationSchema,
   changeMyPasswordSchema,
+  requestPasswordResetSchema,
+  resetPasswordSchema,
 } from '../../core/application/dto/auth.dto';
 import { authRateLimiter, passwordResetRateLimiter } from '../middleware/rate-limit.middleware';
 import { AuthMiddleware, AuthenticatedRequest } from '../middleware/auth.middleware';
@@ -138,13 +140,65 @@ router.post(
 );
 
 /**
- * POST /api/auth/recover-password/:user_id
- * Reset password endpoint (público — flujo de recuperación sin sesión)
- * El frontend primero verifica el email con /verify-user, obtiene el user_id,
- * y luego llama a este endpoint para cambiar la contraseña.
- * Protegido con rate limiting: 3 intentos por 15 minutos.
+ * POST /api/auth/request-password-reset
+ * Flujo forgot-password (paso 1): envía un correo con un token de restablecimiento.
+ * Respuesta uniforme (anti-enumeración): siempre 200 aunque el email no exista.
+ * Rate limited: 3 intentos por 15 minutos.
  */
-router.post('/recover-password/:user_id', passwordResetRateLimiter, setPasswordController);
+router.post(
+  '/request-password-reset',
+  passwordResetRateLimiter,
+  zodValidator({ schema: requestPasswordResetSchema, source: 'body' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { container } = await import('tsyringe');
+      const { RequestPasswordResetUseCase } = await import(
+        '../../core/application/use-cases/auth/request-password-reset.use-case'
+      );
+
+      const useCase = container.resolve(RequestPasswordResetUseCase);
+      await useCase.execute(req.body);
+
+      res.status(200).json({
+        success: true,
+        data: { message: 'Si la cuenta existe, se envió un correo con instrucciones.' },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /api/auth/reset-password
+ * Flujo forgot-password (paso 2): valida el token del correo y fija la nueva contraseña.
+ * Rate limited: 3 intentos por 15 minutos.
+ */
+router.post(
+  '/reset-password',
+  passwordResetRateLimiter,
+  zodValidator({ schema: resetPasswordSchema, source: 'body' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { container } = await import('tsyringe');
+      const { ResetPasswordUseCase } = await import(
+        '../../core/application/use-cases/auth/reset-password.use-case'
+      );
+
+      const useCase = container.resolve(ResetPasswordUseCase);
+      await useCase.execute(req.body);
+
+      res.status(200).json({
+        success: true,
+        data: { message: 'Contraseña restablecida correctamente.' },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /**
  * POST /api/auth/change-my-password

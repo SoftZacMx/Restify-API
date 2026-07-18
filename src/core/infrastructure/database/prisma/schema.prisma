@@ -166,7 +166,7 @@ model Product {
   updatedAt        DateTime       @updatedAt
 
   // Relations
-  user                User                 @relation(fields: [userId], references: [id])
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   branch              Branch?              @relation(fields: [branchId], references: [id], onDelete: Cascade)
   orderItems          OrderItem[]
   expenseItems        ExpenseItem[]
@@ -277,7 +277,7 @@ model OrderItemExtra {
   order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
   branch    Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
   orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  extra     MenuItem  @relation(fields: [extraId], references: [id])
+  extra     MenuItem  @relation(fields: [extraId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([branchId])
@@ -390,7 +390,7 @@ model EmployeeSalaryPayment {
   updatedAt     DateTime @updatedAt
 
   // Relations
-  user   User    @relation(fields: [userId], references: [id])
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -411,7 +411,7 @@ model Table {
   updatedAt          DateTime @updatedAt
 
   // Relations
-  user   User    @relation(fields: [userId], references: [id])
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   branch Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
   orders Order[]
 
@@ -464,7 +464,7 @@ model MenuItem {
 
   // Relations
   category        MenuCategory?        @relation(fields: [categoryId], references: [id])
-  user            User                 @relation(fields: [userId], references: [id])
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   branch          Branch?              @relation(fields: [branchId], references: [id], onDelete: Cascade)
   orderItems      OrderItem[]
   orderItemExtras OrderItemExtra[]
@@ -497,7 +497,7 @@ model MenuItemIngredient {
   updatedAt  DateTime       @updatedAt
 
   menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   branch   Branch?  @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
   @@unique([menuItemId, productId])
@@ -584,7 +584,7 @@ model ExpenseItem {
   // Relations
   expense        Expense         @relation(fields: [expenseId], references: [id], onDelete: Cascade)
   branch         Branch?         @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  product        Product         @relation(fields: [productId], references: [id])
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   stockMovements StockMovement[]
 
   @@index([expenseId])

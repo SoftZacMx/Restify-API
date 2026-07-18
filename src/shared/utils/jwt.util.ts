@@ -28,6 +28,20 @@ export interface EmailVerificationPayload {
   purpose: 'email_verification';
 }
 
+/**
+ * Payload del token de restablecimiento de contraseña (flujo forgot-password).
+ *
+ * Mismo diseño que EmailVerificationPayload: token corto y stateless, sin tabla
+ * en BD. El claim `purpose: 'password_reset'` lo aísla de los tokens de auth y de
+ * verificación de email; `verifyPasswordResetToken` rechaza cualquier otro `purpose`.
+ * Expira rápido (5 min) por ser sensible.
+ */
+export interface PasswordResetPayload {
+  sub: string; // userId
+  email: string;
+  purpose: 'password_reset';
+}
+
 export class JwtUtil {
   private static _secret: string | null = null;
 
@@ -97,6 +111,42 @@ export class JwtUtil {
     }
 
     if (decoded.purpose !== 'email_verification') {
+      throw new Error('Invalid token');
+    }
+
+    return decoded;
+  }
+
+  /**
+   * Firma un token de restablecimiento de contraseña (flujo forgot-password).
+   * Expiry corto por defecto (5 min): es un token sensible que otorga cambio de
+   * contraseña, así que se minimiza la ventana de uso.
+   */
+  static generatePasswordResetToken(
+    payload: Omit<PasswordResetPayload, 'purpose'>,
+    expiresIn = '5m'
+  ): string {
+    return jwt.sign(
+      { ...payload, purpose: 'password_reset' } satisfies PasswordResetPayload,
+      this.SECRET,
+      { expiresIn } as jwt.SignOptions
+    );
+  }
+
+  /**
+   * Verifica un token de restablecimiento: valida firma + expiry y exige
+   * `purpose === 'password_reset'`. Lanza `Error('Invalid token')` si el token es
+   * inválido, expiró o su `purpose` no corresponde.
+   */
+  static verifyPasswordResetToken(token: string): PasswordResetPayload {
+    let decoded: PasswordResetPayload;
+    try {
+      decoded = jwt.verify(token, this.SECRET) as PasswordResetPayload;
+    } catch (error) {
+      throw new Error('Invalid token');
+    }
+
+    if (decoded.purpose !== 'password_reset') {
       throw new Error('Invalid token');
     }
 

@@ -15,6 +15,10 @@ const envSchema = z.object({
   // CORS
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
 
+  // URL base del frontend, usada para construir links en correos (verificación,
+  // restablecimiento de contraseña). Si no se define, cae a CORS_ORIGIN.
+  APP_URL: z.string().url('APP_URL must be a valid URL').optional(),
+
   // Stripe
   STRIPE_SECRET_KEY: z.string({ required_error: 'STRIPE_SECRET_KEY is required' }),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
