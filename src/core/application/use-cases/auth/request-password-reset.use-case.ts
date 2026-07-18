@@ -32,7 +32,7 @@ export class RequestPasswordResetUseCase {
       email: user.email,
     });
 
-    const resetUrl = `${this.appBaseUrl()}/reset-password?token=${encodeURIComponent(token)}`;
+    const resetUrl = `${this.appBaseUrl()}/auth/reset-password?token=${encodeURIComponent(token)}`;
     const greeting = user.name ? `Hola ${user.name},` : 'Hola,';
 
     const html = `
@@ -69,7 +69,7 @@ export class RequestPasswordResetUseCase {
   }
 
   /**
-   * Base URL del frontend donde vive la pantalla /reset-password.
+   * Base URL del frontend donde vive la pantalla /auth/reset-password.
    * Usa APP_URL si está definida; si no, cae a CORS_ORIGIN (ya configurada).
    */
   private appBaseUrl(): string {
