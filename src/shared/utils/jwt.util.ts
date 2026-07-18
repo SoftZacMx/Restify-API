@@ -42,6 +42,25 @@ export interface PasswordResetPayload {
   purpose: 'password_reset';
 }
 
+/**
+ * Payload del token de reactivación de organización (flujo close → reactivate).
+ *
+ * Mismo diseño stateless que los tokens de reset/verify: el claim
+ * `purpose: 'organization_reactivation'` lo aísla del resto y
+ * `verifyOrganizationReactivationToken` rechaza cualquier otro `purpose`. Lleva
+ * `org` porque el token autoriza reactivar UNA organización concreta. Expira
+ * rápido (10 min): la reactivación es un acto inmediato (pedir correo → abrir link),
+ * no algo que se posponga días. La unicidad de uso NO se persigue con el token, sino
+ * con el estado: reactivar exige que la org siga cerrada, así que un token reusado
+ * ya no puede hacer nada una vez la org está ACTIVE.
+ */
+export interface OrganizationReactivationPayload {
+  sub: string; // userId (owner)
+  email: string;
+  org: string; // organizationId a reactivar
+  purpose: 'organization_reactivation';
+}
+
 export class JwtUtil {
   private static _secret: string | null = null;
 
@@ -147,6 +166,45 @@ export class JwtUtil {
     }
 
     if (decoded.purpose !== 'password_reset') {
+      throw new Error('Invalid token');
+    }
+
+    return decoded;
+  }
+
+  /**
+   * Firma un token de reactivación de organización. Expiry corto por defecto
+   * (10 min): la reactivación se pide y confirma en la misma sesión, el token solo
+   * cubre el tiempo de entrega del correo + apertura del link.
+   */
+  static generateOrganizationReactivationToken(
+    payload: Omit<OrganizationReactivationPayload, 'purpose'>,
+    expiresIn = '10m'
+  ): string {
+    return jwt.sign(
+      {
+        ...payload,
+        purpose: 'organization_reactivation',
+      } satisfies OrganizationReactivationPayload,
+      this.SECRET,
+      { expiresIn } as jwt.SignOptions
+    );
+  }
+
+  /**
+   * Verifica un token de reactivación: valida firma + expiry y exige
+   * `purpose === 'organization_reactivation'`. Lanza `Error('Invalid token')` si el
+   * token es inválido, expiró o su `purpose` no corresponde.
+   */
+  static verifyOrganizationReactivationToken(token: string): OrganizationReactivationPayload {
+    let decoded: OrganizationReactivationPayload;
+    try {
+      decoded = jwt.verify(token, this.SECRET) as OrganizationReactivationPayload;
+    } catch (error) {
+      throw new Error('Invalid token');
+    }
+
+    if (decoded.purpose !== 'organization_reactivation') {
       throw new Error('Invalid token');
     }
 

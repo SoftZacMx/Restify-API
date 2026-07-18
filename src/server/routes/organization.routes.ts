@@ -4,6 +4,7 @@ import { closeOrganizationController } from '../../controllers/organization';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
 import {
   closeOrganizationSchema,
+  requestReactivationSchema,
   reactivateOrganizationSchema,
 } from '../../core/application/dto/organization.dto';
 import { AuthMiddleware } from '../middleware/auth.middleware';
@@ -33,7 +34,38 @@ router.post(
 );
 
 /**
- * POST /api/organization/reactivate — público (re-valida credenciales como login).
+ * POST /api/organization/request-reactivation — público.
+ * El owner (sin sesión) pide por email el link de reactivación. Respuesta uniforme
+ * SIEMPRE (200) para no filtrar si el email existe / es owner / la org está cerrada.
+ */
+router.post(
+  '/request-reactivation',
+  authRateLimiter,
+  zodValidator({ schema: requestReactivationSchema, source: 'body' }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { RequestOrganizationReactivationUseCase } = await import(
+        '../../core/application/use-cases/organization/request-organization-reactivation.use-case'
+      );
+
+      const useCase = container.resolve(RequestOrganizationReactivationUseCase);
+      await useCase.execute(req.body);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          message: 'Si el correo corresponde a una organización reactivable, enviaremos un enlace.',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /api/organization/reactivate — público. Confirma con el token del correo.
  * Setea cookie HttpOnly con el nuevo JWT, igual que /login.
  */
 router.post(

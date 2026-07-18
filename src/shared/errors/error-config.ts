@@ -468,6 +468,11 @@ export const ERROR_CONFIG = {
     statusCode: 410,
     category: 'BUSINESS',
   },
+  ORGANIZATION_ALREADY_ACTIVE: {
+    message: 'Organization is already active',
+    statusCode: 409,
+    category: 'BUSINESS',
+  },
 
   // ============================================
   // System Errors
