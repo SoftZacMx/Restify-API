@@ -355,7 +355,7 @@ router.post('/logout', async (req: Request, res: Response, next: NextFunction) =
     });
 
     await new Promise<void>((resolve, reject) => {
-      logoutController(req, res, (err: any) => {
+      logoutController(req, res, (err?: unknown) => {
         if (err) reject(err);
         else resolve();
       });
