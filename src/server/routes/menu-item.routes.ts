@@ -21,6 +21,7 @@ import {
   updateRecipeItemSchema,
 } from '../../core/application/dto/recipe.dto';
 import { AuthMiddleware } from '../middleware/auth.middleware';
+import { MANAGER_AND_UP } from '../../shared/constants/roles.constants';
 
 const router = Router();
 
@@ -36,25 +37,25 @@ router.delete('/:menu_item_id', zodValidator({ schema: deleteMenuItemSchema, sou
 router.get('/:menu_item_id/recipe', getRecipeController);
 router.put(
   '/:menu_item_id/recipe',
-  AuthMiddleware.authorize('ADMIN'),
+  AuthMiddleware.authorize(...MANAGER_AND_UP),
   zodValidator({ schema: replaceRecipeSchema, source: 'body' }),
   replaceRecipeController
 );
 router.post(
   '/:menu_item_id/recipe/items',
-  AuthMiddleware.authorize('ADMIN'),
+  AuthMiddleware.authorize(...MANAGER_AND_UP),
   zodValidator({ schema: addRecipeItemSchema, source: 'body' }),
   addRecipeItemController
 );
 router.patch(
   '/:menu_item_id/recipe/items/:product_id',
-  AuthMiddleware.authorize('ADMIN'),
+  AuthMiddleware.authorize(...MANAGER_AND_UP),
   zodValidator({ schema: updateRecipeItemSchema, source: 'body' }),
   updateRecipeItemController
 );
 router.delete(
   '/:menu_item_id/recipe/items/:product_id',
-  AuthMiddleware.authorize('ADMIN'),
+  AuthMiddleware.authorize(...MANAGER_AND_UP),
   removeRecipeItemController
 );
 
