@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { listPublicMenuController } from '../../controllers/menu-items/list-public-menu.controller';
 import { createPublicOrderController } from '../../controllers/orders/create-public-order.controller';
-import { getPublicOrderStatusController } from '../../controllers/orders/get-public-order-status.controller';
+import { getPublicOrderStatusController, getPublicOrderStatusByIdController } from '../../controllers/orders/get-public-order-status.controller';
 import { payPublicOrderController } from '../../controllers/payments/pay-public-order.controller';
 import { resolvePublicBranchController } from '../../controllers/branches/resolve-public-branch.controller';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
@@ -26,5 +26,12 @@ router.post('/orders/:orderId/pay', publicOrderRateLimiter, zodValidator({ schem
 
 /** GET /api/public/orders/:trackingToken/status — Seguimiento público del pedido */
 router.get('/orders/:trackingToken/status', publicStatusRateLimiter, zodValidator({ schema: getPublicOrderStatusParamsSchema, source: 'params' }), getPublicOrderStatusController);
+
+/**
+ * GET /api/public/orders/by-order-id/:orderId/status — Seguimiento por orderId.
+ * Usado en el retorno de Mercado Pago (external_reference trae el orderId), cuando el
+ * cliente perdió el trackingToken. Path distinto para no colisionar con la ruta por token.
+ */
+router.get('/orders/by-order-id/:orderId/status', publicStatusRateLimiter, zodValidator({ schema: payPublicOrderParamsSchema, source: 'params' }), getPublicOrderStatusByIdController);
 
 export default router;

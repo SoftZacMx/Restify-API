@@ -2,6 +2,7 @@ import { inject, injectable } from 'tsyringe';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
 import { AppError } from '../../../../shared/errors';
+import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 
 export interface PublicOrderStatus {
   trackingToken: string;
@@ -31,6 +32,43 @@ export class GetPublicOrderStatusUseCase {
       throw new AppError('ORDER_ALREADY_DELIVERED');
     }
 
+    return this.buildStatus(order);
+  }
+
+  /**
+   * Resuelve el status a partir del orderId (no del trackingToken). Se usa en el
+   * retorno de Mercado Pago: la back_url trae el `external_reference` (orderId), pero
+   * el cliente puede haber perdido el trackingToken (webview de MP con storage aparte).
+   * Solo aplica a órdenes públicas (userId === null); las del POS interno se rechazan
+   * para no filtrar datos. Corre sin tenant context (ruta pública, sin JWT).
+   */
+  async executeByOrderId(orderId: string): Promise<PublicOrderStatus> {
+    const order = await withoutTenant(() => this.orderRepository.findById(orderId));
+    if (!order) {
+      throw new AppError('ORDER_NOT_FOUND');
+    }
+    if (order.userId) {
+      throw new AppError('ORDER_NOT_FOUND');
+    }
+    if (!order.trackingToken) {
+      throw new AppError('ORDER_NOT_FOUND');
+    }
+
+    return this.buildStatus(order);
+  }
+
+  private async buildStatus(order: {
+    id: string;
+    deliveryStatus: string | null;
+    status: boolean;
+    delivered: boolean;
+    origin: string;
+    trackingToken: string | null;
+    customerName: string | null;
+    scheduledAt: Date | null;
+    total: number;
+    createdAt: Date;
+  }): Promise<PublicOrderStatus> {
     // Determinar estado público: usar deliveryStatus si existe, sino inferir
     let status: PublicOrderStatus['status'];
     if (order.deliveryStatus) {
