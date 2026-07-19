@@ -110,6 +110,7 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       createPreference: jest.fn(),
       getPreference: jest.fn(),
       getPayment: jest.fn(),
+      cancelPayment: jest.fn(),
       validateWebhookSignature: jest.fn(),
     } as any;
 
@@ -362,8 +363,8 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
     });
   });
 
-  describe('status mapping: unknown status → null', () => {
-    it('should return null when MP returns an unknown status', async () => {
+  describe('status mapping: unknown status → PROCESSING', () => {
+    it('should register an unknown MP status as PROCESSING instead of discarding it', async () => {
       mockMercadoPagoService.getPayment.mockResolvedValue({
         id: 99999,
         status: 'some_unknown_status',
@@ -377,13 +378,103 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
         feeDetails: [],
       });
 
+      mockOrderRepository.findById.mockResolvedValue(mockOrder);
+      mockPaymentRepository.findByGatewayTransactionId.mockResolvedValue(null);
       mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+      mockPaymentRepository.update.mockResolvedValue(
+        new Payment(paymentId, orderId, userId, 150.50, 'MXN', PaymentStatus.PROCESSING,
+          PaymentMethod.QR_MERCADO_PAGO, PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date())
+      );
 
       const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
 
-      expect(result).toBeNull();
-      expect(mockPaymentRepository.update).not.toHaveBeenCalled();
+      // El pago se registra (no se pierde), pero la orden NO se marca pagada.
+      expect(mockPaymentRepository.update).toHaveBeenCalledWith(paymentId, {
+        status: PaymentStatus.PROCESSING,
+        gatewayTransactionId: '99999',
+      });
       expect(mockOrderRepository.update).not.toHaveBeenCalled();
+      expect(result?.payment.status).toBe(PaymentStatus.PROCESSING);
+    });
+  });
+
+  describe('autoservicio: pago in_process en orden pública', () => {
+    it('cancela automáticamente el pago in_process y marca el Payment como CANCELED', async () => {
+      const publicOrder = new Order(
+        orderId, new Date(), false, null, 150.50, 129.74, 20.76,
+        false, null, 0, 'online-pickup', null, false, null, null, null, null, null, null, null, null, null, null, null, new Date(), new Date()
+      );
+
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'in_process',
+        statusDetail: 'pending_review_manual',
+        externalReference: `${orderId}:${branchId}`,
+        transactionAmount: 150.50,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: null,
+        feeDetails: [],
+      });
+      mockMercadoPagoService.cancelPayment.mockResolvedValue({ status: 'cancelled', statusDetail: 'by_collector' });
+
+      mockOrderRepository.findById.mockResolvedValue(publicOrder);
+      mockPaymentRepository.findByGatewayTransactionId.mockResolvedValue(null);
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+      mockPaymentRepository.update.mockResolvedValue(
+        new Payment(paymentId, orderId, null, 150.50, 'MXN', PaymentStatus.CANCELED,
+          PaymentMethod.QR_MERCADO_PAGO, PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date())
+      );
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
+
+      expect(mockMercadoPagoService.cancelPayment).toHaveBeenCalledWith('99999');
+      expect(mockPaymentRepository.update).toHaveBeenCalledWith(paymentId, {
+        status: PaymentStatus.CANCELED,
+        gatewayTransactionId: '99999',
+      });
+      expect(mockOrderRepository.update).not.toHaveBeenCalled();
+      expect(result?.payment.status).toBe(PaymentStatus.CANCELED);
+    });
+
+    it('procesa como aprobado si el banco aprobó antes de poder cancelar', async () => {
+      const publicOrder = new Order(
+        orderId, new Date(), false, null, 150.50, 129.74, 20.76,
+        false, null, 0, 'online-pickup', null, false, null, null, null, null, null, null, null, null, null, null, null, new Date(), new Date()
+      );
+
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'in_process',
+        statusDetail: 'pending_review_manual',
+        externalReference: `${orderId}:${branchId}`,
+        transactionAmount: 150.50,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: '2026-07-18T23:16:42.000Z',
+        feeDetails: [],
+      });
+      mockMercadoPagoService.cancelPayment.mockResolvedValue({ status: 'approved', statusDetail: 'accredited' });
+
+      mockOrderRepository.findById.mockResolvedValue(publicOrder);
+      mockPaymentRepository.findByGatewayTransactionId.mockResolvedValue(null);
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+      mockPaymentRepository.update.mockResolvedValue(
+        new Payment(paymentId, orderId, null, 150.50, 'MXN', PaymentStatus.SUCCEEDED,
+          PaymentMethod.QR_MERCADO_PAGO, PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date())
+      );
+      mockOrderRepository.update.mockResolvedValue(
+        new Order(orderId, new Date(), true, 4, 150.50, 129.74, 20.76, false, null, 0,
+          'online-pickup', null, false, null, null, null, null, null, null, null, null, null, null, null, new Date(), new Date())
+      );
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
+
+      // No debe cancelar el pago aprobado; debe marcar la orden pagada.
+      expect(mockOrderRepository.update).toHaveBeenCalled();
+      expect(result?.payment.status).toBe(PaymentStatus.SUCCEEDED);
     });
   });
 

@@ -39,7 +39,7 @@ function parseExternalReference(raw: string | undefined): { orderId: string; bra
   return { orderId, branchId: branchId || undefined };
 }
 
-function mapMPStatusToPaymentStatus(mpStatus: string): PaymentStatus | null {
+function mapMPStatusToPaymentStatus(mpStatus: string): PaymentStatus {
   switch (mpStatus) {
     case 'approved':
       return PaymentStatus.SUCCEEDED;
@@ -51,8 +51,15 @@ function mapMPStatusToPaymentStatus(mpStatus: string): PaymentStatus | null {
     case 'in_process':
       return PaymentStatus.PROCESSING;
     default:
-      return null;
+      // Cualquier estado no contemplado (in_review, authorized, etc.) se
+      // registra como PROCESSING en vez de descartarse, para no perder el pago.
+      return PaymentStatus.PROCESSING;
   }
+}
+
+// Una orden es de autoservicio (sin cajero) cuando proviene del menú público.
+function isPublicOrder(origin: string | undefined): boolean {
+  return origin === 'online-delivery' || origin === 'online-pickup';
 }
 
 @injectable()
@@ -149,45 +156,41 @@ export class ConfirmMercadoPagoPaymentUseCase {
   }
 
   private async processPayment(orderId: string, mpPayment: MPPaymentResult): Promise<ConfirmMPPaymentResult | null> {
+    const mpPaymentId = String(mpPayment.id);
+    const existingOrder = await this.orderRepository.findById(orderId);
 
-    // 3. Buscar Payment en BD por orderId + gateway MERCADO_PAGO + status PENDING
-    const payments = await this.paymentRepository.findAll({
-      orderId,
-      status: PaymentStatus.PENDING,
-    });
-    const pendingPayment = payments.find(
-      (p) => p.gateway === PaymentGateway.MERCADO_PAGO
-    );
-
-    // 4. Si no existe pago pendiente → ignorar (idempotencia)
-    if (!pendingPayment) {
+    // Localizar la fila Payment de ESTE intento de MP. Cada reintento en MP
+    // genera un mpPaymentId distinto, por lo que la búsqueda es por ese ID.
+    const paymentRow = await this.resolvePaymentRow(orderId, mpPaymentId, mpPayment);
+    if (!paymentRow) {
       return null;
     }
 
-    // 5. Mapear status de MP a nuestro PaymentStatus
+    // Autoservicio (orden pública): un pago que queda "en revisión del banco"
+    // (in_process) se cancela automáticamente para que el cliente reintente sin
+    // riesgo de doble cobro. No hay cajero que decida.
+    if (mpPayment.status === 'in_process' && isPublicOrder(existingOrder?.origin)) {
+      return this.autoCancelPending(paymentRow, mpPayment);
+    }
+
     const newStatus = mapMPStatusToPaymentStatus(mpPayment.status);
-    if (!newStatus) {
-      return null;
-    }
 
     // 6. Actualizar Payment
-    const updatedPayment = await this.paymentRepository.update(pendingPayment.id, {
+    const updatedPayment = await this.paymentRepository.update(paymentRow.id, {
       status: newStatus,
-      gatewayTransactionId: String(mpPayment.id),
+      gatewayTransactionId: mpPaymentId,
     });
 
     let updatedOrder: { id: string; status: boolean; paymentMethod: number | null } | undefined;
     let tableReleased = false;
 
-    if (newStatus === PaymentStatus.SUCCEEDED && pendingPayment.orderId) {
-      // Actualizar Order: status = true, paymentMethod = 4 (QR MP)
-      const existingOrder = await this.orderRepository.findById(pendingPayment.orderId);
-
+    // Marcar la orden pagada solo si el pago fue aprobado y la orden aún no lo está
+    // (evita liberar mesa / registrar comisión dos veces ante webhooks repetidos).
+    if (newStatus === PaymentStatus.SUCCEEDED && paymentRow.orderId && existingOrder && !existingOrder.status) {
       // Órdenes online: no marcar como entregada al pagar (el admin gestiona la entrega)
-      const isOnline = existingOrder &&
-        (existingOrder.origin === 'online-delivery' || existingOrder.origin === 'online-pickup');
+      const isOnline = isPublicOrder(existingOrder.origin);
 
-      const order = await this.orderRepository.update(pendingPayment.orderId, {
+      const order = await this.orderRepository.update(paymentRow.orderId, {
         status: true,
         paymentMethod: 4, // 4 = QR Mercado Pago
         delivered: !isOnline,
@@ -200,7 +203,7 @@ export class ConfirmMercadoPagoPaymentUseCase {
       };
 
       // Liberar mesa si es orden local
-      if (existingOrder && existingOrder.tableId && existingOrder.origin.toLowerCase() === 'local') {
+      if (existingOrder.tableId && existingOrder.origin.toLowerCase() === 'local') {
         await this.tableRepository.update(existingOrder.tableId, {
           availabilityStatus: true,
         });
@@ -213,8 +216,8 @@ export class ConfirmMercadoPagoPaymentUseCase {
       if (totalFee > 0) {
         try {
           await this.createMpFeeExpenseUseCase.execute({
-            paymentId: pendingPayment.id,
-            orderId: pendingPayment.orderId,
+            paymentId: paymentRow.id,
+            orderId: paymentRow.orderId,
             mpPaymentId: mpPayment.id,
             feeAmount: totalFee,
             date: mpPayment.dateApproved ? new Date(mpPayment.dateApproved) : undefined,
@@ -223,7 +226,7 @@ export class ConfirmMercadoPagoPaymentUseCase {
           // No fallar la confirmación del pago si el registro del gasto falla;
           // el pago ya fue procesado exitosamente. Se loguea para observabilidad.
           console.error('[ConfirmMP] Failed to record MP fee expense', {
-            paymentId: pendingPayment.id,
+            paymentId: paymentRow.id,
             mpPaymentId: mpPayment.id,
             err,
           });
@@ -240,6 +243,102 @@ export class ConfirmMercadoPagoPaymentUseCase {
       },
       order: updatedOrder,
       tableReleased,
+    };
+  }
+
+  /**
+   * Encuentra (o crea) la fila Payment que corresponde a este pago de MP.
+   * Estrategia:
+   *  1. Por gatewayTransactionId == mpPaymentId → webhook reenviado para el mismo pago.
+   *  2. Fila PENDING de la orden → primer webhook del intento; se "reclama" con el mpPaymentId.
+   *  3. Ninguna → reintento que MP generó sin una fila local previa; se crea una nueva.
+   */
+  private async resolvePaymentRow(orderId: string, mpPaymentId: string, mpPayment: MPPaymentResult) {
+    const byMpId = await this.paymentRepository.findByGatewayTransactionId(mpPaymentId);
+    if (byMpId && byMpId.gateway === PaymentGateway.MERCADO_PAGO) {
+      return byMpId;
+    }
+
+    const pending = await this.paymentRepository.findAll({
+      orderId,
+      status: PaymentStatus.PENDING,
+    });
+    const pendingMP = pending.find((p) => p.gateway === PaymentGateway.MERCADO_PAGO);
+    if (pendingMP) {
+      return pendingMP;
+    }
+
+    // No hay fila local para este pago: registrarlo para no perderlo.
+    return this.paymentRepository.create({
+      orderId,
+      userId: null,
+      amount: mpPayment.transactionAmount,
+      currency: mpPayment.currencyId,
+      status: PaymentStatus.PENDING,
+      paymentMethod: 'QR_MERCADO_PAGO',
+      gateway: PaymentGateway.MERCADO_PAGO,
+      gatewayTransactionId: mpPaymentId,
+    });
+  }
+
+  /**
+   * Cancela en MP un pago que quedó en revisión del banco (autoservicio) y marca
+   * la fila local como CANCELED. Si MP responde que el pago ya fue aprobado (el
+   * banco lo autorizó antes de que alcanzáramos a cancelar), no se puede cancelar:
+   * se procesa como aprobado reprocesando el pago con el status real.
+   */
+  private async autoCancelPending(
+    paymentRow: { id: string; orderId: string | null },
+    mpPayment: MPPaymentResult
+  ): Promise<ConfirmMPPaymentResult | null> {
+    let cancelResult: { status: string; statusDetail: string };
+    try {
+      cancelResult = await this.mercadoPagoService.cancelPayment(String(mpPayment.id));
+    } catch (err) {
+      // Si la cancelación falla, dejar el pago como PROCESSING para no perderlo;
+      // el polling / próximos webhooks lo resolverán.
+      logger.warn(
+        { mpPaymentId: mpPayment.id, orderId: paymentRow.orderId, err: (err as Error)?.message },
+        '[ConfirmMP] fallo al cancelar pago in_process — se deja en PROCESSING'
+      );
+      const kept = await this.paymentRepository.update(paymentRow.id, {
+        status: PaymentStatus.PROCESSING,
+        gatewayTransactionId: String(mpPayment.id),
+      });
+      return {
+        payment: {
+          id: kept.id,
+          orderId: kept.orderId,
+          status: kept.status,
+          gatewayTransactionId: kept.gatewayTransactionId,
+        },
+      };
+    }
+
+    // El banco aprobó antes de cancelar: reprocesar como aprobado.
+    if (cancelResult.status === 'approved') {
+      logger.info(
+        { mpPaymentId: mpPayment.id, orderId: paymentRow.orderId },
+        '[ConfirmMP] pago aprobado por el banco antes de cancelar — se procesa como aprobado'
+      );
+      return this.processPayment(paymentRow.orderId!, { ...mpPayment, status: 'approved' });
+    }
+
+    logger.info(
+      { mpPaymentId: mpPayment.id, orderId: paymentRow.orderId, mpStatus: cancelResult.status },
+      '[ConfirmMP] pago in_process cancelado automáticamente (autoservicio)'
+    );
+    const canceled = await this.paymentRepository.update(paymentRow.id, {
+      status: PaymentStatus.CANCELED,
+      gatewayTransactionId: String(mpPayment.id),
+    });
+    return {
+      payment: {
+        id: canceled.id,
+        orderId: canceled.orderId,
+        status: canceled.status,
+        gatewayTransactionId: canceled.gatewayTransactionId,
+      },
     };
   }
 }

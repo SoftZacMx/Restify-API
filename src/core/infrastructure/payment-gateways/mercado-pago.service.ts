@@ -185,6 +185,24 @@ export class MercadoPagoService {
     };
   }
 
+  /**
+   * Cancela un pago en Mercado Pago. Solo es válido para pagos que aún no
+   * cobraron (status `pending` / `in_process`). Si el banco ya aprobó el pago,
+   * MP rechaza la cancelación y se debe reembolsar; en ese caso devolvemos el
+   * status real que reporta MP para que el caller decida.
+   *
+   * @returns el status del pago tras el intento de cancelación (ej. "cancelled"
+   *          si se canceló, "approved" si el banco lo aprobó antes de cancelar).
+   */
+  async cancelPayment(paymentId: string): Promise<{ status: string; statusDetail: string }> {
+    const { payment: paymentClient } = await this.getClients();
+    const result = await paymentClient.cancel({ id: paymentId });
+    return {
+      status: result.status ?? 'unknown',
+      statusDetail: result.status_detail ?? '',
+    };
+  }
+
   async validateWebhookSignature(params: ValidateWebhookParams): Promise<boolean> {
     const config = await this.paymentConfigService.get();
     const secret = config.mercadoPago.webhookSecret;
