@@ -21,6 +21,9 @@ export interface CreateMPPreferenceParams {
   };
   notificationUrl: string;
   expirationDate?: string; // ISO date
+  // Override del external_reference. Si se omite, se arma como "orderId:branchId".
+  // Usado por el checkout público, donde aún no existe orderId (ref = "checkout:<id>:<branchId>").
+  externalReference?: string;
 }
 
 export interface MPPreferenceResult {
@@ -117,9 +120,9 @@ export class MercadoPagoService {
           },
         ],
         metadata: params.metadata,
-        external_reference: params.branchId
-          ? `${params.orderId}:${params.branchId}`
-          : params.orderId,
+        external_reference:
+          params.externalReference ??
+          (params.branchId ? `${params.orderId}:${params.branchId}` : params.orderId),
         notification_url: params.notificationUrl,
         back_urls: {
           success: `${backUrl}/payment/success`,

@@ -1,6 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
+import { IPendingCheckoutRepository, PendingCheckout } from '../../../domain/interfaces/pending-checkout-repository.interface';
 import { AppError } from '../../../../shared/errors';
 import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 
@@ -19,12 +20,23 @@ export interface PublicOrderStatus {
 export class GetPublicOrderStatusUseCase {
   constructor(
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
-    @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository
+    @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
+    @inject('IPendingCheckoutRepository') private readonly pendingCheckoutRepository: IPendingCheckoutRepository
   ) { }
 
   async execute(trackingToken: string): Promise<PublicOrderStatus> {
     const order = await this.orderRepository.findByTrackingToken(trackingToken);
+
+    // Con el checkout diferido (Opción A) la orden puede no existir todavía: el pago
+    // se confirma por webhook asíncrono. Mientras tanto el borrador comparte el mismo
+    // trackingToken y se reporta como "esperando pago" para que el tracking no falle.
     if (!order) {
+      const checkout = await withoutTenant(() =>
+        this.pendingCheckoutRepository.findByTrackingToken(trackingToken)
+      );
+      if (checkout) {
+        return this.buildStatusFromCheckout(checkout);
+      }
       throw new AppError('ORDER_NOT_FOUND');
     }
 
@@ -111,6 +123,50 @@ export class GetPublicOrderStatusUseCase {
       items,
       total: order.total,
       createdAt: order.createdAt.toISOString(),
+    };
+  }
+
+  /**
+   * Estado a partir de un borrador (la orden aún no se materializó). Siempre reporta
+   * PENDING_PAYMENT. Los items se reconstruyen del snapshot del carrito.
+   */
+  private async buildStatusFromCheckout(checkout: PendingCheckout): Promise<PublicOrderStatus> {
+    const menuItemIds = new Set<string>();
+    for (const item of checkout.cart) {
+      menuItemIds.add(item.menuItemId);
+      for (const extra of item.extras ?? []) {
+        menuItemIds.add(extra.extraId);
+      }
+    }
+
+    const menuItems = menuItemIds.size > 0
+      ? await withoutTenant(() => this.menuItemRepository.findByIds([...menuItemIds]))
+      : [];
+    const nameMap = new Map(menuItems.map((mi) => [mi.id, mi.name]));
+    const priceMap = new Map(menuItems.map((mi) => [mi.id, mi.price]));
+
+    const items = checkout.cart.map((item) => {
+      const base = (priceMap.get(item.menuItemId) ?? 0) * item.quantity;
+      const extrasTotal = (item.extras ?? []).reduce(
+        (sum, e) => sum + (priceMap.get(e.extraId) ?? 0) * e.quantity,
+        0
+      );
+      return {
+        name: nameMap.get(item.menuItemId) || 'Item',
+        quantity: item.quantity,
+        total: base + extrasTotal,
+      };
+    });
+
+    return {
+      trackingToken: checkout.trackingToken,
+      status: 'PENDING_PAYMENT',
+      customerName: checkout.customerName,
+      orderType: checkout.orderType,
+      scheduledAt: checkout.scheduledAt ? checkout.scheduledAt.toISOString() : null,
+      items,
+      total: checkout.total,
+      createdAt: checkout.createdAt.toISOString(),
     };
   }
 }

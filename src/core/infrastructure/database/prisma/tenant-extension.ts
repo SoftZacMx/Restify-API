@@ -20,6 +20,7 @@ export const BRANCH_LEVEL_MODELS = new Set([
   'Payment',
   'PaymentSession',
   'PaymentDifferentiation',
+  'PendingCheckout',
   'Table',
   'MenuCategory',
   'MenuItem',

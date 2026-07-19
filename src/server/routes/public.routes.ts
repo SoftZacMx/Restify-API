@@ -3,6 +3,7 @@ import { listPublicMenuController } from '../../controllers/menu-items/list-publ
 import { createPublicOrderController } from '../../controllers/orders/create-public-order.controller';
 import { getPublicOrderStatusController, getPublicOrderStatusByIdController } from '../../controllers/orders/get-public-order-status.controller';
 import { payPublicOrderController } from '../../controllers/payments/pay-public-order.controller';
+import { startPublicCheckoutController } from '../../controllers/payments/start-public-checkout.controller';
 import { resolvePublicBranchController } from '../../controllers/branches/resolve-public-branch.controller';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
 import { createPublicOrderSchema, payPublicOrderParamsSchema, getPublicOrderStatusParamsSchema } from '../../core/application/dto/order.dto';
@@ -18,8 +19,15 @@ router.get('/branch/:slug', publicMenuRateLimiter, zodValidator({ schema: public
 /** GET /api/public/menu?branchId=xxx — Menú público (items activos agrupados por categoría) */
 router.get('/menu', publicMenuRateLimiter, PublicTenantMiddleware.fromBranch, listPublicMenuController);
 
-/** POST /api/public/orders — Crear pedido público (sin auth, branchId en body) */
+/** POST /api/public/orders — Crear pedido público (sin auth, branchId en body). Flujo legacy. */
 router.post('/orders', publicOrderRateLimiter, zodValidator({ schema: createPublicOrderSchema, source: 'body' }), PublicTenantMiddleware.fromBranch, createPublicOrderController);
+
+/**
+ * POST /api/public/checkout — Inicia el pago SIN crear la orden todavía (Opción A).
+ * Guarda un borrador y devuelve el initPoint de Mercado Pago + trackingToken. La orden
+ * real se materializa al confirmar el pago (webhook). Reemplaza al par crear-orden + pagar.
+ */
+router.post('/checkout', publicOrderRateLimiter, zodValidator({ schema: createPublicOrderSchema, source: 'body' }), PublicTenantMiddleware.fromBranch, startPublicCheckoutController);
 
 /** POST /api/public/orders/:orderId/pay — Pagar pedido público con MP */
 router.post('/orders/:orderId/pay', publicOrderRateLimiter, zodValidator({ schema: payPublicOrderParamsSchema, source: 'params' }), payPublicOrderController);

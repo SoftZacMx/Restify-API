@@ -38,3 +38,6 @@ container.register(GetQRPaymentStatusUseCase, GetQRPaymentStatusUseCase);
 
 import { PayPublicOrderUseCase } from '../../../application/use-cases/payments/pay-public-order.use-case';
 container.register(PayPublicOrderUseCase, PayPublicOrderUseCase);
+
+import { StartPublicCheckoutUseCase } from '../../../application/use-cases/payments/start-public-checkout.use-case';
+container.register(StartPublicCheckoutUseCase, StartPublicCheckoutUseCase);

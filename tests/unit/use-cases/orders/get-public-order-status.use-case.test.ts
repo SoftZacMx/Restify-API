@@ -1,6 +1,7 @@
 import { GetPublicOrderStatusUseCase } from '../../../../src/core/application/use-cases/orders/get-public-order-status.use-case';
 import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
 import { IMenuItemRepository } from '../../../../src/core/domain/interfaces/menu-item-repository.interface';
+import { IPendingCheckoutRepository, PendingCheckout } from '../../../../src/core/domain/interfaces/pending-checkout-repository.interface';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { OrderItem } from '../../../../src/core/domain/entities/order-item.entity';
 import { MenuItem } from '../../../../src/core/domain/entities/menu-item.entity';
@@ -10,6 +11,7 @@ describe('GetPublicOrderStatusUseCase', () => {
   let useCase: GetPublicOrderStatusUseCase;
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockMenuItemRepository: jest.Mocked<IMenuItemRepository>;
+  let mockPendingCheckoutRepository: jest.Mocked<IPendingCheckoutRepository>;
 
   beforeEach(() => {
     mockOrderRepository = {
@@ -42,10 +44,46 @@ describe('GetPublicOrderStatusUseCase', () => {
       delete: jest.fn(),
     };
 
-    useCase = new GetPublicOrderStatusUseCase(mockOrderRepository, mockMenuItemRepository);
+    mockPendingCheckoutRepository = {
+      findById: jest.fn(),
+      findByTrackingToken: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    };
+
+    useCase = new GetPublicOrderStatusUseCase(
+      mockOrderRepository,
+      mockMenuItemRepository,
+      mockPendingCheckoutRepository
+    );
   });
 
   afterEach(() => jest.clearAllMocks());
+
+  function makeCheckout(overrides: Partial<PendingCheckout> = {}): PendingCheckout {
+    return {
+      id: 'checkout-1',
+      branchId: 'branch-1',
+      status: 'WAITING',
+      cart: [{ menuItemId: 'menu-1', quantity: 2 }],
+      customerName: 'Ana',
+      customerPhone: '5551112222',
+      orderType: 'PICKUP',
+      deliveryAddress: null,
+      latitude: null,
+      longitude: null,
+      scheduledAt: null,
+      total: 150,
+      subtotal: 150,
+      trackingToken: 'track-xyz',
+      mpPreferenceId: 'pref-1',
+      paymentId: 'payment-1',
+      orderId: null,
+      expiresAt: new Date(),
+      createdAt: new Date(),
+      ...overrides,
+    } as PendingCheckout;
+  }
 
   it('should return PENDING_PAYMENT when order is not paid', async () => {
     const order = new Order(
@@ -120,9 +158,76 @@ describe('GetPublicOrderStatusUseCase', () => {
     expect(result.status).toBe('READY');
   });
 
-  it('should throw ORDER_NOT_FOUND when token does not exist', async () => {
+  it('should throw ORDER_NOT_FOUND when neither order nor checkout exist', async () => {
     mockOrderRepository.findByTrackingToken.mockResolvedValue(null);
+    mockPendingCheckoutRepository.findByTrackingToken.mockResolvedValue(null);
 
     await expect(useCase.execute('nonexistent')).rejects.toMatchObject({ code: 'ORDER_NOT_FOUND' });
+  });
+
+  describe('checkout diferido: fallback cuando la orden aún no existe', () => {
+    it('should report PENDING_PAYMENT from a pending checkout draft', async () => {
+      mockOrderRepository.findByTrackingToken.mockResolvedValue(null);
+      mockPendingCheckoutRepository.findByTrackingToken.mockResolvedValue(makeCheckout());
+      const menuItem = new MenuItem('menu-1', 'Hamburguesa', 75, true, false, 'cat-1', 'user-1', new Date(), new Date());
+      mockMenuItemRepository.findByIds.mockResolvedValue([menuItem]);
+
+      const result = await useCase.execute('track-xyz');
+
+      expect(result.status).toBe('PENDING_PAYMENT');
+      expect(result.customerName).toBe('Ana');
+      expect(result.orderType).toBe('PICKUP');
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]).toEqual({ name: 'Hamburguesa', quantity: 2, total: 150 });
+      expect(result.total).toBe(150);
+      // No debe consultar items de orden — la orden no existe.
+      expect(mockOrderRepository.findOrderItemsByOrderId).not.toHaveBeenCalled();
+    });
+
+    it('should include extras in the reconstructed checkout total', async () => {
+      mockOrderRepository.findByTrackingToken.mockResolvedValue(null);
+      mockPendingCheckoutRepository.findByTrackingToken.mockResolvedValue(
+        makeCheckout({
+          cart: [{ menuItemId: 'menu-1', quantity: 1, extras: [{ extraId: 'extra-1', quantity: 2 }] }],
+        })
+      );
+      const menuItem = new MenuItem('menu-1', 'Hamburguesa', 100, true, false, 'cat-1', 'user-1', new Date(), new Date());
+      const extra = new MenuItem('extra-1', 'Queso', 15, true, true, 'cat-1', 'user-1', new Date(), new Date());
+      mockMenuItemRepository.findByIds.mockResolvedValue([menuItem, extra]);
+
+      const result = await useCase.execute('track-xyz');
+
+      // 100 * 1 + 15 * 2 = 130
+      expect(result.items[0].total).toBe(130);
+    });
+
+    it('should default missing menu item to "Item" with price 0', async () => {
+      mockOrderRepository.findByTrackingToken.mockResolvedValue(null);
+      mockPendingCheckoutRepository.findByTrackingToken.mockResolvedValue(makeCheckout());
+      mockMenuItemRepository.findByIds.mockResolvedValue([]);
+
+      const result = await useCase.execute('track-xyz');
+
+      expect(result.items[0].name).toBe('Item');
+      expect(result.items[0].total).toBe(0);
+    });
+
+    it('should prefer a real order over a checkout draft', async () => {
+      const order = new Order(
+        'order-1', new Date(), true, 4, 150, 150, 0,
+        false, null, 0, 'online-pickup', null, false, null, null,
+        'Real', '5500000000', null, null, null, null, 'track-xyz', 'PAID', null,
+        new Date(), new Date()
+      );
+      mockOrderRepository.findByTrackingToken.mockResolvedValue(order);
+      mockOrderRepository.findOrderItemsByOrderId.mockResolvedValue([]);
+      mockMenuItemRepository.findByIds.mockResolvedValue([]);
+
+      const result = await useCase.execute('track-xyz');
+
+      expect(result.status).toBe('PAID');
+      expect(result.customerName).toBe('Real');
+      expect(mockPendingCheckoutRepository.findByTrackingToken).not.toHaveBeenCalled();
+    });
   });
 });

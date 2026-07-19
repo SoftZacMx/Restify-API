@@ -155,12 +155,14 @@ export class PaymentRepository implements IPaymentRepository {
 
   async update(id: string, data: {
     status?: PaymentStatus;
+    orderId?: string | null;
     gatewayTransactionId?: string | null;
     metadata?: any | null;
   }): Promise<Payment> {
     const updateData: any = {};
 
     if (data.status !== undefined) updateData.status = data.status;
+    if (data.orderId !== undefined) updateData.orderId = data.orderId;
     if (data.gatewayTransactionId !== undefined) updateData.gatewayTransactionId = data.gatewayTransactionId;
     if (data.metadata !== undefined) updateData.metadata = data.metadata;
 

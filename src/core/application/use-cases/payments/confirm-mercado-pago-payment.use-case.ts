@@ -4,9 +4,12 @@ import { IOrderRepository } from '../../../domain/interfaces/order-repository.in
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
 import { IOrganizationRepository } from '../../../domain/interfaces/organization-repository.interface';
-import { PaymentStatus, PaymentGateway } from '@prisma/client';
+import { IPendingCheckoutRepository, PendingCheckout } from '../../../domain/interfaces/pending-checkout-repository.interface';
+import { PaymentStatus, PaymentGateway, PendingCheckoutStatus } from '@prisma/client';
 import { MercadoPagoService, MPPaymentResult } from '../../../infrastructure/payment-gateways/mercado-pago.service';
 import { CreateMercadoPagoFeeExpenseUseCase } from '../expenses/create-mercado-pago-fee-expense.use-case';
+import { PublicOrderPersistenceService } from '../../services/public-order-persistence.service';
+import { CHECKOUT_REF_PREFIX } from './start-public-checkout.use-case';
 import { runWithTenant } from '../../../infrastructure/tenant/tenant-context';
 import { logger } from '../../../../shared/utils/logger';
 
@@ -31,12 +34,28 @@ export interface ConfirmMPPaymentResult {
   tableReleased?: boolean;
 }
 
-// external_reference: "orderId:branchId" o "orderId" (preferencias viejas)
-function parseExternalReference(raw: string | undefined): { orderId: string; branchId?: string } | null {
+// Referencia externa parseada. Dos formatos posibles:
+//  - Checkout diferido (Opción A): "checkout:<checkoutId>:<branchId>" → la orden aún no existe.
+//  - Orden existente (legacy/POS): "orderId:branchId" o "orderId" (preferencias viejas).
+interface ParsedRef {
+  kind: 'checkout' | 'order';
+  id: string; // checkoutId u orderId según kind
+  branchId?: string;
+}
+
+function parseExternalReference(raw: string | undefined): ParsedRef | null {
   if (!raw) return null;
-  const [orderId, branchId] = raw.split(':');
+  const parts = raw.split(':');
+
+  if (parts[0] === CHECKOUT_REF_PREFIX) {
+    const [, checkoutId, branchId] = parts;
+    if (!checkoutId) return null;
+    return { kind: 'checkout', id: checkoutId, branchId: branchId || undefined };
+  }
+
+  const [orderId, branchId] = parts;
   if (!orderId) return null;
-  return { orderId, branchId: branchId || undefined };
+  return { kind: 'order', id: orderId, branchId: branchId || undefined };
 }
 
 function mapMPStatusToPaymentStatus(mpStatus: string): PaymentStatus {
@@ -70,9 +89,12 @@ export class ConfirmMercadoPagoPaymentUseCase {
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
     @inject('IBranchRepository') private readonly branchRepository: IBranchRepository,
     @inject('IOrganizationRepository') private readonly organizationRepository: IOrganizationRepository,
+    @inject('IPendingCheckoutRepository') private readonly pendingCheckoutRepository: IPendingCheckoutRepository,
     @inject('MercadoPagoService') private readonly mercadoPagoService: MercadoPagoService,
     @inject(CreateMercadoPagoFeeExpenseUseCase)
     private readonly createMpFeeExpenseUseCase: CreateMercadoPagoFeeExpenseUseCase,
+    @inject(PublicOrderPersistenceService)
+    private readonly persistence: PublicOrderPersistenceService,
   ) {}
 
   async execute(input: ConfirmMPPaymentInput): Promise<ConfirmMPPaymentResult | null> {
@@ -96,12 +118,13 @@ export class ConfirmMercadoPagoPaymentUseCase {
           return null;
         }
 
-        const result = await this.processPayment(ref.orderId, mpPayment);
+        const result = await this.processRef(ref, mpPayment);
         logger.info(
           {
             mpPaymentId: input.mpPaymentId,
             branchId: tenant.branchId,
             organizationId: tenant.organizationId,
+            refKind: ref.kind,
             processed: result !== null,
             paymentStatus: result?.payment.status,
           },
@@ -131,7 +154,122 @@ export class ConfirmMercadoPagoPaymentUseCase {
     const tenant = await this.resolveTenant(ref.branchId, input.mpPaymentId);
     if (!tenant) return null;
 
-    return runWithTenant(tenant, () => this.processPayment(ref.orderId, mpPayment));
+    return runWithTenant(tenant, () => this.processRef(ref, mpPayment));
+  }
+
+  /**
+   * Enruta según el tipo de referencia:
+   *  - 'checkout': la orden aún no existe → materializarla si el pago fue aprobado.
+   *  - 'order': la orden ya existe (POS o flujo legacy) → confirmar directamente.
+   */
+  private async processRef(ref: ParsedRef, mpPayment: MPPaymentResult): Promise<ConfirmMPPaymentResult | null> {
+    if (ref.kind === 'checkout') {
+      return this.processCheckout(ref.id, mpPayment);
+    }
+    return this.processPayment(ref.id, mpPayment);
+  }
+
+  /**
+   * Confirma un pago cuya orden aún no existe (Opción A). Localiza el borrador,
+   * actualiza el Payment y, si el pago fue APROBADO, materializa la orden real
+   * (idempotente: si el borrador ya se consumió, reusa la orden creada). Un pago
+   * rechazado/cancelado sólo actualiza el Payment; nunca crea orden.
+   */
+  private async processCheckout(checkoutId: string, mpPayment: MPPaymentResult): Promise<ConfirmMPPaymentResult | null> {
+    const mpPaymentId = String(mpPayment.id);
+    const checkout = await this.pendingCheckoutRepository.findById(checkoutId);
+    if (!checkout) {
+      logger.warn({ mpPaymentId, checkoutId }, '[ConfirmMP] checkout no encontrado — webhook ignorado');
+      return null;
+    }
+
+    const newStatus = mapMPStatusToPaymentStatus(mpPayment.status);
+
+    // Localizar (o crear) la fila Payment de este intento, sin orderId todavía.
+    const paymentRow = await this.resolveCheckoutPaymentRow(checkout, mpPaymentId, mpPayment);
+
+    // Autoservicio: pago en revisión del banco → cancelar para permitir reintento sin doble cobro.
+    if (mpPayment.status === 'in_process') {
+      return this.autoCancelPending({ id: paymentRow.id, orderId: paymentRow.orderId }, mpPayment, () =>
+        this.processCheckout(checkoutId, { ...mpPayment, status: 'approved' })
+      );
+    }
+
+    // No aprobado: actualizar el Payment y salir. No se crea orden.
+    if (newStatus !== PaymentStatus.SUCCEEDED) {
+      const updated = await this.paymentRepository.update(paymentRow.id, {
+        status: newStatus,
+        gatewayTransactionId: mpPaymentId,
+      });
+      return {
+        payment: {
+          id: updated.id,
+          orderId: updated.orderId,
+          status: updated.status,
+          gatewayTransactionId: updated.gatewayTransactionId,
+        },
+      };
+    }
+
+    // Aprobado: materializar la orden (idempotente por checkout ya consumido).
+    let orderId = checkout.orderId;
+    if (checkout.status === PendingCheckoutStatus.CONSUMED && orderId) {
+      logger.info({ mpPaymentId, checkoutId, orderId }, '[ConfirmMP] checkout ya materializado — reusando orden');
+    } else {
+      const persisted = await this.persistence.persistOrder({
+        branchId: checkout.branchId,
+        customerName: checkout.customerName,
+        customerPhone: checkout.customerPhone,
+        orderType: checkout.orderType,
+        deliveryAddress: checkout.deliveryAddress,
+        latitude: checkout.latitude,
+        longitude: checkout.longitude,
+        scheduledAt: checkout.scheduledAt,
+        items: checkout.cart,
+        trackingToken: checkout.trackingToken,
+      });
+      orderId = persisted.id;
+      await this.pendingCheckoutRepository.update(checkout.id, {
+        status: PendingCheckoutStatus.CONSUMED,
+        orderId,
+      });
+      logger.info({ mpPaymentId, checkoutId, orderId }, '[ConfirmMP] orden materializada desde checkout');
+    }
+
+    // Vincular el Payment a la orden recién creada y confirmar (marca pagada, comisión, etc.).
+    await this.paymentRepository.update(paymentRow.id, { orderId });
+    return this.processPayment(orderId, mpPayment);
+  }
+
+  /**
+   * Localiza (o crea) la fila Payment asociada a un checkout para este pago de MP.
+   * A diferencia de resolvePaymentRow, aquí la orden todavía no existe: se busca por
+   * mpPaymentId, luego por el paymentId guardado en el checkout, y si no, se crea.
+   */
+  private async resolveCheckoutPaymentRow(checkout: PendingCheckout, mpPaymentId: string, mpPayment: MPPaymentResult) {
+    const byMpId = await this.paymentRepository.findByGatewayTransactionId(mpPaymentId);
+    if (byMpId && byMpId.gateway === PaymentGateway.MERCADO_PAGO) {
+      return byMpId;
+    }
+
+    if (checkout.paymentId) {
+      const existing = await this.paymentRepository.findById(checkout.paymentId);
+      if (existing && existing.status === PaymentStatus.PENDING) {
+        return existing;
+      }
+    }
+
+    // Reintento en MP sin fila local previa (p. ej. tras cancelar el intento anterior).
+    return this.paymentRepository.create({
+      orderId: null,
+      userId: null,
+      amount: mpPayment.transactionAmount,
+      currency: mpPayment.currencyId,
+      status: PaymentStatus.PENDING,
+      paymentMethod: 'QR_MERCADO_PAGO',
+      gateway: PaymentGateway.MERCADO_PAGO,
+      gatewayTransactionId: mpPaymentId,
+    });
   }
 
   private async resolveTenant(
@@ -289,7 +427,11 @@ export class ConfirmMercadoPagoPaymentUseCase {
    */
   private async autoCancelPending(
     paymentRow: { id: string; orderId: string | null },
-    mpPayment: MPPaymentResult
+    mpPayment: MPPaymentResult,
+    // Cómo reprocesar si el banco aprobó antes de cancelar. Por defecto reprocesa por
+    // orderId (flujo con orden existente); el flujo de checkout inyecta su propia lógica
+    // porque la orden aún no existe.
+    reprocessApproved?: () => Promise<ConfirmMPPaymentResult | null>
   ): Promise<ConfirmMPPaymentResult | null> {
     let cancelResult: { status: string; statusDetail: string };
     try {
@@ -321,6 +463,9 @@ export class ConfirmMercadoPagoPaymentUseCase {
         { mpPaymentId: mpPayment.id, orderId: paymentRow.orderId },
         '[ConfirmMP] pago aprobado por el banco antes de cancelar — se procesa como aprobado'
       );
+      if (reprocessApproved) {
+        return reprocessApproved();
+      }
       return this.processPayment(paymentRow.orderId!, { ...mpPayment, status: 'approved' });
     }
 

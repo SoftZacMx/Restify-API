@@ -29,6 +29,7 @@ export interface IPaymentRepository {
   }): Promise<Payment>;
   update(id: string, data: {
     status?: PaymentStatus;
+    orderId?: string | null;
     gatewayTransactionId?: string | null;
     metadata?: any | null;
   }): Promise<Payment>;

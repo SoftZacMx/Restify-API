@@ -88,6 +88,7 @@ model Branch {
   expenseItems            ExpenseItem[]
   menuItemIngredients     MenuItemIngredient[]
   stockMovements          StockMovement[]
+  pendingCheckouts        PendingCheckout[]
 
   @@index([organizationId, status])
   @@map("branches")
@@ -335,6 +336,45 @@ model PaymentSession {
   @@index([paymentId])
   @@index([branchId])
   @@map("payment_sessions")
+}
+
+// Pending Checkout (borrador de pedido público antes de pagar)
+// Guarda el carrito y datos del cliente SIN crear la orden ni descontar stock.
+// La orden real se materializa recién cuando Mercado Pago confirma el pago.
+// Así un pago rechazado no deja órdenes huérfanas ni duplicados al reintentar.
+model PendingCheckout {
+  id              String                @id @default(uuid())
+  branchId        String
+  status          PendingCheckoutStatus @default(WAITING)
+  // Snapshot del pedido (items con extras) tal como se enviará a crear la orden.
+  cart            Json
+  customerName    String
+  customerPhone   String
+  orderType       String // 'DELIVERY' | 'PICKUP'
+  deliveryAddress String?               @db.Text
+  latitude        Float?
+  longitude       Float?
+  scheduledAt     DateTime?
+  total           Decimal               @db.Decimal(10, 2)
+  subtotal        Decimal               @db.Decimal(10, 2)
+  // Token de seguimiento pre-generado: se entrega al cliente antes de pagar y se
+  // hereda a la orden real al materializarla, para que el link de tracking sirva
+  // aunque la orden todavía no exista (webhook asíncrono).
+  trackingToken   String                @unique
+  mpPreferenceId  String?
+  paymentId       String?
+  // Se llena al materializar: apunta a la orden real creada desde este borrador.
+  orderId         String?
+  expiresAt       DateTime
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId])
+  @@index([trackingToken])
+  @@index([status])
+  @@map("pending_checkouts")
 }
 
 // Payment Differentiation (Split Payments)
@@ -616,6 +656,12 @@ enum PaymentStatus {
   CANCELED
   REFUNDED
   PARTIALLY_REFUNDED
+}
+
+enum PendingCheckoutStatus {
+  WAITING // Esperando confirmación de pago
+  CONSUMED // Pago aprobado y orden ya materializada
+  EXPIRED // Sesión de pago vencida sin aprobarse
 }
 
 enum PaymentMethod {

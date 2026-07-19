@@ -5,6 +5,8 @@ import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-r
 import { ITableRepository } from '../../../../src/core/domain/interfaces/table-repository.interface';
 import { IBranchRepository } from '../../../../src/core/domain/interfaces/branch-repository.interface';
 import { IOrganizationRepository } from '../../../../src/core/domain/interfaces/organization-repository.interface';
+import { IPendingCheckoutRepository } from '../../../../src/core/domain/interfaces/pending-checkout-repository.interface';
+import { PublicOrderPersistenceService } from '../../../../src/core/application/services/public-order-persistence.service';
 import { MercadoPagoService } from '../../../../src/core/infrastructure/payment-gateways/mercado-pago.service';
 import { Payment } from '../../../../src/core/domain/entities/payment.entity';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
@@ -22,6 +24,8 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
   let mockOrganizationRepository: jest.Mocked<IOrganizationRepository>;
   let mockMercadoPagoService: jest.Mocked<MercadoPagoService>;
   let mockCreateMpFeeExpenseUseCase: jest.Mocked<CreateMercadoPagoFeeExpenseUseCase>;
+  let mockPendingCheckoutRepository: jest.Mocked<IPendingCheckoutRepository>;
+  let mockPersistence: jest.Mocked<PublicOrderPersistenceService>;
 
   const orderId = 'order-123';
   const userId = 'user-123';
@@ -118,14 +122,28 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       execute: jest.fn().mockResolvedValue({ expenseId: null, created: false }),
     } as any;
 
+    mockPendingCheckoutRepository = {
+      findById: jest.fn(),
+      findByTrackingToken: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    };
+
+    mockPersistence = {
+      validateAndPrice: jest.fn(),
+      persistOrder: jest.fn(),
+    } as any;
+
     useCase = new ConfirmMercadoPagoPaymentUseCase(
       mockPaymentRepository,
       mockOrderRepository,
       mockTableRepository,
       mockBranchRepository,
       mockOrganizationRepository,
+      mockPendingCheckoutRepository,
       mockMercadoPagoService,
       mockCreateMpFeeExpenseUseCase,
+      mockPersistence,
     );
   });
 
@@ -886,6 +904,142 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
       expect(result).toBeNull();
       expect(mockPaymentRepository.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('checkout diferido (Opción A): external_reference "checkout:<id>:<branch>"', () => {
+    const checkoutId = 'checkout-abc';
+    const newOrderId = 'order-materialized';
+    const trackingToken = 'track-xyz';
+
+    const mockCheckout: any = {
+      id: checkoutId,
+      branchId,
+      status: 'WAITING',
+      cart: [{ menuItemId: 'mi-1', quantity: 2 }],
+      customerName: 'Ana',
+      customerPhone: '5551112222',
+      orderType: 'PICKUP',
+      deliveryAddress: null,
+      latitude: null,
+      longitude: null,
+      scheduledAt: null,
+      total: 150.5,
+      subtotal: 150.5,
+      trackingToken,
+      mpPreferenceId: 'pref-abc',
+      paymentId,
+      orderId: null,
+      expiresAt: new Date(),
+      createdAt: new Date(),
+    };
+
+    function mockCheckoutPayment(status: string) {
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status,
+        statusDetail: 'x',
+        externalReference: `checkout:${checkoutId}:${branchId}`,
+        transactionAmount: 150.5,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: status === 'approved' ? '2026-07-19T12:00:00.000Z' : null,
+        feeDetails: [],
+      });
+    }
+
+    it('materializa la orden y confirma el pago cuando MP aprueba', async () => {
+      mockCheckoutPayment('approved');
+      mockPendingCheckoutRepository.findById.mockResolvedValue({ ...mockCheckout });
+      mockPaymentRepository.findByGatewayTransactionId.mockResolvedValue(null);
+      mockPaymentRepository.findById.mockResolvedValue(pendingPayment);
+      // Tras materializar, processPayment relocaliza la fila Payment PENDING de la orden.
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+      mockPersistence.persistOrder.mockResolvedValue({
+        id: newOrderId, trackingToken, total: 150.5, subtotal: 150.5,
+        origin: 'online-pickup', createdAt: new Date(),
+      });
+
+      // processPayment (tras materializar) busca la orden ya creada y la marca pagada.
+      const materializedOrder = new Order(
+        newOrderId, new Date(), false, null, 150.5, 150.5, 0,
+        false, null, 0, 'online-pickup', null, false, null, null,
+        'Ana', '5551112222', null, null, null, null, trackingToken, null, null, new Date(), new Date()
+      );
+      mockOrderRepository.findById.mockResolvedValue(materializedOrder);
+      mockOrderRepository.update.mockResolvedValue(
+        new Order(newOrderId, new Date(), true, 4, 150.5, 150.5, 0, false, null, 0,
+          'online-pickup', null, false, null, null, 'Ana', '5551112222', null, null, null, null, trackingToken, 'PAID', null, new Date(), new Date())
+      );
+      mockPaymentRepository.update.mockResolvedValue(
+        new Payment(paymentId, newOrderId, null, 150.5, 'MXN', PaymentStatus.SUCCEEDED,
+          PaymentMethod.QR_MERCADO_PAGO, PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date())
+      );
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated', branchId });
+
+      expect(mockPersistence.persistOrder).toHaveBeenCalledTimes(1);
+      expect(mockPendingCheckoutRepository.update).toHaveBeenCalledWith(checkoutId, {
+        status: 'CONSUMED',
+        orderId: newOrderId,
+      });
+      expect(mockPaymentRepository.update).toHaveBeenCalledWith(paymentId, { orderId: newOrderId });
+      expect(result?.payment.status).toBe(PaymentStatus.SUCCEEDED);
+    });
+
+    it('NO materializa la orden cuando el pago es rechazado', async () => {
+      mockCheckoutPayment('rejected');
+      mockPendingCheckoutRepository.findById.mockResolvedValue({ ...mockCheckout });
+      mockPaymentRepository.findByGatewayTransactionId.mockResolvedValue(null);
+      mockPaymentRepository.findById.mockResolvedValue(pendingPayment);
+      mockPaymentRepository.update.mockResolvedValue(
+        new Payment(paymentId, null, null, 150.5, 'MXN', PaymentStatus.FAILED,
+          PaymentMethod.QR_MERCADO_PAGO, PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date())
+      );
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated', branchId });
+
+      expect(mockPersistence.persistOrder).not.toHaveBeenCalled();
+      expect(mockOrderRepository.update).not.toHaveBeenCalled();
+      expect(result?.payment.status).toBe(PaymentStatus.FAILED);
+    });
+
+    it('es idempotente: si el checkout ya fue consumido, reusa la orden y no la crea de nuevo', async () => {
+      mockCheckoutPayment('approved');
+      mockPendingCheckoutRepository.findById.mockResolvedValue({
+        ...mockCheckout, status: 'CONSUMED', orderId: newOrderId,
+      });
+      mockPaymentRepository.findByGatewayTransactionId.mockResolvedValue(null);
+      mockPaymentRepository.findById.mockResolvedValue(pendingPayment);
+      // Tras reusar la orden ya materializada, processPayment relocaliza la fila Payment PENDING.
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+
+      const materializedOrder = new Order(
+        newOrderId, new Date(), false, null, 150.5, 150.5, 0,
+        false, null, 0, 'online-pickup', null, false, null, null,
+        'Ana', '5551112222', null, null, null, null, trackingToken, null, null, new Date(), new Date()
+      );
+      mockOrderRepository.findById.mockResolvedValue(materializedOrder);
+      mockOrderRepository.update.mockResolvedValue(materializedOrder);
+      mockPaymentRepository.update.mockResolvedValue(
+        new Payment(paymentId, newOrderId, null, 150.5, 'MXN', PaymentStatus.SUCCEEDED,
+          PaymentMethod.QR_MERCADO_PAGO, PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date())
+      );
+
+      await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated', branchId });
+
+      expect(mockPersistence.persistOrder).not.toHaveBeenCalled();
+    });
+
+    it('ignora el webhook si el checkout no existe', async () => {
+      mockCheckoutPayment('approved');
+      mockPendingCheckoutRepository.findById.mockResolvedValue(null);
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated', branchId });
+
+      expect(result).toBeNull();
+      expect(mockPersistence.persistOrder).not.toHaveBeenCalled();
     });
   });
 });
