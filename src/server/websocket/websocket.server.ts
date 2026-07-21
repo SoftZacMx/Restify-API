@@ -174,10 +174,14 @@ export class WebSocketServer {
             }
           }
 
-          // Register connection with user role
+          // Register connection with user role + tenant context (del token verificado).
+          // branch/org salen SIEMPRE del token firmado, nunca de datos sueltos del cliente,
+          // para que el filtrado de notificaciones por sucursal/organización no sea suplantable.
           this.connectionManager.registerConnection(socket, connectionId, {
             userId,
             userRole,
+            branchId: tokenPayload?.branch,
+            organizationId: tokenPayload?.org,
             paymentId,
           });
 

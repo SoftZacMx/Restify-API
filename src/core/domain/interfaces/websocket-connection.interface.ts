@@ -9,6 +9,8 @@ export interface WebSocketConnection {
   connectionId: string; // Custom connection ID (from PaymentSession)
   userId?: string;
   userRole?: UserRole; // User role for filtering staff notifications
+  branchId?: string; // Sucursal activa del usuario (del token) para filtrar notificaciones por branch
+  organizationId?: string; // Organización del usuario (del token) para aislar notificaciones entre tenants
   paymentId?: string;
   connectedAt: Date;
 }
@@ -58,7 +60,7 @@ export interface IWebSocketConnectionManager {
   registerConnection(
     socket: Socket,
     connectionId: string,
-    metadata?: { userId?: string; userRole?: UserRole; paymentId?: string }
+    metadata?: { userId?: string; userRole?: UserRole; branchId?: string; organizationId?: string; paymentId?: string }
   ): void;
 
   /**
@@ -92,9 +94,17 @@ export interface IWebSocketConnectionManager {
   sendToUser(userId: string, message: WebSocketMessage): number;
 
   /**
-   * Send message to all connections of staff users (ADMIN, MANAGER, WAITER, CHEF)
-   * Excludes client users
+   * Send message to all connections of staff users (OWNER, ADMIN, MANAGER, WAITER, CHEF)
+   * Excludes client users.
+   *
+   * `scope` acota los destinatarios al tenant correcto:
+   *  - `organizationId`: solo staff de esa organización (aísla restaurantes distintos).
+   *  - `branchId`: solo staff cuya sucursal activa coincide.
+   * Sin `scope` se mantiene el broadcast a todo el staff (comportamiento legacy).
    */
-  sendToStaffRoles(message: WebSocketMessage): number;
+  sendToStaffRoles(
+    message: WebSocketMessage,
+    scope?: { branchId?: string; organizationId?: string }
+  ): number;
 }
 

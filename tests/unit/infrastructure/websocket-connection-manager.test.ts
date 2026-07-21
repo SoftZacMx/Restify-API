@@ -265,19 +265,21 @@ describe('WebSocketConnectionManager', () => {
   });
 
   describe('sendToStaffRoles', () => {
-    it('should send message only to staff role connections (ADMIN, MANAGER, WAITER, CHEF)', () => {
+    it('should send message only to staff role connections (OWNER, ADMIN, MANAGER, WAITER, CHEF)', () => {
       const socket1 = { id: 'socket-1', connected: true, emit: jest.fn(), on: jest.fn() } as any;
       const socket2 = { id: 'socket-2', connected: true, emit: jest.fn(), on: jest.fn() } as any;
       const socket3 = { id: 'socket-3', connected: true, emit: jest.fn(), on: jest.fn() } as any;
       const socket4 = { id: 'socket-4', connected: true, emit: jest.fn(), on: jest.fn() } as any;
       const socket5 = { id: 'socket-5', connected: true, emit: jest.fn(), on: jest.fn() } as any;
+      const socket6 = { id: 'socket-6', connected: true, emit: jest.fn(), on: jest.fn() } as any;
 
       // Register connections with different roles
       connectionManager.registerConnection(socket1, 'conn-1', { userId: 'user-1', userRole: UserRole.ADMIN });
       connectionManager.registerConnection(socket2, 'conn-2', { userId: 'user-2', userRole: UserRole.WAITER });
       connectionManager.registerConnection(socket3, 'conn-3', { userId: 'user-3', userRole: UserRole.MANAGER });
       connectionManager.registerConnection(socket4, 'conn-4', { userId: 'user-4', userRole: UserRole.CHEF });
-      connectionManager.registerConnection(socket5, 'conn-5', { userId: 'user-5' }); // No role (client)
+      connectionManager.registerConnection(socket5, 'conn-5', { userId: 'user-5', userRole: UserRole.OWNER });
+      connectionManager.registerConnection(socket6, 'conn-6', { userId: 'user-6' }); // No role (client)
 
       const message: WebSocketMessage = {
         type: WebSocketEventType.ORDER_CREATED,
@@ -287,12 +289,56 @@ describe('WebSocketConnectionManager', () => {
 
       const result = connectionManager.sendToStaffRoles(message);
 
-      expect(result).toBe(4); // Should notify 4 staff connections
+      expect(result).toBe(5); // Should notify 5 staff connections (incl. OWNER)
       expect(socket1.emit).toHaveBeenCalledWith(WebSocketEventType.ORDER_CREATED, message);
       expect(socket2.emit).toHaveBeenCalledWith(WebSocketEventType.ORDER_CREATED, message);
       expect(socket3.emit).toHaveBeenCalledWith(WebSocketEventType.ORDER_CREATED, message);
       expect(socket4.emit).toHaveBeenCalledWith(WebSocketEventType.ORDER_CREATED, message);
-      expect(socket5.emit).not.toHaveBeenCalled(); // Should not notify client
+      expect(socket5.emit).toHaveBeenCalledWith(WebSocketEventType.ORDER_CREATED, message); // OWNER must be notified
+      expect(socket6.emit).not.toHaveBeenCalled(); // Should not notify client
+    });
+
+    it('should scope notifications to staff of a specific branch when branchId is provided', () => {
+      const socketA = { id: 'socket-a', connected: true, emit: jest.fn(), on: jest.fn() } as any;
+      const socketB = { id: 'socket-b', connected: true, emit: jest.fn(), on: jest.fn() } as any;
+      const socketNoBranch = { id: 'socket-c', connected: true, emit: jest.fn(), on: jest.fn() } as any;
+
+      connectionManager.registerConnection(socketA, 'conn-a', { userId: 'user-a', userRole: UserRole.OWNER, branchId: 'branch-1' });
+      connectionManager.registerConnection(socketB, 'conn-b', { userId: 'user-b', userRole: UserRole.WAITER, branchId: 'branch-2' });
+      connectionManager.registerConnection(socketNoBranch, 'conn-c', { userId: 'user-c', userRole: UserRole.ADMIN }); // sin branch en el token
+
+      const message: WebSocketMessage = {
+        type: WebSocketEventType.ORDER_NEW_ONLINE,
+        data: { orderId: 'order-1' },
+        timestamp: new Date(),
+      };
+
+      const result = connectionManager.sendToStaffRoles(message, { branchId: 'branch-1' });
+
+      expect(result).toBe(1); // Solo el staff de branch-1
+      expect(socketA.emit).toHaveBeenCalledWith(WebSocketEventType.ORDER_NEW_ONLINE, message);
+      expect(socketB.emit).not.toHaveBeenCalled(); // Otra sucursal
+      expect(socketNoBranch.emit).not.toHaveBeenCalled(); // Sin branch no coincide con el scope
+    });
+
+    it('should isolate notifications by organization when organizationId is provided', () => {
+      const socketOrg1 = { id: 'socket-o1', connected: true, emit: jest.fn(), on: jest.fn() } as any;
+      const socketOrg2 = { id: 'socket-o2', connected: true, emit: jest.fn(), on: jest.fn() } as any;
+
+      connectionManager.registerConnection(socketOrg1, 'conn-o1', { userId: 'user-o1', userRole: UserRole.OWNER, organizationId: 'org-1' });
+      connectionManager.registerConnection(socketOrg2, 'conn-o2', { userId: 'user-o2', userRole: UserRole.OWNER, organizationId: 'org-2' });
+
+      const message: WebSocketMessage = {
+        type: WebSocketEventType.ORDER_NEW_ONLINE,
+        data: { orderId: 'order-1' },
+        timestamp: new Date(),
+      };
+
+      const result = connectionManager.sendToStaffRoles(message, { organizationId: 'org-1' });
+
+      expect(result).toBe(1);
+      expect(socketOrg1.emit).toHaveBeenCalled();
+      expect(socketOrg2.emit).not.toHaveBeenCalled(); // Otro restaurante: nunca debe recibirlo
     });
 
     it('should return 0 if no staff connections exist', () => {

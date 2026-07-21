@@ -38,7 +38,11 @@ export const mercadoPagoWebhookController = async (req: Request, res: Response, 
               },
               timestamp: new Date(),
             };
-            connectionManager.sendToStaffRoles(message);
+            // Notificar solo al staff de la sucursal del pedido (aísla otras sucursales/tenants).
+            connectionManager.sendToStaffRoles(
+              message,
+              order.branchId ? { branchId: order.branchId } : undefined
+            );
           }
         } catch (err) {
           logger.error({ err }, 'Failed to send online order WebSocket notification');

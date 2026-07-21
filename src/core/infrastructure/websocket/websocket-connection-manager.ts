@@ -24,7 +24,7 @@ export class WebSocketConnectionManager implements IWebSocketConnectionManager {
   registerConnection(
     socket: Socket,
     connectionId: string,
-    metadata?: { userId?: string; userRole?: UserRole; paymentId?: string }
+    metadata?: { userId?: string; userRole?: UserRole; branchId?: string; organizationId?: string; paymentId?: string }
   ): void {
     // Store connection
     this.connections.set(connectionId, socket);
@@ -35,6 +35,8 @@ export class WebSocketConnectionManager implements IWebSocketConnectionManager {
       connectionId,
       userId: metadata?.userId,
       userRole: metadata?.userRole,
+      branchId: metadata?.branchId,
+      organizationId: metadata?.organizationId,
       paymentId: metadata?.paymentId,
       connectedAt: new Date(),
     };
@@ -115,21 +117,30 @@ export class WebSocketConnectionManager implements IWebSocketConnectionManager {
   }
 
   /**
-   * Send message to all connections of staff users (ADMIN, MANAGER, WAITER, CHEF)
+   * Send message to all connections of staff users (OWNER, ADMIN, MANAGER, WAITER, CHEF)
    * Excludes client users (users without these roles)
    * Returns the number of connections that received the message
    */
-  sendToStaffRoles(message: WebSocketMessage): number {
+  sendToStaffRoles(
+    message: WebSocketMessage,
+    scope?: { branchId?: string; organizationId?: string }
+  ): number {
     const staffRoles: UserRole[] = [
+      UserRole.OWNER,
       UserRole.ADMIN,
       UserRole.MANAGER,
       UserRole.WAITER,
       UserRole.CHEF,
     ];
 
-    const staffConnections = this.getAllConnections().filter(
-      (conn) => conn.userRole && staffRoles.includes(conn.userRole)
-    );
+    const staffConnections = this.getAllConnections().filter((conn) => {
+      if (!conn.userRole || !staffRoles.includes(conn.userRole)) return false;
+      // Aislar por organización: nunca notificar staff de otro restaurante.
+      if (scope?.organizationId && conn.organizationId !== scope.organizationId) return false;
+      // Acotar a la sucursal del pedido cuando se especifica.
+      if (scope?.branchId && conn.branchId !== scope.branchId) return false;
+      return true;
+    });
 
     let sentCount = 0;
     for (const connection of staffConnections) {

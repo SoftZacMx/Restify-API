@@ -90,7 +90,7 @@ export class NotifyOrderStatusUseCase {
       timestamp: new Date(),
     };
 
-    // 3. Send notification to all staff connections (ADMIN, MANAGER, WAITER, CHEF)
+    // 3. Send notification to all staff connections (OWNER, ADMIN, MANAGER, WAITER, CHEF)
     // Excludes client users
     const notifiedCount = this.connectionManager.sendToStaffRoles(message);
 
