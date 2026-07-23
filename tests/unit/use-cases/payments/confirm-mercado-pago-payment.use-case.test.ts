@@ -7,6 +7,7 @@ import { IBranchRepository } from '../../../../src/core/domain/interfaces/branch
 import { IOrganizationRepository } from '../../../../src/core/domain/interfaces/organization-repository.interface';
 import { IPendingCheckoutRepository } from '../../../../src/core/domain/interfaces/pending-checkout-repository.interface';
 import { PublicOrderPersistenceService } from '../../../../src/core/application/services/public-order-persistence.service';
+import { TenantResolverService } from '../../../../src/core/application/services/tenant-resolver.service';
 import { MercadoPagoService } from '../../../../src/core/infrastructure/payment-gateways/mercado-pago.service';
 import { Payment } from '../../../../src/core/domain/entities/payment.entity';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
@@ -134,16 +135,23 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       persistOrder: jest.fn(),
     } as any;
 
+    // Resolver real construido con los mismos mocks de branch/org: la lógica de
+    // resolución de tenant sigue ejercitándose por estos mocks (branch inexistente,
+    // org inactiva, etc.) sin duplicarla en el test.
+    const tenantResolver = new TenantResolverService(
+      mockBranchRepository,
+      mockOrganizationRepository,
+    );
+
     useCase = new ConfirmMercadoPagoPaymentUseCase(
       mockPaymentRepository,
       mockOrderRepository,
       mockTableRepository,
-      mockBranchRepository,
-      mockOrganizationRepository,
       mockPendingCheckoutRepository,
       mockMercadoPagoService,
       mockCreateMpFeeExpenseUseCase,
       mockPersistence,
+      tenantResolver,
     );
   });
 
@@ -206,6 +214,76 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       expect(mockTableRepository.update).toHaveBeenCalledWith('table-1', {
         availabilityStatus: true,
       });
+    });
+  });
+
+  describe('validación de monto', () => {
+    it('no confirma el pago ni marca la orden si el monto pagado es menor al total', async () => {
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'approved',
+        statusDetail: 'accredited',
+        externalReference: `${orderId}:${branchId}`,
+        transactionAmount: 1.0, // muy por debajo del total (150.50)
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: '2026-03-27T12:00:00.000Z',
+        feeDetails: [],
+      });
+
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+      mockOrderRepository.findById.mockResolvedValue(mockOrder);
+
+      const kept = new Payment(
+        paymentId, orderId, userId, 150.50, 'MXN',
+        PaymentStatus.PROCESSING, PaymentMethod.QR_MERCADO_PAGO,
+        PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date()
+      );
+      mockPaymentRepository.update.mockResolvedValue(kept);
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
+
+      expect(result!.payment.status).toBe(PaymentStatus.PROCESSING);
+      // La orden NO se marca pagada ni se libera la mesa.
+      expect(mockOrderRepository.update).not.toHaveBeenCalled();
+      expect(mockTableRepository.update).not.toHaveBeenCalled();
+      expect(mockPaymentRepository.update).toHaveBeenCalledWith(paymentId, {
+        status: PaymentStatus.PROCESSING,
+        gatewayTransactionId: '99999',
+      });
+    });
+
+    it('confirma normalmente cuando el monto coincide dentro de la tolerancia de 1 centavo', async () => {
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999,
+        status: 'approved',
+        statusDetail: 'accredited',
+        externalReference: `${orderId}:${branchId}`,
+        transactionAmount: 150.49, // 1 centavo de diferencia → aceptado
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: '2026-03-27T12:00:00.000Z',
+        feeDetails: [],
+      });
+
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+      mockOrderRepository.findById.mockResolvedValue(mockOrder);
+      mockOrderRepository.update.mockResolvedValue(
+        new Order(orderId, new Date(), true, 4, 150.50, 129.74, 20.76, false, 'table-1', 0, 'Local', null, false, null, userId, null, null, null, null, null, null, null, null, null, new Date(), new Date())
+      );
+      mockTableRepository.update.mockResolvedValue(
+        new Table('table-1', 'Mesa 1', userId, true, true, new Date(), new Date())
+      );
+      mockPaymentRepository.update.mockResolvedValue(
+        new Payment(paymentId, orderId, userId, 150.50, 'MXN', PaymentStatus.SUCCEEDED, PaymentMethod.QR_MERCADO_PAGO, PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date())
+      );
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated' });
+
+      expect(result!.payment.status).toBe(PaymentStatus.SUCCEEDED);
+      expect(mockOrderRepository.update).toHaveBeenCalled();
     });
   });
 

@@ -1,4 +1,4 @@
-import { PrismaClient, PaymentStatus, PaymentMethod, PaymentGateway } from '@prisma/client';
+import { PrismaClient, PaymentStatus, PaymentMethod, PaymentGateway, Prisma } from '@prisma/client';
 import { IPaymentRepository, PaymentFilters } from '../../../domain/interfaces/payment-repository.interface';
 import { Payment } from '../../../domain/entities/payment.entity';
 
@@ -123,19 +123,37 @@ export class PaymentRepository implements IPaymentRepository {
     gatewayTransactionId?: string | null;
     metadata?: any | null;
   }): Promise<Payment> {
-    const payment = await this.prisma.payment.create({
-      data: {
-        orderId: data.orderId || null,
-        userId: data.userId,
-        amount: data.amount,
-        currency: data.currency || 'USD',
-        status: data.status,
-        paymentMethod: data.paymentMethod,
-        gateway: data.gateway || null,
-        gatewayTransactionId: data.gatewayTransactionId || null,
-        metadata: data.metadata || null,
-      },
-    });
+    let payment;
+    try {
+      payment = await this.prisma.payment.create({
+        data: {
+          orderId: data.orderId || null,
+          userId: data.userId,
+          amount: data.amount,
+          currency: data.currency || 'USD',
+          status: data.status,
+          paymentMethod: data.paymentMethod,
+          gateway: data.gateway || null,
+          gatewayTransactionId: data.gatewayTransactionId || null,
+          metadata: data.metadata || null,
+        },
+      });
+    } catch (error) {
+      // Carrera de webhooks: dos avisos del mismo pago de MP intentan crear la fila a la
+      // vez. El único en gatewayTransactionId hace que uno gane; el otro recibe P2002.
+      // Se trata como "ya procesado": se recupera la fila ganadora en vez de fallar.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        data.gatewayTransactionId
+      ) {
+        const existing = await this.findByGatewayTransactionId(data.gatewayTransactionId);
+        if (existing) {
+          return existing;
+        }
+      }
+      throw error;
+    }
 
     return new Payment(
       payment.id,

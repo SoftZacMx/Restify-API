@@ -399,6 +399,11 @@ export const ERROR_CONFIG = {
     statusCode: 500,
     category: 'SYSTEM',
   },
+  MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED: {
+    message: 'Este comercio no tiene una cuenta de cobro configurada',
+    statusCode: 409,
+    category: 'BUSINESS',
+  },
   SUBSCRIPTION_PRICE_NOT_CONFIGURED: {
     message: 'El precio de suscripción no está configurado',
     statusCode: 500,

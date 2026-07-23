@@ -8,6 +8,7 @@ import { IPendingCheckoutRepository, PendingCheckoutCartItem } from '../../../do
 import { PublicOrderPersistenceService } from '../../services/public-order-persistence.service';
 import { validateBranchAndHours } from '../orders/create-public-order.use-case';
 import { MercadoPagoService } from '../../../infrastructure/payment-gateways/mercado-pago.service';
+import { PaymentConfigService } from '../../services/payment-config.service';
 import { buildNotificationUrl } from './pay-order-with-qr-mercado-pago.use-case';
 import { AppError } from '../../../../shared/errors';
 
@@ -54,6 +55,7 @@ export class StartPublicCheckoutUseCase {
     @inject('IPendingCheckoutRepository') private readonly pendingCheckoutRepository: IPendingCheckoutRepository,
     @inject(PublicOrderPersistenceService) private readonly persistence: PublicOrderPersistenceService,
     @inject('MercadoPagoService') private readonly mercadoPagoService: MercadoPagoService,
+    @inject(PaymentConfigService) private readonly paymentConfigService: PaymentConfigService,
   ) {}
 
   async execute(input: StartPublicCheckoutInput): Promise<StartPublicCheckoutResult> {
@@ -64,6 +66,10 @@ export class StartPublicCheckoutUseCase {
     if (!branch) {
       throw new AppError('BRANCH_NOT_FOUND', 'Branch not found');
     }
+
+    // Cada comercio cobra en su propia cuenta de MP: si no la configuró, cortar aquí antes
+    // de generar el pago (evita mandar el cobro a la cuenta equivocada). Falla si falta.
+    await this.paymentConfigService.getForCharging();
 
     // 2. Validar items disponibles y calcular total (sin escribir orden ni stock)
     const { subtotal, total } = await this.persistence.validateAndPrice(input.items);

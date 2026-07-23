@@ -8,6 +8,7 @@ import { IOrganizationRepository } from '../../../domain/interfaces/organization
 import { BranchLimitService } from '../../../application/services/branch-limit.service';
 import { BranchAccessService } from '../../../application/services/branch-access.service';
 import { BootstrapBranchService } from '../../../application/services/bootstrap-branch.service';
+import { TenantResolverService } from '../../../application/services/tenant-resolver.service';
 import { ListBranchesUseCase } from '../../../application/use-cases/branches/list-branches.use-case';
 import { GetBranchUseCase } from '../../../application/use-cases/branches/get-branch.use-case';
 import { CreateBranchUseCase } from '../../../application/use-cases/branches/create-branch.use-case';
@@ -33,6 +34,7 @@ container.register<IOrganizationRepository>('IOrganizationRepository', {
 container.registerSingleton(BranchLimitService);
 container.registerSingleton(BranchAccessService);
 container.registerSingleton(BootstrapBranchService);
+container.registerSingleton(TenantResolverService);
 
 container.register(ListBranchesUseCase, ListBranchesUseCase);
 container.register(GetBranchUseCase, GetBranchUseCase);

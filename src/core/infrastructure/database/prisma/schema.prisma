@@ -315,7 +315,11 @@ model Payment {
   @@index([branchId])
   @@index([branchId, createdAt])
   @@index([status])
-  @@index([gatewayTransactionId])
+  // Único: MP reenvía webhooks y manda payment.created + payment.updated casi a la vez.
+  // El único evita filas Payment duplicadas para el mismo pago de MP; MySQL permite múltiples
+  // NULL en un índice único, así que efectivo/transferencia y el estado inicial (antes de
+  // vincular el gatewayTransactionId) siguen conviviendo sin conflicto.
+  @@unique([gatewayTransactionId])
   @@map("payments")
 }
 

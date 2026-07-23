@@ -3,6 +3,7 @@ import { IBranchRepository } from '../../domain/interfaces/branch-repository.int
 import { PaymentConfig } from '../../domain/types/payment-config.types';
 import { encrypt, decrypt } from '../../../shared/utils/crypto.util';
 import { getBranchId } from '../../infrastructure/tenant/tenant-context';
+import { AppError } from '../../../shared/errors';
 
 @injectable()
 export class PaymentConfigService {
@@ -18,15 +19,38 @@ export class PaymentConfigService {
 
     if (this.cache.has(branchId)) return this.cache.get(branchId)!;
 
-    const branch = await this.branchRepository.findById(branchId);
-    if (branch?.paymentConfig) {
-      const json = decrypt(branch.paymentConfig);
-      const config = JSON.parse(json) as PaymentConfig;
-      this.cache.set(branchId, config);
-      return config;
+    const config = await this.loadBranchConfig(branchId);
+    return config ?? this.getFromEnv();
+  }
+
+  /**
+   * Config de cobro del comercio para procesar un pago REAL.
+   *
+   * A diferencia de get(), NUNCA cae al access token del .env: cada comercio cobra en su
+   * propia cuenta de Mercado Pago, así que si el branch no la configuró, cobrar con la cuenta
+   * de plataforma mandaría el dinero a la cuenta equivocada. Se falla en vez de eso.
+   * Úsese al iniciar un cobro; get() sigue sirviendo para mostrar el estado en settings.
+   */
+  async getForCharging(): Promise<PaymentConfig> {
+    const branchId = getBranchId();
+    if (!branchId) {
+      throw new AppError('MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED');
     }
 
-    return this.getFromEnv();
+    const config = this.cache.get(branchId) ?? await this.loadBranchConfig(branchId);
+    if (!config?.mercadoPago.accessToken) {
+      throw new AppError('MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED');
+    }
+    return config;
+  }
+
+  private async loadBranchConfig(branchId: string): Promise<PaymentConfig | null> {
+    const branch = await this.branchRepository.findById(branchId);
+    if (!branch?.paymentConfig) return null;
+
+    const config = JSON.parse(decrypt(branch.paymentConfig)) as PaymentConfig;
+    this.cache.set(branchId, config);
+    return config;
   }
 
   async save(config: PaymentConfig): Promise<void> {

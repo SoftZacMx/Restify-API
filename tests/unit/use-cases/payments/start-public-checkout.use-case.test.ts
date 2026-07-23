@@ -5,9 +5,11 @@ import { IPaymentSessionRepository } from '../../../../src/core/domain/interface
 import { IPendingCheckoutRepository } from '../../../../src/core/domain/interfaces/pending-checkout-repository.interface';
 import { PublicOrderPersistenceService } from '../../../../src/core/application/services/public-order-persistence.service';
 import { MercadoPagoService } from '../../../../src/core/infrastructure/payment-gateways/mercado-pago.service';
+import { PaymentConfigService } from '../../../../src/core/application/services/payment-config.service';
 import { Branch } from '../../../../src/core/domain/entities/branch.entity';
 import { Payment } from '../../../../src/core/domain/entities/payment.entity';
 import { PaymentStatus, PaymentMethod, PaymentGateway } from '@prisma/client';
+import { AppError } from '../../../../src/shared/errors';
 
 describe('StartPublicCheckoutUseCase', () => {
   let useCase: StartPublicCheckoutUseCase;
@@ -17,6 +19,7 @@ describe('StartPublicCheckoutUseCase', () => {
   let mockPendingCheckoutRepository: jest.Mocked<IPendingCheckoutRepository>;
   let mockPersistence: jest.Mocked<PublicOrderPersistenceService>;
   let mockMercadoPagoService: jest.Mocked<MercadoPagoService>;
+  let mockPaymentConfigService: jest.Mocked<PaymentConfigService>;
 
   const branchId = 'branch-1';
   const checkoutId = 'checkout-1';
@@ -104,6 +107,12 @@ describe('StartPublicCheckoutUseCase', () => {
       validateWebhookSignature: jest.fn(),
     } as any;
 
+    mockPaymentConfigService = {
+      getForCharging: jest.fn().mockResolvedValue({
+        mercadoPago: { accessToken: 'APP_USR-test', webhookSecret: '' },
+      }),
+    } as any;
+
     useCase = new StartPublicCheckoutUseCase(
       mockBranchRepository,
       mockPaymentRepository,
@@ -111,6 +120,7 @@ describe('StartPublicCheckoutUseCase', () => {
       mockPendingCheckoutRepository,
       mockPersistence,
       mockMercadoPagoService,
+      mockPaymentConfigService,
     );
   });
 
@@ -214,5 +224,18 @@ describe('StartPublicCheckoutUseCase', () => {
 
     await expect(useCase.execute(baseInput)).rejects.toMatchObject({ code: 'BRANCH_NOT_FOUND' });
     expect(mockPendingCheckoutRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('should fail before creating anything when the merchant has no payment account', async () => {
+    mockPaymentConfigService.getForCharging.mockRejectedValue(
+      new AppError('MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED')
+    );
+
+    await expect(useCase.execute(baseInput)).rejects.toMatchObject({
+      code: 'MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED',
+    });
+    expect(mockPendingCheckoutRepository.create).not.toHaveBeenCalled();
+    expect(mockPaymentRepository.create).not.toHaveBeenCalled();
+    expect(mockMercadoPagoService.createPreference).not.toHaveBeenCalled();
   });
 });

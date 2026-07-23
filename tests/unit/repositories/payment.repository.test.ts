@@ -2,7 +2,7 @@
 
 import { PaymentRepository } from '../../../src/core/infrastructure/database/repositories/payment.repository';
 import { Payment } from '../../../src/core/domain/entities/payment.entity';
-import { PaymentStatus, PaymentMethod, PaymentGateway } from '@prisma/client';
+import { PaymentStatus, PaymentMethod, PaymentGateway, Prisma } from '@prisma/client';
 
 // Mock Prisma Client
 const mockPrismaClient = {
@@ -125,6 +125,65 @@ describe('PaymentRepository', () => {
       expect(result.status).toBe(PaymentStatus.SUCCEEDED);
       expect(result.amount).toBe(50.00);
       expect(mockPrismaClient.payment.create).toHaveBeenCalled();
+    });
+
+    it('recovers the winning row when a concurrent webhook hit the unique on gatewayTransactionId', async () => {
+      const existing = {
+        id: 'payment-winner',
+        orderId: 'order-123',
+        userId: null,
+        amount: 50,
+        currency: 'MXN',
+        status: PaymentStatus.PENDING,
+        paymentMethod: PaymentMethod.QR_MERCADO_PAGO,
+        gateway: PaymentGateway.MERCADO_PAGO,
+        gatewayTransactionId: 'mp-999',
+        metadata: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const p2002 = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      });
+      mockPrismaClient.payment.create.mockRejectedValue(p2002);
+      mockPrismaClient.payment.findFirst.mockResolvedValue(existing);
+
+      const result = await repository.create({
+        orderId: 'order-123',
+        userId: null,
+        amount: 50,
+        status: PaymentStatus.PENDING,
+        paymentMethod: PaymentMethod.QR_MERCADO_PAGO,
+        gateway: PaymentGateway.MERCADO_PAGO,
+        gatewayTransactionId: 'mp-999',
+      } as any);
+
+      expect(result.id).toBe('payment-winner');
+      expect(mockPrismaClient.payment.findFirst).toHaveBeenCalledWith({
+        where: { gatewayTransactionId: 'mp-999' },
+      });
+    });
+
+    it('rethrows a unique violation when there is no gatewayTransactionId to recover by', async () => {
+      const p2002 = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      });
+      mockPrismaClient.payment.create.mockRejectedValue(p2002);
+
+      await expect(
+        repository.create({
+          orderId: 'order-123',
+          userId: null,
+          amount: 50,
+          status: PaymentStatus.PENDING,
+          paymentMethod: PaymentMethod.CASH,
+          gateway: null,
+        } as any)
+      ).rejects.toBe(p2002);
+      expect(mockPrismaClient.payment.findFirst).not.toHaveBeenCalled();
     });
   });
 

@@ -3,6 +3,7 @@ import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-r
 import { IPaymentRepository } from '../../../../src/core/domain/interfaces/payment-repository.interface';
 import { IPaymentSessionRepository } from '../../../../src/core/domain/interfaces/payment-session-repository.interface';
 import { MercadoPagoService } from '../../../../src/core/infrastructure/payment-gateways/mercado-pago.service';
+import { PaymentConfigService } from '../../../../src/core/application/services/payment-config.service';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { Payment } from '../../../../src/core/domain/entities/payment.entity';
 import { PaymentSession } from '../../../../src/core/domain/entities/payment-session.entity';
@@ -15,6 +16,7 @@ describe('PayOrderWithQRMercadoPagoUseCase', () => {
   let mockPaymentRepository: jest.Mocked<IPaymentRepository>;
   let mockPaymentSessionRepository: jest.Mocked<IPaymentSessionRepository>;
   let mockMercadoPagoService: jest.Mocked<MercadoPagoService>;
+  let mockPaymentConfigService: jest.Mocked<PaymentConfigService>;
 
   const orderId = 'order-123';
   const userId = 'user-123';
@@ -89,13 +91,20 @@ describe('PayOrderWithQRMercadoPagoUseCase', () => {
       validateWebhookSignature: jest.fn(),
     } as any;
 
+    mockPaymentConfigService = {
+      getForCharging: jest.fn().mockResolvedValue({
+        mercadoPago: { accessToken: 'APP_USR-test', webhookSecret: '' },
+      }),
+    } as any;
+
     process.env.MP_NOTIFICATION_URL = 'https://api.restify.com/webhooks/mercado-pago';
 
     useCase = new PayOrderWithQRMercadoPagoUseCase(
       mockOrderRepository,
       mockPaymentRepository,
       mockPaymentSessionRepository,
-      mockMercadoPagoService
+      mockMercadoPagoService,
+      mockPaymentConfigService
     );
   });
 
@@ -182,6 +191,19 @@ describe('PayOrderWithQRMercadoPagoUseCase', () => {
 
     await expect(useCase.execute({ orderId, userId })).rejects.toThrow(AppError);
     await expect(useCase.execute({ orderId, userId })).rejects.toMatchObject({ code: 'ORDER_ALREADY_PAID' });
+  });
+
+  it('should fail before creating a payment when the merchant has no MP account configured', async () => {
+    mockOrderRepository.findById.mockResolvedValue(mockOrder);
+    mockPaymentConfigService.getForCharging.mockRejectedValue(
+      new AppError('MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED')
+    );
+
+    await expect(useCase.execute({ orderId, userId })).rejects.toMatchObject({
+      code: 'MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED',
+    });
+    expect(mockPaymentRepository.create).not.toHaveBeenCalled();
+    expect(mockMercadoPagoService.createPreference).not.toHaveBeenCalled();
   });
 
   it('should reuse existing preference when pending MP payment has a valid session', async () => {

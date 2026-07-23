@@ -1,9 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { container } from 'tsyringe';
-import { IBranchRepository } from '../../core/domain/interfaces/branch-repository.interface';
 import { runWithTenant } from '../../core/infrastructure/tenant/tenant-context';
 import { AppError } from '../../shared/errors';
-import { IOrganizationRepository } from '@/core/domain/interfaces/organization-repository.interface';
+import { TenantResolverService } from '../../core/application/services/tenant-resolver.service';
 /**
  * Middleware for public routes that need tenant context.
  * Extracts branchId from query param or request body and establishes tenant context.
@@ -19,24 +18,22 @@ export class PublicTenantMiddleware {
           return;
         }
 
-        const branchRepository = container.resolve<IBranchRepository>('IBranchRepository');
-        const organizationRepository =
-          container.resolve<IOrganizationRepository>('IOrganizationRepository');
+        const tenantResolver = container.resolve(TenantResolverService);
+        // Rutas públicas: el branch debe estar activo para poder operar.
+        const resolution = await tenantResolver.resolve(branchId, { requireActiveBranch: true });
 
-        const branch = await branchRepository.findById(branchId);
-
-        if (!branch || !branch.isActive()) {
-          next(new AppError('BRANCH_NOT_FOUND'));
+        if (!resolution.ok) {
+          next(
+            new AppError(
+              resolution.reason === 'ORGANIZATION_INACTIVE'
+                ? 'ORGANIZATION_INACTIVE'
+                : 'BRANCH_NOT_FOUND'
+            )
+          );
           return;
         }
 
-        const org = await organizationRepository.findById(branch.organizationId);
-        if (!org || org.status !== 'ACTIVE') {
-          next(new AppError('ORGANIZATION_INACTIVE'));
-          return;
-        }
-
-        runWithTenant({ organizationId: branch.organizationId, branchId: branch.id }, () => next());
+        runWithTenant(resolution.tenant, () => next());
       } catch (error) {
         next(error);
       }

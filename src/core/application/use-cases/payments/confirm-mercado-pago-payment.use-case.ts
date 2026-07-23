@@ -2,13 +2,12 @@ import { inject, injectable } from 'tsyringe';
 import { IPaymentRepository } from '../../../domain/interfaces/payment-repository.interface';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
-import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
-import { IOrganizationRepository } from '../../../domain/interfaces/organization-repository.interface';
 import { IPendingCheckoutRepository, PendingCheckout } from '../../../domain/interfaces/pending-checkout-repository.interface';
 import { PaymentStatus, PaymentGateway, PendingCheckoutStatus } from '@prisma/client';
 import { MercadoPagoService, MPPaymentResult } from '../../../infrastructure/payment-gateways/mercado-pago.service';
 import { CreateMercadoPagoFeeExpenseUseCase } from '../expenses/create-mercado-pago-fee-expense.use-case';
 import { PublicOrderPersistenceService } from '../../services/public-order-persistence.service';
+import { TenantResolverService } from '../../services/tenant-resolver.service';
 import { CHECKOUT_REF_PREFIX } from './start-public-checkout.use-case';
 import { runWithTenant } from '../../../infrastructure/tenant/tenant-context';
 import { logger } from '../../../../shared/utils/logger';
@@ -81,20 +80,28 @@ function isPublicOrder(origin: string | undefined): boolean {
   return origin === 'online-delivery' || origin === 'online-pickup';
 }
 
+// El monto que MP reporta como cobrado debe coincidir con el total esperado. Como la
+// firma del webhook está desactivada, esta comparación es la defensa contra un pago
+// aprobado por un monto menor al debido (p. ej. manipulando el checkout). Tolerancia de
+// 1 centavo por redondeos de decimales entre MP y el total calculado.
+function isAmountMismatch(paidAmount: number, expectedAmount: number): boolean {
+  return Math.abs(paidAmount - expectedAmount) > 0.01;
+}
+
 @injectable()
 export class ConfirmMercadoPagoPaymentUseCase {
   constructor(
     @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository,
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
-    @inject('IBranchRepository') private readonly branchRepository: IBranchRepository,
-    @inject('IOrganizationRepository') private readonly organizationRepository: IOrganizationRepository,
     @inject('IPendingCheckoutRepository') private readonly pendingCheckoutRepository: IPendingCheckoutRepository,
     @inject('MercadoPagoService') private readonly mercadoPagoService: MercadoPagoService,
     @inject(CreateMercadoPagoFeeExpenseUseCase)
     private readonly createMpFeeExpenseUseCase: CreateMercadoPagoFeeExpenseUseCase,
     @inject(PublicOrderPersistenceService)
     private readonly persistence: PublicOrderPersistenceService,
+    @inject(TenantResolverService)
+    private readonly tenantResolver: TenantResolverService,
   ) {}
 
   async execute(input: ConfirmMPPaymentInput): Promise<ConfirmMPPaymentResult | null> {
@@ -211,6 +218,28 @@ export class ConfirmMercadoPagoPaymentUseCase {
       };
     }
 
+    // Aprobado pero el monto cobrado no coincide con el total del checkout: no materializar
+    // la orden. Se deja el Payment en PROCESSING para revisión manual (posible manipulación
+    // del monto o desfase de precios). Nunca se crea la orden a partir de un pago corto.
+    if (isAmountMismatch(mpPayment.transactionAmount, checkout.total)) {
+      logger.warn(
+        { mpPaymentId, checkoutId, paid: mpPayment.transactionAmount, expected: checkout.total },
+        '[ConfirmMP] monto pagado no coincide con el total del checkout — no se materializa la orden'
+      );
+      const kept = await this.paymentRepository.update(paymentRow.id, {
+        status: PaymentStatus.PROCESSING,
+        gatewayTransactionId: mpPaymentId,
+      });
+      return {
+        payment: {
+          id: kept.id,
+          orderId: kept.orderId,
+          status: kept.status,
+          gatewayTransactionId: kept.gatewayTransactionId,
+        },
+      };
+    }
+
     // Aprobado: materializar la orden (idempotente por checkout ya consumido).
     let orderId = checkout.orderId;
     if (checkout.status === PendingCheckoutStatus.CONSUMED && orderId) {
@@ -272,25 +301,30 @@ export class ConfirmMercadoPagoPaymentUseCase {
     });
   }
 
+  /**
+   * Resuelve el tenant a partir del branchId usando el TenantResolver compartido.
+   * A diferencia de las rutas públicas, un webhook NO exige que el branch esté activo:
+   * un pago que ya ocurrió debe confirmarse aunque el branch se deshabilite después.
+   * Ante fallo se loguea y se devuelve null (webhook ignorado), sin lanzar excepción.
+   */
   private async resolveTenant(
     branchId: string,
     mpPaymentId: number
   ): Promise<{ organizationId: string; branchId: string } | null> {
-    const branch = await this.branchRepository.findById(branchId);
-    if (!branch) {
-      logger.warn({ mpPaymentId, branchId }, '[ConfirmMP] branch no encontrado — webhook ignorado');
-      return null;
+    const resolution = await this.tenantResolver.resolve(branchId);
+    if (resolution.ok) {
+      return resolution.tenant;
     }
-    // No procesar pagos de organizaciones canceladas/suspendidas
-    const org = await this.organizationRepository.findById(branch.organizationId);
-    if (!org || org.status !== 'ACTIVE') {
+
+    if (resolution.reason === 'BRANCH_NOT_FOUND') {
+      logger.warn({ mpPaymentId, branchId }, '[ConfirmMP] branch no encontrado — webhook ignorado');
+    } else {
       logger.warn(
-        { mpPaymentId, branchId, organizationId: branch.organizationId, orgStatus: org?.status },
+        { mpPaymentId, branchId, organizationId: resolution.organizationId, orgStatus: resolution.orgStatus },
         '[ConfirmMP] organización inactiva — webhook ignorado'
       );
-      return null;
     }
-    return { organizationId: branch.organizationId, branchId: branch.id };
+    return null;
   }
 
   private async processPayment(orderId: string, mpPayment: MPPaymentResult): Promise<ConfirmMPPaymentResult | null> {
@@ -309,6 +343,32 @@ export class ConfirmMercadoPagoPaymentUseCase {
     // riesgo de doble cobro. No hay cajero que decida.
     if (mpPayment.status === 'in_process' && isPublicOrder(existingOrder?.origin)) {
       return this.autoCancelPending(paymentRow, mpPayment);
+    }
+
+    // Pago aprobado por un monto distinto al total de la orden: no confirmar. Se deja en
+    // PROCESSING para revisión manual en vez de marcar pagada una orden con monto corto.
+    if (
+      mapMPStatusToPaymentStatus(mpPayment.status) === PaymentStatus.SUCCEEDED &&
+      existingOrder &&
+      !existingOrder.status &&
+      isAmountMismatch(mpPayment.transactionAmount, existingOrder.total)
+    ) {
+      logger.warn(
+        { mpPaymentId, orderId, paid: mpPayment.transactionAmount, expected: existingOrder.total },
+        '[ConfirmMP] monto pagado no coincide con el total de la orden — no se confirma el pago'
+      );
+      const kept = await this.paymentRepository.update(paymentRow.id, {
+        status: PaymentStatus.PROCESSING,
+        gatewayTransactionId: mpPaymentId,
+      });
+      return {
+        payment: {
+          id: kept.id,
+          orderId: kept.orderId,
+          status: kept.status,
+          gatewayTransactionId: kept.gatewayTransactionId,
+        },
+      };
     }
 
     const newStatus = mapMPStatusToPaymentStatus(mpPayment.status);

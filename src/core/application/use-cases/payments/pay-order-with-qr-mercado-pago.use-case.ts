@@ -6,6 +6,7 @@ import { PayOrderWithQRMercadoPagoInput } from '../../dto/payment.dto';
 import { PaymentStatus, PaymentMethod, PaymentGateway } from '@prisma/client';
 import { AppError } from '../../../../shared/errors';
 import { MercadoPagoService } from '../../../infrastructure/payment-gateways/mercado-pago.service';
+import { PaymentConfigService } from '../../services/payment-config.service';
 
 export interface PayOrderWithQRMercadoPagoResult {
   paymentId: string;
@@ -30,7 +31,8 @@ export class PayOrderWithQRMercadoPagoUseCase {
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository,
     @inject('IPaymentSessionRepository') private readonly paymentSessionRepository: IPaymentSessionRepository,
-    @inject('MercadoPagoService') private readonly mercadoPagoService: MercadoPagoService
+    @inject('MercadoPagoService') private readonly mercadoPagoService: MercadoPagoService,
+    @inject(PaymentConfigService) private readonly paymentConfigService: PaymentConfigService
   ) {}
 
   async execute(input: PayOrderWithQRMercadoPagoInput): Promise<PayOrderWithQRMercadoPagoResult> {
@@ -43,6 +45,10 @@ export class PayOrderWithQRMercadoPagoUseCase {
     if (order.status) {
       throw new AppError('ORDER_ALREADY_PAID');
     }
+
+    // El comercio debe tener su propia cuenta de MP configurada: nunca cobrar con la del
+    // .env (mandaría el dinero a la cuenta equivocada). Falla antes de crear el pago.
+    await this.paymentConfigService.getForCharging();
 
     // 2. Si ya existe un pago pendiente de MP, reutilizar la preferencia existente
     const existingPayments = await this.paymentRepository.findAll({
