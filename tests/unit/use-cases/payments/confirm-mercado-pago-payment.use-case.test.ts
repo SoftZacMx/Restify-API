@@ -1119,5 +1119,64 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
       expect(result).toBeNull();
       expect(mockPersistence.persistOrder).not.toHaveBeenCalled();
     });
+
+    it('in_process cancelado: no materializa la orden y marca el borrador EXPIRED', async () => {
+      mockCheckoutPayment('in_process');
+      mockPendingCheckoutRepository.findById.mockResolvedValue({ ...mockCheckout });
+      mockPaymentRepository.findByGatewayTransactionId.mockResolvedValue(null);
+      mockPaymentRepository.findById.mockResolvedValue(pendingPayment);
+      mockMercadoPagoService.cancelPayment.mockResolvedValue({ status: 'cancelled', statusDetail: 'by_collector' });
+      mockPaymentRepository.update.mockResolvedValue(
+        new Payment(paymentId, null, null, 150.5, 'MXN', PaymentStatus.CANCELED,
+          PaymentMethod.QR_MERCADO_PAGO, PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date())
+      );
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated', branchId });
+
+      expect(mockMercadoPagoService.cancelPayment).toHaveBeenCalledWith('99999');
+      expect(mockPersistence.persistOrder).not.toHaveBeenCalled();
+      // El borrador se marca EXPIRED para que la vista pública deje de reportar "esperando pago".
+      expect(mockPendingCheckoutRepository.update).toHaveBeenCalledWith(checkoutId, {
+        status: 'EXPIRED',
+      });
+      expect(result?.payment.status).toBe(PaymentStatus.CANCELED);
+    });
+
+    it('in_process aprobado por el banco antes de cancelar: NO marca el borrador EXPIRED', async () => {
+      mockCheckoutPayment('in_process');
+      mockPendingCheckoutRepository.findById.mockResolvedValue({ ...mockCheckout });
+      mockPaymentRepository.findByGatewayTransactionId.mockResolvedValue(null);
+      mockPaymentRepository.findById.mockResolvedValue(pendingPayment);
+      // Al reprocesar como aprobado, processPayment relocaliza la fila Payment PENDING.
+      mockPaymentRepository.findAll.mockResolvedValue([pendingPayment]);
+      mockMercadoPagoService.cancelPayment.mockResolvedValue({ status: 'approved', statusDetail: 'accredited' });
+      mockPersistence.persistOrder.mockResolvedValue({
+        id: newOrderId, trackingToken, total: 150.5, subtotal: 150.5,
+        origin: 'online-pickup', createdAt: new Date(),
+      });
+      const materializedOrder = new Order(
+        newOrderId, new Date(), false, null, 150.5, 150.5, 0,
+        false, null, 0, 'online-pickup', null, false, null, null,
+        'Ana', '5551112222', null, null, null, null, trackingToken, null, null, new Date(), new Date()
+      );
+      mockOrderRepository.findById.mockResolvedValue(materializedOrder);
+      mockOrderRepository.update.mockResolvedValue(
+        new Order(newOrderId, new Date(), true, 4, 150.5, 150.5, 0, false, null, 0,
+          'online-pickup', null, false, null, null, 'Ana', '5551112222', null, null, null, null, trackingToken, 'PAID', null, new Date(), new Date())
+      );
+      mockPaymentRepository.update.mockResolvedValue(
+        new Payment(paymentId, newOrderId, null, 150.5, 'MXN', PaymentStatus.SUCCEEDED,
+          PaymentMethod.QR_MERCADO_PAGO, PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date())
+      );
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated', branchId });
+
+      // El banco aprobó: se materializa la orden y NUNCA se marca el borrador EXPIRED.
+      expect(mockPersistence.persistOrder).toHaveBeenCalledTimes(1);
+      expect(mockPendingCheckoutRepository.update).not.toHaveBeenCalledWith(checkoutId, {
+        status: 'EXPIRED',
+      });
+      expect(result?.payment.status).toBe(PaymentStatus.SUCCEEDED);
+    });
   });
 });

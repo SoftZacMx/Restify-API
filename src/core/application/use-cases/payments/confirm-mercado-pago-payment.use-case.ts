@@ -197,9 +197,18 @@ export class ConfirmMercadoPagoPaymentUseCase {
 
     // Autoservicio: pago en revisión del banco → cancelar para permitir reintento sin doble cobro.
     if (mpPayment.status === 'in_process') {
-      return this.autoCancelPending({ id: paymentRow.id, orderId: paymentRow.orderId }, mpPayment, () =>
+      const result = await this.autoCancelPending({ id: paymentRow.id, orderId: paymentRow.orderId }, mpPayment, () =>
         this.processCheckout(checkoutId, { ...mpPayment, status: 'approved' })
       );
+      // Si el pago se canceló de verdad, el borrador ya no espera nada: marcarlo EXPIRED
+      // para que la vista pública deje de reportar "esperando pago" y el cliente reintente.
+      // (Si el banco aprobó antes de cancelar, el borrador ya quedó CONSUMED; no se toca.)
+      if (result?.payment.status === PaymentStatus.CANCELED) {
+        await this.pendingCheckoutRepository.update(checkout.id, {
+          status: PendingCheckoutStatus.EXPIRED,
+        });
+      }
+      return result;
     }
 
     // No aprobado: actualizar el Payment y salir. No se crea orden.

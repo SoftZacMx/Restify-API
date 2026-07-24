@@ -1,7 +1,9 @@
 import { GetPublicOrderStatusUseCase } from '../../../../src/core/application/use-cases/orders/get-public-order-status.use-case';
 import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
 import { IMenuItemRepository } from '../../../../src/core/domain/interfaces/menu-item-repository.interface';
+import { IBranchRepository } from '../../../../src/core/domain/interfaces/branch-repository.interface';
 import { IPendingCheckoutRepository, PendingCheckout } from '../../../../src/core/domain/interfaces/pending-checkout-repository.interface';
+import { Branch } from '../../../../src/core/domain/entities/branch.entity';
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { OrderItem } from '../../../../src/core/domain/entities/order-item.entity';
 import { MenuItem } from '../../../../src/core/domain/entities/menu-item.entity';
@@ -11,6 +13,7 @@ describe('GetPublicOrderStatusUseCase', () => {
   let useCase: GetPublicOrderStatusUseCase;
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockMenuItemRepository: jest.Mocked<IMenuItemRepository>;
+  let mockBranchRepository: jest.Mocked<IBranchRepository>;
   let mockPendingCheckoutRepository: jest.Mocked<IPendingCheckoutRepository>;
 
   beforeEach(() => {
@@ -44,6 +47,27 @@ describe('GetPublicOrderStatusUseCase', () => {
       delete: jest.fn(),
     };
 
+    mockBranchRepository = {
+      findById: jest.fn(),
+      findBySlug: jest.fn(),
+      findByIdAndOrganizationId: jest.fn(),
+      findAllIdsByOrganizationId: jest.fn(),
+      findManyByOrganizationId: jest.fn(),
+      findManyForList: jest.fn(),
+      countActiveByOrganizationId: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    } as any;
+
+    // Por defecto el branch existe con slug 'mi-restaurante'; los tests lo pueden sobreescribir.
+    mockBranchRepository.findById.mockResolvedValue(
+      new Branch(
+        'branch-1', 'org-1', 'Sucursal Centro', 'CDMX', 'CDMX', 'Reforma', '100',
+        '5551234567', null, null, null, null, null, null,
+        'America/Mexico_City', 'MXN', 'active', new Date(), new Date(), null, 'mi-restaurante'
+      )
+    );
+
     mockPendingCheckoutRepository = {
       findById: jest.fn(),
       findByTrackingToken: jest.fn(),
@@ -54,6 +78,7 @@ describe('GetPublicOrderStatusUseCase', () => {
     useCase = new GetPublicOrderStatusUseCase(
       mockOrderRepository,
       mockMenuItemRepository,
+      mockBranchRepository,
       mockPendingCheckoutRepository
     );
   });
@@ -182,6 +207,22 @@ describe('GetPublicOrderStatusUseCase', () => {
       expect(result.total).toBe(150);
       // No debe consultar items de orden — la orden no existe.
       expect(mockOrderRepository.findOrderItemsByOrderId).not.toHaveBeenCalled();
+    });
+
+    it('should report PAYMENT_FAILED when the checkout draft is EXPIRED', async () => {
+      mockOrderRepository.findByTrackingToken.mockResolvedValue(null);
+      mockPendingCheckoutRepository.findByTrackingToken.mockResolvedValue(
+        makeCheckout({ status: 'EXPIRED' })
+      );
+      const menuItem = new MenuItem('menu-1', 'Hamburguesa', 75, true, false, 'cat-1', 'user-1', new Date(), new Date());
+      mockMenuItemRepository.findByIds.mockResolvedValue([menuItem]);
+
+      const result = await useCase.execute('track-xyz');
+
+      // El pago se canceló: la vista debe indicar que falló para que el cliente reintente.
+      expect(result.status).toBe('PAYMENT_FAILED');
+      // Incluye el slug del branch para poder redirigir de vuelta al menú al reintentar.
+      expect(result.branchSlug).toBe('mi-restaurante');
     });
 
     it('should include extras in the reconstructed checkout total', async () => {

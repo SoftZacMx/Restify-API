@@ -1,19 +1,25 @@
 import { inject, injectable } from 'tsyringe';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { IMenuItemRepository } from '../../../domain/interfaces/menu-item-repository.interface';
+import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
 import { IPendingCheckoutRepository, PendingCheckout } from '../../../domain/interfaces/pending-checkout-repository.interface';
 import { AppError } from '../../../../shared/errors';
 import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
+import { PendingCheckoutStatus } from '@prisma/client';
 
 export interface PublicOrderStatus {
+  // PAYMENT_FAILED: el pago no se completó (rechazado/cancelado); el cliente debe reintentar.
+  status: 'PENDING_PAYMENT' | 'PAYMENT_FAILED' | 'PAID' | 'PREPARING' | 'READY' | 'ON_THE_WAY' | 'DELIVERED';
   trackingToken: string;
-  status: 'PENDING_PAYMENT' | 'PAID' | 'PREPARING' | 'READY' | 'ON_THE_WAY' | 'DELIVERED';
   customerName: string;
   orderType: 'DELIVERY' | 'PICKUP';
   scheduledAt: string | null;
   items: { name: string; quantity: number; total: number }[];
   total: number;
   createdAt: string;
+  // Slug del branch para que la vista pública pueda redirigir de vuelta al menú (p. ej.
+  // al reintentar tras un pago fallido). Null si el branch no tiene slug configurado.
+  branchSlug: string | null;
 }
 
 @injectable()
@@ -21,8 +27,16 @@ export class GetPublicOrderStatusUseCase {
   constructor(
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('IMenuItemRepository') private readonly menuItemRepository: IMenuItemRepository,
+    @inject('IBranchRepository') private readonly branchRepository: IBranchRepository,
     @inject('IPendingCheckoutRepository') private readonly pendingCheckoutRepository: IPendingCheckoutRepository
   ) { }
+
+  /** Resuelve el slug del branch (ruta pública: sin tenant context). */
+  private async resolveBranchSlug(branchId: string | null): Promise<string | null> {
+    if (!branchId) return null;
+    const branch = await withoutTenant(() => this.branchRepository.findById(branchId));
+    return branch?.slug ?? null;
+  }
 
   async execute(trackingToken: string): Promise<PublicOrderStatus> {
     const order = await this.orderRepository.findByTrackingToken(trackingToken);
@@ -71,6 +85,7 @@ export class GetPublicOrderStatusUseCase {
 
   private async buildStatus(order: {
     id: string;
+    branchId: string | null;
     deliveryStatus: string | null;
     status: boolean;
     delivered: boolean;
@@ -123,12 +138,15 @@ export class GetPublicOrderStatusUseCase {
       items,
       total: order.total,
       createdAt: order.createdAt.toISOString(),
+      branchSlug: await this.resolveBranchSlug(order.branchId),
     };
   }
 
   /**
-   * Estado a partir de un borrador (la orden aún no se materializó). Siempre reporta
-   * PENDING_PAYMENT. Los items se reconstruyen del snapshot del carrito.
+   * Estado a partir de un borrador (la orden aún no se materializó). Reporta
+   * PENDING_PAYMENT mientras espera el pago, o PAYMENT_FAILED si el borrador quedó
+   * EXPIRED (pago cancelado/vencido) para que el cliente sepa que debe reintentar.
+   * Los items se reconstruyen del snapshot del carrito.
    */
   private async buildStatusFromCheckout(checkout: PendingCheckout): Promise<PublicOrderStatus> {
     const menuItemIds = new Set<string>();
@@ -160,13 +178,14 @@ export class GetPublicOrderStatusUseCase {
 
     return {
       trackingToken: checkout.trackingToken,
-      status: 'PENDING_PAYMENT',
+      status: checkout.status === PendingCheckoutStatus.EXPIRED ? 'PAYMENT_FAILED' : 'PENDING_PAYMENT',
       customerName: checkout.customerName,
       orderType: checkout.orderType,
       scheduledAt: checkout.scheduledAt ? checkout.scheduledAt.toISOString() : null,
       items,
       total: checkout.total,
       createdAt: checkout.createdAt.toISOString(),
+      branchSlug: await this.resolveBranchSlug(checkout.branchId),
     };
   }
 }
