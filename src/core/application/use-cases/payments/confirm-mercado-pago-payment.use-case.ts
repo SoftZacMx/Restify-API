@@ -217,6 +217,14 @@ export class ConfirmMercadoPagoPaymentUseCase {
         status: newStatus,
         gatewayTransactionId: mpPaymentId,
       });
+      // Terminal sin aprobación (rechazado/cancelado): el borrador ya no espera nada,
+      // marcarlo EXPIRED para que la vista pública muestre "pago fallido" y el cliente
+      // reintente. PROCESSING (pending) se deja WAITING: aún puede aprobarse.
+      if (newStatus === PaymentStatus.FAILED || newStatus === PaymentStatus.CANCELED) {
+        await this.pendingCheckoutRepository.update(checkout.id, {
+          status: PendingCheckoutStatus.EXPIRED,
+        });
+      }
       return {
         payment: {
           id: updated.id,

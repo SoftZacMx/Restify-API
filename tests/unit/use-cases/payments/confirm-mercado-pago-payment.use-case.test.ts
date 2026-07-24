@@ -1080,7 +1080,31 @@ describe('ConfirmMercadoPagoPaymentUseCase', () => {
 
       expect(mockPersistence.persistOrder).not.toHaveBeenCalled();
       expect(mockOrderRepository.update).not.toHaveBeenCalled();
+      // Rechazo terminal: el borrador se marca EXPIRED para que la vista deje de esperar.
+      expect(mockPendingCheckoutRepository.update).toHaveBeenCalledWith(checkoutId, {
+        status: 'EXPIRED',
+      });
       expect(result?.payment.status).toBe(PaymentStatus.FAILED);
+    });
+
+    it('in_process cuya cancelación falla: deja el pago PROCESSING y NO marca el borrador EXPIRED', async () => {
+      mockCheckoutPayment('in_process');
+      mockPendingCheckoutRepository.findById.mockResolvedValue({ ...mockCheckout });
+      mockPaymentRepository.findByGatewayTransactionId.mockResolvedValue(null);
+      mockPaymentRepository.findById.mockResolvedValue(pendingPayment);
+      mockMercadoPagoService.cancelPayment.mockRejectedValue(new Error('MP no pudo cancelar'));
+      mockPaymentRepository.update.mockResolvedValue(
+        new Payment(paymentId, null, null, 150.5, 'MXN', PaymentStatus.PROCESSING,
+          PaymentMethod.QR_MERCADO_PAGO, PaymentGateway.MERCADO_PAGO, '99999', null, new Date(), new Date())
+      );
+
+      const result = await useCase.execute({ mpPaymentId: 99999, action: 'payment.updated', branchId });
+
+      // El pago sigue vivo (puede aprobarse luego): no se marca EXPIRED todavía.
+      expect(mockPendingCheckoutRepository.update).not.toHaveBeenCalledWith(checkoutId, {
+        status: 'EXPIRED',
+      });
+      expect(result?.payment.status).toBe(PaymentStatus.PROCESSING);
     });
 
     it('es idempotente: si el checkout ya fue consumido, reusa la orden y no la crea de nuevo', async () => {
