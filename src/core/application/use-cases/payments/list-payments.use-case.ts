@@ -2,6 +2,8 @@ import { inject, injectable } from 'tsyringe';
 import { IPaymentRepository } from '../../../domain/interfaces/payment-repository.interface';
 import { ListPaymentsInput } from '../../dto/payment.dto';
 import { PaymentStatus, PaymentMethod } from '@prisma/client';
+import { BranchTimezoneService } from '../../services/branch-timezone.service';
+import { startOfDayInZone, endOfDayInZone } from '../../../../shared/utils/date-range.util';
 
 export interface ListPaymentsResult {
   id: string;
@@ -20,18 +22,21 @@ export interface ListPaymentsResult {
 @injectable()
 export class ListPaymentsUseCase {
   constructor(
-    @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository
+    @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository,
+    @inject(BranchTimezoneService) private readonly branchTimezoneService: BranchTimezoneService
   ) {}
 
   async execute(input?: ListPaymentsInput): Promise<ListPaymentsResult[]> {
+    const timezone = await this.branchTimezoneService.get();
+
     const filters = input
       ? {
           orderId: input.orderId,
           userId: input.userId,
           status: input.status,
           paymentMethod: input.paymentMethod,
-          dateFrom: input.dateFrom ? new Date(input.dateFrom) : undefined,
-          dateTo: input.dateTo ? new Date(input.dateTo) : undefined,
+          dateFrom: input.dateFrom ? startOfDayInZone(input.dateFrom, timezone) : undefined,
+          dateTo: input.dateTo ? endOfDayInZone(input.dateTo, timezone) : undefined,
         }
       : undefined;
 

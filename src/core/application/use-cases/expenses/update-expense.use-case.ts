@@ -2,6 +2,8 @@ import { inject, injectable } from 'tsyringe';
 import { IExpenseRepository } from '../../../domain/interfaces/expense-repository.interface';
 import { UpdateExpenseInput } from '../../dto/expense.dto';
 import { AppError } from '../../../../shared/errors';
+import { BranchTimezoneService } from '../../services/branch-timezone.service';
+import { startOfDayInZone } from '../../../../shared/utils/date-range.util';
 
 export interface UpdateExpenseResult {
   id: string;
@@ -21,10 +23,13 @@ export interface UpdateExpenseResult {
 @injectable()
 export class UpdateExpenseUseCase {
   constructor(
-    @inject('IExpenseRepository') private readonly expenseRepository: IExpenseRepository
+    @inject('IExpenseRepository') private readonly expenseRepository: IExpenseRepository,
+    @inject(BranchTimezoneService) private readonly branchTimezoneService: BranchTimezoneService
   ) {}
 
   async execute(expenseId: string, input: UpdateExpenseInput): Promise<UpdateExpenseResult> {
+    const timezone = await this.branchTimezoneService.get();
+
     // 1. Check if expense exists
     const existingExpense = await this.expenseRepository.findById(expenseId);
     if (!existingExpense) {
@@ -34,7 +39,7 @@ export class UpdateExpenseUseCase {
     // 2. Prepare update data
     const updateData: any = {};
     if (input.title !== undefined) updateData.title = input.title;
-    if (input.date !== undefined) updateData.date = new Date(input.date);
+    if (input.date !== undefined) updateData.date = startOfDayInZone(input.date, timezone);
     if (input.total !== undefined) updateData.total = input.total;
     if (input.subtotal !== undefined) updateData.subtotal = input.subtotal;
     if (input.iva !== undefined) updateData.iva = input.iva;

@@ -5,8 +5,10 @@ import { getPublicOrderStatusController, getPublicOrderStatusByIdController } fr
 import { payPublicOrderController } from '../../controllers/payments/pay-public-order.controller';
 import { startPublicCheckoutController } from '../../controllers/payments/start-public-checkout.controller';
 import { resolvePublicBranchController } from '../../controllers/branches/resolve-public-branch.controller';
+import { GetPublicCheckoutStatusUseCase } from '../../core/application/use-cases/orders/get-public-checkout-status.use-case';
+import { makeController } from '../../shared/utils/make-controller';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
-import { createPublicOrderSchema, payPublicOrderParamsSchema, getPublicOrderStatusParamsSchema } from '../../core/application/dto/order.dto';
+import { createPublicOrderSchema, payPublicOrderParamsSchema, getPublicOrderStatusParamsSchema, getPublicOrderStatusByCheckoutParamsSchema } from '../../core/application/dto/order.dto';
 import { publicBranchSlugParamSchema } from '../../core/application/dto/branch.dto';
 import { publicMenuRateLimiter, publicOrderRateLimiter, publicStatusRateLimiter } from '../middleware/rate-limit.middleware';
 import { PublicTenantMiddleware } from '../middleware/public-tenant.middleware';
@@ -41,5 +43,12 @@ router.get('/orders/:trackingToken/status', publicStatusRateLimiter, zodValidato
  * cliente perdió el trackingToken. Path distinto para no colisionar con la ruta por token.
  */
 router.get('/orders/by-order-id/:orderId/status', publicStatusRateLimiter, zodValidator({ schema: payPublicOrderParamsSchema, source: 'params' }), getPublicOrderStatusByIdController);
+
+/**
+ * GET /api/public/orders/by-checkout-id/:checkoutId/status — Seguimiento por checkoutId.
+ * Gemelo del anterior para el checkout diferido, donde el external_reference trae el
+ * checkoutId y la orden puede no existir todavía.
+ */
+router.get('/orders/by-checkout-id/:checkoutId/status', publicStatusRateLimiter, zodValidator({ schema: getPublicOrderStatusByCheckoutParamsSchema, source: 'params' }), makeController(GetPublicCheckoutStatusUseCase, { mapper: req => req.params }));
 
 export default router;

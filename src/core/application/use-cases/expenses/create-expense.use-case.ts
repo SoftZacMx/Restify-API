@@ -6,6 +6,8 @@ import { AppError } from '../../../../shared/errors';
 import { ExpenseType, type UnitOfMeasure } from '@prisma/client';
 import { PrismaService } from '../../../infrastructure/config/prisma.config';
 import { StockService } from '../../services/stock.service';
+import { BranchTimezoneService } from '../../services/branch-timezone.service';
+import { startOfDayInZone } from '../../../../shared/utils/date-range.util';
 
 export interface CreateExpenseResult {
   expense: {
@@ -38,10 +40,13 @@ export class CreateExpenseUseCase {
     @inject('IExpenseRepository') private readonly expenseRepository: IExpenseRepository,
     @inject('IProductRepository') private readonly productRepository: IProductRepository,
     @inject(PrismaService) private readonly prismaService: PrismaService,
-    @inject(StockService) private readonly stockService: StockService
+    @inject(StockService) private readonly stockService: StockService,
+    @inject(BranchTimezoneService) private readonly branchTimezoneService: BranchTimezoneService
   ) {}
 
   async execute(input: CreateExpenseInput): Promise<CreateExpenseResult> {
+    const timezone = await this.branchTimezoneService.get();
+
     // If type is MERCHANDISE, validate products and items
     if (input.type === ExpenseType.MERCHANDISE) {
       if (!input.items || input.items.length === 0) {
@@ -95,7 +100,7 @@ export class CreateExpenseUseCase {
           {
             title: input.title,
             type: input.type,
-            date: input.date ? new Date(input.date) : new Date(),
+            date: input.date ? startOfDayInZone(input.date, timezone) : new Date(),
             total: input.total,
             subtotal: input.subtotal,
             iva: input.iva,
@@ -168,7 +173,7 @@ export class CreateExpenseUseCase {
       const expense = await this.expenseRepository.create({
         title: input.title,
         type: input.type,
-        date: input.date ? new Date(input.date) : new Date(),
+        date: input.date ? startOfDayInZone(input.date, timezone) : new Date(),
         total: input.total,
         subtotal: input.subtotal,
         iva: input.iva,

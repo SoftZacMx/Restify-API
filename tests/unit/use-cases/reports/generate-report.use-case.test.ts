@@ -1,11 +1,13 @@
 import { GenerateReportUseCase } from '../../../../src/core/application/use-cases/reports/generate-report.use-case';
 import { ReportFactory } from '../../../../src/core/application/reports/report-factory';
 import { ReportType } from '../../../../src/core/domain/interfaces/report-generator.interface';
+import { BranchTimezoneService } from '../../../../src/core/application/services/branch-timezone.service';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('GenerateReportUseCase', () => {
   let generateReportUseCase: GenerateReportUseCase;
   let mockReportFactory: jest.Mocked<ReportFactory>;
+  let mockBranchTimezoneService: jest.Mocked<BranchTimezoneService>;
 
   beforeEach(() => {
     mockReportFactory = {
@@ -14,7 +16,11 @@ describe('GenerateReportUseCase', () => {
       isSupported: jest.fn(),
     } as any;
 
-    generateReportUseCase = new GenerateReportUseCase(mockReportFactory);
+    mockBranchTimezoneService = {
+      get: jest.fn().mockResolvedValue('America/Mexico_City'),
+    } as any;
+
+    generateReportUseCase = new GenerateReportUseCase(mockReportFactory, mockBranchTimezoneService);
   });
 
   afterEach(() => {
@@ -46,10 +52,39 @@ describe('GenerateReportUseCase', () => {
       expect(result.type).toBe(ReportType.CASH_FLOW);
       expect(result.data).toBeDefined();
       expect(mockReportFactory.create).toHaveBeenCalledWith(ReportType.CASH_FLOW);
-      // YMD inputs are interpreted as bounds in APP_TIMEZONE (America/Mexico_City, UTC-6).
+      // Calendar-day inputs are interpreted as bounds in the branch timezone (here CDMX, UTC-6).
       expect(mockGenerator.generate).toHaveBeenCalledWith({
         dateFrom: new Date('2024-01-01T06:00:00.000Z'),
         dateTo: new Date('2024-02-01T05:59:59.999Z'),
+        page: undefined,
+        pageSize: undefined,
+      });
+    });
+
+    it('should derive calendar-day bounds from the branch timezone', async () => {
+      const mockGenerator = {
+        getType: () => ReportType.CASH_FLOW,
+        generate: jest.fn().mockResolvedValue({
+          type: ReportType.CASH_FLOW,
+          generatedAt: new Date(),
+          filters: {},
+          data: {},
+        }),
+      };
+
+      mockReportFactory.create.mockReturnValue(mockGenerator as any);
+      mockBranchTimezoneService.get.mockResolvedValue('America/Tijuana');
+
+      await generateReportUseCase.execute({
+        type: ReportType.CASH_FLOW,
+        dateFrom: '2024-01-01',
+        dateTo: '2024-01-31',
+      });
+
+      // Tijuana en enero es UTC-8: su medianoche cae dos horas despues que la de CDMX.
+      expect(mockGenerator.generate).toHaveBeenCalledWith({
+        dateFrom: new Date('2024-01-01T08:00:00.000Z'),
+        dateTo: new Date('2024-02-01T07:59:59.999Z'),
         page: undefined,
         pageSize: undefined,
       });

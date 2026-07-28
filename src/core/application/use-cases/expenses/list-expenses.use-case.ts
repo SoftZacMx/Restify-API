@@ -1,6 +1,8 @@
 import { inject, injectable } from 'tsyringe';
 import { IExpenseRepository } from '../../../domain/interfaces/expense-repository.interface';
 import { ListExpensesInput } from '../../dto/expense.dto';
+import { BranchTimezoneService } from '../../services/branch-timezone.service';
+import { startOfDayInZone, endOfDayInZone } from '../../../../shared/utils/date-range.util';
 
 export interface ListExpensesResult {
   data: Array<{
@@ -30,17 +32,20 @@ export interface ListExpensesResult {
 @injectable()
 export class ListExpensesUseCase {
   constructor(
-    @inject('IExpenseRepository') private readonly expenseRepository: IExpenseRepository
+    @inject('IExpenseRepository') private readonly expenseRepository: IExpenseRepository,
+    @inject(BranchTimezoneService) private readonly branchTimezoneService: BranchTimezoneService
   ) {}
 
   async execute(input?: ListExpensesInput): Promise<ListExpensesResult> {
+    const timezone = await this.branchTimezoneService.get();
+
     const filters = input
       ? {
           type: input.type,
           userId: input.userId,
           paymentMethod: input.paymentMethod,
-          dateFrom: input.dateFrom ? new Date(input.dateFrom) : undefined,
-          dateTo: input.dateTo ? new Date(input.dateTo) : undefined,
+          dateFrom: input.dateFrom ? startOfDayInZone(input.dateFrom, timezone) : undefined,
+          dateTo: input.dateTo ? endOfDayInZone(input.dateTo, timezone) : undefined,
         }
       : undefined;
 

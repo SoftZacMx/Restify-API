@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidTimeZone } from '../../../shared/utils/timezone.util';
 
 const timeField = z
   .string()
@@ -17,7 +18,12 @@ export const createBranchSchema = z.object({
   logoUrl: z.string().url('Logo debe ser una URL válida').max(500).optional().nullable(),
   startOperations: timeField,
   endOperations: timeField,
-  timezone: z.string().min(1).max(64).default('America/Mexico_City'),
+  timezone: z
+    .string()
+    .min(1)
+    .max(64)
+    .refine(isValidTimeZone, 'Zona horaria inválida (ej. America/Mexico_City)')
+    .default('America/Mexico_City'),
   currency: z.string().min(1).max(8).optional(),
   ticketConfig: z.record(z.unknown()).optional().nullable(),
   paymentConfig: z.string().max(10000).optional().nullable(),

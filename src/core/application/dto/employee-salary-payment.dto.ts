@@ -13,7 +13,7 @@ export const createEmployeeSalaryPaymentSchema = z.object({
     .int()
     .min(1)
     .max(3, 'Payment method must be 1 (Cash), 2 (Transfer), or 3 (Card)'),
-  date: z.string().optional(), // ISO date string, defaults to now
+  date: dateFilterSchema.optional(), // YYYY-MM-DD o ISO; sin valor usa ahora
 });
 
 // Get Employee Salary Payment Schema
@@ -49,7 +49,7 @@ export const updateEmployeeSalaryPaymentSchema = z.object({
     .multipleOf(0.01, 'Amount must have at most 2 decimal places')
     .optional(),
   paymentMethod: z.number().int().min(1).max(3).optional(),
-  date: z.string().optional(), // ISO date string
+  date: dateFilterSchema.optional(), // YYYY-MM-DD o ISO
 });
 
 // Type exports

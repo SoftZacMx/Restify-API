@@ -18,7 +18,8 @@ describe('UpdateEmployeeSalaryPaymentUseCase', () => {
     };
 
     updateEmployeeSalaryPaymentUseCase = new UpdateEmployeeSalaryPaymentUseCase(
-      mockEmployeeSalaryPaymentRepository
+      mockEmployeeSalaryPaymentRepository,
+      { get: jest.fn().mockResolvedValue('America/Mexico_City') } as any
     );
   });
 

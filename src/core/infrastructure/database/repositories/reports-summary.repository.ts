@@ -11,7 +11,6 @@ import type {
   DailyTableRow,
 } from '../../../application/dto/reports-summary.dto';
 import type { IReportsSummaryRepository } from '../../../domain/interfaces/reports-summary-repository.interface';
-import { APP_TIMEZONE } from '../../../../shared/constants';
 
 const PAYMENT_LABELS: Record<number, string> = {
   1: 'Efectivo',
@@ -30,14 +29,9 @@ const EXPENSE_TYPE_LABELS: Record<ExpenseType, string> = {
   MERCADO_PAGO_FEE: 'Comisión Mercado Pago',
 };
 
-/** Key as YYYY-MM-DD in the app timezone (APP_TIMEZONE). */
-function toDateKey(d: Date): string {
-  return formatInTimeZone(d, APP_TIMEZONE, 'yyyy-MM-dd');
-}
-
-/** Alias de toDateKey. Se mantiene para compatibilidad con callers existentes. */
-function toDateKeyLocal(d: Date): string {
-  return toDateKey(d);
+/** Key as YYYY-MM-DD en la zona horaria de la sucursal. */
+function toDateKey(d: Date, timezone: string): string {
+  return formatInTimeZone(d, timezone, 'yyyy-MM-dd');
 }
 
 function getWeekLabel(dateStr: string, start: Date): string {
@@ -50,9 +44,13 @@ function getWeekLabel(dateStr: string, start: Date): string {
 export class ReportsSummaryRepository implements IReportsSummaryRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async getSummary(dateFrom: Date, dateTo: Date): Promise<ReportsSummaryResponse> {
-    const dateFromStr = toDateKey(dateFrom);
-    const dateToStr = toDateKey(dateTo);
+  async getSummary(
+    dateFrom: Date,
+    dateTo: Date,
+    timezone: string
+  ): Promise<ReportsSummaryResponse> {
+    const dateFromStr = toDateKey(dateFrom, timezone);
+    const dateToStr = toDateKey(dateTo, timezone);
 
     const periodDays = this.daysDiff(dateFrom, dateTo);
     const prevEnd = this.addDays(dateFrom, -1);
@@ -120,14 +118,14 @@ export class ReportsSummaryRepository implements IReportsSummaryRepository {
 
     const salesByDayMap = new Map<string, number>();
     for (const o of orders) {
-      const key = toDateKeyLocal(o.date);
+      const key = toDateKey(o.date, timezone);
       salesByDayMap.set(key, (salesByDayMap.get(key) ?? 0) + Number(o.total));
     }
     const rangeStart = new Date(dateFromStr + 'T12:00:00');
     const rangeEnd = new Date(dateToStr + 'T12:00:00');
     const salesOverTime: SalesByDayItem[] = [];
     for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
-      const key = toDateKeyLocal(d);
+      const key = toDateKey(d, timezone);
       salesOverTime.push({
         date: key,
         label: getWeekLabel(key, rangeStart),
@@ -184,18 +182,18 @@ export class ReportsSummaryRepository implements IReportsSummaryRepository {
     const salesByDayForTable = new Map<string, number>();
     const ordersCountByDay = new Map<string, number>();
     for (const o of orders) {
-      const key = toDateKeyLocal(o.date);
+      const key = toDateKey(o.date, timezone);
       salesByDayForTable.set(key, (salesByDayForTable.get(key) ?? 0) + Number(o.total));
       ordersCountByDay.set(key, (ordersCountByDay.get(key) ?? 0) + 1);
     }
     const expensesByDay = new Map<string, number>();
     for (const e of expenses) {
-      const key = toDateKeyLocal(e.date);
+      const key = toDateKey(e.date, timezone);
       expensesByDay.set(key, (expensesByDay.get(key) ?? 0) + Number(e.total));
     }
     const dailyTable: DailyTableRow[] = [];
     for (let d = new Date(rangeStart); d <= new Date(dateToStr + 'T12:00:00'); d.setDate(d.getDate() + 1)) {
-      const key = toDateKeyLocal(d);
+      const key = toDateKey(d, timezone);
       const sales = salesByDayForTable.get(key) ?? 0;
       const orders = ordersCountByDay.get(key) ?? 0;
       const exp = expensesByDay.get(key) ?? 0;

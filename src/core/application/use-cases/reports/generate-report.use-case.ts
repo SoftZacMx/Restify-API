@@ -1,7 +1,8 @@
 import { inject, injectable } from 'tsyringe';
 import { ReportFactory } from '../../reports/report-factory';
 import { ReportType, BaseReportFilters, BaseReportResult } from '../../../domain/interfaces/report-generator.interface';
-import { parseReportRangeDateFrom, parseReportRangeDateTo } from '../../../../shared/utils/report-date-range.util';
+import { startOfDayInZone, endOfDayInZone } from '../../../../shared/utils/date-range.util';
+import { BranchTimezoneService } from '../../services/branch-timezone.service';
 
 export interface GenerateReportInput {
   type: ReportType;
@@ -17,13 +18,18 @@ export interface GenerateReportResult extends BaseReportResult {
 
 @injectable()
 export class GenerateReportUseCase {
-  constructor(@inject('ReportFactory') private readonly reportFactory: ReportFactory) {}
+  constructor(
+    @inject('ReportFactory') private readonly reportFactory: ReportFactory,
+    @inject(BranchTimezoneService) private readonly branchTimezoneService: BranchTimezoneService
+  ) {}
 
   async execute(input: GenerateReportInput): Promise<GenerateReportResult> {
+    const timezone = await this.branchTimezoneService.get();
+
     // Convert date strings to Date objects
     const filters: BaseReportFilters = {
-      dateFrom: input.dateFrom ? parseReportRangeDateFrom(input.dateFrom) : undefined,
-      dateTo: input.dateTo ? parseReportRangeDateTo(input.dateTo) : undefined,
+      dateFrom: input.dateFrom ? startOfDayInZone(input.dateFrom, timezone) : undefined,
+      dateTo: input.dateTo ? endOfDayInZone(input.dateTo, timezone) : undefined,
       page: input.page,
       pageSize: input.pageSize,
     };

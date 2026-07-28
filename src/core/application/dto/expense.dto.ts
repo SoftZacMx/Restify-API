@@ -12,7 +12,7 @@ export const unitOfMeasureEnum = z.nativeEnum(UnitOfMeasure);
 export const createExpenseSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title must be at most 200 characters'),
   type: expenseTypeEnum,
-  date: z.string().optional(), // ISO date string, defaults to now
+  date: dateFilterSchema.optional(), // YYYY-MM-DD o ISO; sin valor usa ahora
   total: z.number().positive('Total must be positive').multipleOf(0.01, 'Total must have at most 2 decimal places'),
   subtotal: z.number().positive('Subtotal must be positive').multipleOf(0.01, 'Subtotal must have at most 2 decimal places'),
   iva: z.number().min(0, 'IVA must be non-negative').multipleOf(0.01, 'IVA must have at most 2 decimal places'),
@@ -71,7 +71,7 @@ export const listExpensesSchema = z.object({
 // Update Expense Schema
 export const updateExpenseSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title must be at most 200 characters').optional(),
-  date: z.string().optional(), // ISO date string
+  date: dateFilterSchema.optional(), // YYYY-MM-DD o ISO
   total: z.number().positive('Total must be positive').multipleOf(0.01, 'Total must have at most 2 decimal places').optional(),
   subtotal: z.number().positive('Subtotal must be positive').multipleOf(0.01, 'Subtotal must have at most 2 decimal places').optional(),
   iva: z.number().min(0, 'IVA must be non-negative').multipleOf(0.01, 'IVA must have at most 2 decimal places').optional(),

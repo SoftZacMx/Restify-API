@@ -2,6 +2,8 @@ import { inject, injectable } from 'tsyringe';
 import { IEmployeeSalaryPaymentRepository } from '../../../domain/interfaces/employee-salary-payment-repository.interface';
 import { UpdateEmployeeSalaryPaymentInput } from '../../dto/employee-salary-payment.dto';
 import { AppError } from '../../../../shared/errors';
+import { BranchTimezoneService } from '../../services/branch-timezone.service';
+import { startOfDayInZone } from '../../../../shared/utils/date-range.util';
 
 export interface UpdateEmployeeSalaryPaymentResult {
   id: string;
@@ -16,13 +18,16 @@ export interface UpdateEmployeeSalaryPaymentResult {
 export class UpdateEmployeeSalaryPaymentUseCase {
   constructor(
     @inject('IEmployeeSalaryPaymentRepository')
-    private readonly employeeSalaryPaymentRepository: IEmployeeSalaryPaymentRepository
+    private readonly employeeSalaryPaymentRepository: IEmployeeSalaryPaymentRepository,
+    @inject(BranchTimezoneService) private readonly branchTimezoneService: BranchTimezoneService
   ) {}
 
   async execute(
     paymentId: string,
     input: UpdateEmployeeSalaryPaymentInput
   ): Promise<UpdateEmployeeSalaryPaymentResult> {
+    const timezone = await this.branchTimezoneService.get();
+
     // Check if payment exists
     const existingPayment = await this.employeeSalaryPaymentRepository.findById(
       paymentId
@@ -36,7 +41,7 @@ export class UpdateEmployeeSalaryPaymentUseCase {
     if (input.amount !== undefined) updateData.amount = input.amount;
     if (input.paymentMethod !== undefined)
       updateData.paymentMethod = input.paymentMethod;
-    if (input.date !== undefined) updateData.date = new Date(input.date);
+    if (input.date !== undefined) updateData.date = startOfDayInZone(input.date, timezone);
 
     // Update payment
     const updatedPayment = await this.employeeSalaryPaymentRepository.update(

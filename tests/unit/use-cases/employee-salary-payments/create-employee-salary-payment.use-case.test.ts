@@ -36,7 +36,8 @@ describe('CreateEmployeeSalaryPaymentUseCase', () => {
 
     createEmployeeSalaryPaymentUseCase = new CreateEmployeeSalaryPaymentUseCase(
       mockEmployeeSalaryPaymentRepository,
-      mockUserRepository
+      mockUserRepository,
+      { get: jest.fn().mockResolvedValue('America/Mexico_City') } as any
     );
   });
 

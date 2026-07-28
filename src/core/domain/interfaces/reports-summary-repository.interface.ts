@@ -9,5 +9,5 @@ import {
 } from '../../application/dto/reports-summary.dto';
 
 export interface IReportsSummaryRepository {
-  getSummary(dateFrom: Date, dateTo: Date): Promise<ReportsSummaryResponse>;
+  getSummary(dateFrom: Date, dateTo: Date, timezone: string): Promise<ReportsSummaryResponse>;
 }

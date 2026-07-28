@@ -17,7 +17,9 @@ describe('ListRefundsUseCase', () => {
       delete: jest.fn(),
     } as any;
 
-    listRefundsUseCase = new ListRefundsUseCase(mockRefundRepository);
+    listRefundsUseCase = new ListRefundsUseCase(mockRefundRepository, {
+      get: jest.fn().mockResolvedValue('America/Mexico_City'),
+    } as any);
   });
 
   it('should list all refunds when no filters provided', async () => {

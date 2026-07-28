@@ -2,27 +2,27 @@ import { inject, injectable } from 'tsyringe';
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
-import { APP_TIMEZONE } from '../../../../shared/constants';
+import { BranchTimezoneService } from '../../services/branch-timezone.service';
 import {
   DashboardResponse,
   DashboardOrderSummary,
   DashboardSalesByDayItem,
 } from '../../dto/dashboard.dto';
 
-function dateKeyInAppTz(date: Date): string {
-  return formatInTimeZone(date, APP_TIMEZONE, 'yyyy-MM-dd');
+function dateKey(date: Date, timezone: string): string {
+  return formatInTimeZone(date, timezone, 'yyyy-MM-dd');
 }
 
-function startOfDayInAppTz(dateKey: string): Date {
-  return fromZonedTime(`${dateKey} 00:00:00.000`, APP_TIMEZONE);
+function startOfDay(key: string, timezone: string): Date {
+  return fromZonedTime(`${key} 00:00:00.000`, timezone);
 }
 
-function endOfDayInAppTz(dateKey: string): Date {
-  return fromZonedTime(`${dateKey} 23:59:59.999`, APP_TIMEZONE);
+function endOfDay(key: string, timezone: string): Date {
+  return fromZonedTime(`${key} 23:59:59.999`, timezone);
 }
 
-function weekdayNameInAppTz(date: Date): string {
-  return formatInTimeZone(date, APP_TIMEZONE, 'EEEE');
+function weekdayName(date: Date, timezone: string): string {
+  return formatInTimeZone(date, timezone, 'EEEE');
 }
 
 function orderToSummary(
@@ -45,16 +45,19 @@ function orderToSummary(
 export class GetDashboardUseCase {
   constructor(
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
-    @inject('ITableRepository') private readonly tableRepository: ITableRepository
+    @inject('ITableRepository') private readonly tableRepository: ITableRepository,
+    @inject(BranchTimezoneService) private readonly branchTimezoneService: BranchTimezoneService
   ) {}
 
   async execute(): Promise<DashboardResponse> {
+    const timezone = await this.branchTimezoneService.get();
+
     const now = new Date();
-    const todayKey = dateKeyInAppTz(now);
-    const todayStart = startOfDayInAppTz(todayKey);
-    const todayEnd = endOfDayInAppTz(todayKey);
-    const sevenDaysAgoKey = dateKeyInAppTz(new Date(todayStart.getTime() - 6 * 24 * 60 * 60 * 1000));
-    const sevenDaysAgoStart = startOfDayInAppTz(sevenDaysAgoKey);
+    const todayKey = dateKey(now, timezone);
+    const todayStart = startOfDay(todayKey, timezone);
+    const todayEnd = endOfDay(todayKey, timezone);
+    const sevenDaysAgoKey = dateKey(new Date(todayStart.getTime() - 6 * 24 * 60 * 60 * 1000), timezone);
+    const sevenDaysAgoStart = startOfDay(sevenDaysAgoKey, timezone);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     const [
@@ -77,16 +80,16 @@ export class GetDashboardUseCase {
 
     const byDayMap = new Map<string, number>();
     for (const order of paidOrdersLast7Days) {
-      const key = dateKeyInAppTz(order.date);
+      const key = dateKey(order.date, timezone);
       byDayMap.set(key, (byDayMap.get(key) ?? 0) + order.total);
     }
     const salesLast7DaysTotal = paidOrdersLast7Days.reduce((sum, o) => sum + o.total, 0);
     const byDay: DashboardSalesByDayItem[] = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(sevenDaysAgoStart.getTime() + i * 24 * 60 * 60 * 1000);
-      const key = dateKeyInAppTz(d);
+      const key = dateKey(d, timezone);
       const total = byDayMap.get(key) ?? 0;
-      const dayName = weekdayNameInAppTz(d);
+      const dayName = weekdayName(d, timezone);
       byDay.push({ date: key, day: dayName, total });
     }
 

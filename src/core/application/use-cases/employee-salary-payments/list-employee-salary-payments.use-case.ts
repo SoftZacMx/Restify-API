@@ -1,6 +1,8 @@
 import { inject, injectable } from 'tsyringe';
 import { IEmployeeSalaryPaymentRepository } from '../../../domain/interfaces/employee-salary-payment-repository.interface';
 import { ListEmployeeSalaryPaymentsInput } from '../../dto/employee-salary-payment.dto';
+import { BranchTimezoneService } from '../../services/branch-timezone.service';
+import { startOfDayInZone, endOfDayInZone } from '../../../../shared/utils/date-range.util';
 
 export interface ListEmployeeSalaryPaymentsResult {
   data: Array<{
@@ -23,18 +25,21 @@ export interface ListEmployeeSalaryPaymentsResult {
 export class ListEmployeeSalaryPaymentsUseCase {
   constructor(
     @inject('IEmployeeSalaryPaymentRepository')
-    private readonly employeeSalaryPaymentRepository: IEmployeeSalaryPaymentRepository
+    private readonly employeeSalaryPaymentRepository: IEmployeeSalaryPaymentRepository,
+    @inject(BranchTimezoneService) private readonly branchTimezoneService: BranchTimezoneService
   ) {}
 
   async execute(
     input?: ListEmployeeSalaryPaymentsInput
   ): Promise<ListEmployeeSalaryPaymentsResult> {
+    const timezone = await this.branchTimezoneService.get();
+
     const filters = input
       ? {
           userId: input.userId,
           paymentMethod: input.paymentMethod,
-          dateFrom: input.dateFrom ? new Date(input.dateFrom) : undefined,
-          dateTo: input.dateTo ? new Date(input.dateTo) : undefined,
+          dateFrom: input.dateFrom ? startOfDayInZone(input.dateFrom, timezone) : undefined,
+          dateTo: input.dateTo ? endOfDayInZone(input.dateTo, timezone) : undefined,
         }
       : undefined;
 

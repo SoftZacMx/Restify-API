@@ -45,7 +45,9 @@ describe('ListOrdersUseCase', () => {
       findOrderItemExtrasByOrderItemId: jest.fn(),
     };
 
-    listOrdersUseCase = new ListOrdersUseCase(mockOrderRepository);
+    listOrdersUseCase = new ListOrdersUseCase(mockOrderRepository, {
+      get: jest.fn().mockResolvedValue('America/Mexico_City'),
+    } as any);
   });
 
   afterEach(() => {

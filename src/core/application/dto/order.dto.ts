@@ -148,7 +148,7 @@ const publicOrderItemSchema = z.object({
 export const createPublicOrderSchema = z.object({
   branchId: z.string().uuid('Invalid branch ID format'),
   customerName: z.string().min(1, 'Customer name is required').max(200, 'Customer name is too long'),
-  customerPhone: z.string().min(10, 'Phone must be at least 10 digits').max(13, 'Phone must be at most 13 digits'),
+  customerPhone: z.string().regex(/^\d{10,13}$/, 'Phone must be 10 to 13 digits'),
   orderType: z.enum(['DELIVERY', 'PICKUP']),
   deliveryAddress: z.string().max(500, 'Delivery address is too long').optional().nullable(),
   latitude: z.number().optional().nullable(),
@@ -165,6 +165,11 @@ export const payPublicOrderParamsSchema = z.object({
 // Get Public Order Status Schema (path parameter)
 export const getPublicOrderStatusParamsSchema = z.object({
   trackingToken: z.string().uuid('Invalid tracking token format'),
+});
+
+// Get Public Order Status por checkoutId (path parameter)
+export const getPublicOrderStatusByCheckoutParamsSchema = z.object({
+  checkoutId: z.string().uuid('Invalid checkout ID format'),
 });
 
 // Type exports

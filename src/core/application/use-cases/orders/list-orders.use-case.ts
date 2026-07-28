@@ -4,6 +4,8 @@ import {
   OrderFilters,
 } from '../../../domain/interfaces/order-repository.interface';
 import { ListOrdersInput } from '../../dto/order.dto';
+import { BranchTimezoneService } from '../../services/branch-timezone.service';
+import { startOfDayInZone, endOfDayInZone } from '../../../../shared/utils/date-range.util';
 
 export interface ListOrdersItem {
   id: string;
@@ -43,10 +45,13 @@ export interface ListOrdersResult {
 @injectable()
 export class ListOrdersUseCase {
   constructor(
-    @inject('IOrderRepository') private readonly orderRepository: IOrderRepository
+    @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
+    @inject(BranchTimezoneService) private readonly branchTimezoneService: BranchTimezoneService
   ) {}
 
   async execute(input?: ListOrdersInput): Promise<ListOrdersResult> {
+    const timezone = await this.branchTimezoneService.get();
+
     const filters = input
       ? {
           status: input.status,
@@ -54,8 +59,8 @@ export class ListOrdersUseCase {
           tableId: input.tableId,
           paymentMethod: input.paymentMethod,
           origin: input.origin,
-          dateFrom: input.dateFrom ? new Date(input.dateFrom) : undefined,
-          dateTo: input.dateTo ? new Date(input.dateTo) : undefined,
+          dateFrom: input.dateFrom ? startOfDayInZone(input.dateFrom, timezone) : undefined,
+          dateTo: input.dateTo ? endOfDayInZone(input.dateTo, timezone) : undefined,
         }
       : undefined;
 

@@ -62,7 +62,8 @@ describe('CreateExpenseUseCase', () => {
       mockExpenseRepository,
       mockProductRepository,
       mockPrismaService,
-      mockStockService as unknown as StockService
+      mockStockService as unknown as StockService,
+      { get: jest.fn().mockResolvedValue('America/Mexico_City') } as any
     );
   });
 
