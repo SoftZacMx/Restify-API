@@ -34,9 +34,15 @@ export class ListPublicMenuUseCase {
       this.menuItemRepository.findAll({ status: true, isExtra: true }),
     ]);
 
+    const UNCATEGORIZED_ID = '__uncategorized__';
     const categoryMap = new Map<string, PublicMenuItem[]>();
+    const uncategorized: PublicMenuItem[] = [];
+
     for (const item of items) {
-      if (!item.categoryId) continue;
+      if (!item.categoryId) {
+        uncategorized.push({ id: item.id, name: item.name, price: item.price, imageUrl: item.imageUrl });
+        continue;
+      }
       const list = categoryMap.get(item.categoryId) || [];
       list.push({ id: item.id, name: item.name, price: item.price, imageUrl: item.imageUrl });
       categoryMap.set(item.categoryId, list);
@@ -49,6 +55,14 @@ export class ListPublicMenuUseCase {
         name: cat.name,
         items: categoryMap.get(cat.id)!,
       }));
+
+    if (uncategorized.length > 0) {
+      result.push({
+        id: UNCATEGORIZED_ID,
+        name: 'Sin categoría',
+        items: uncategorized,
+      });
+    }
 
     return {
       categories: result,
