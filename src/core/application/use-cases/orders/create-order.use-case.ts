@@ -8,6 +8,7 @@ import { PrismaService } from '../../../infrastructure/config/prisma.config';
 import { StockService, StockBatchSaleItem } from '../../services/stock.service';
 import { CreateOrderInput } from '../../dto/order.dto';
 import { AppError } from '../../../../shared/errors';
+import { formatInTimeZone } from 'date-fns-tz';
 import { isWithinOperatingHours } from '../../../../shared/utils/operating-hours.util';
 import { getBranchId } from '../../../infrastructure/tenant/tenant-context';
 
@@ -70,8 +71,7 @@ export class CreateOrderUseCase {
     if (branchId) {
       const branch = await this.branchRepository.findById(branchId);
       if (branch?.startOperations && branch?.endOperations) {
-        const now = new Date();
-        const nowHhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const nowHhmm = formatInTimeZone(new Date(), branch.timezone, 'HH:mm');
         if (!isWithinOperatingHours(nowHhmm, branch.startOperations, branch.endOperations)) {
           throw new AppError(
             'OUTSIDE_OPERATING_HOURS',

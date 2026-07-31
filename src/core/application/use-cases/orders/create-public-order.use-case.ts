@@ -1,6 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
 import { PublicOrderPersistenceService } from '../../services/public-order-persistence.service';
+import { formatInTimeZone } from 'date-fns-tz';
 import { AppError } from '../../../../shared/errors';
 import { isWithinOperatingHours } from '../../../../shared/utils/operating-hours.util';
 
@@ -88,7 +89,7 @@ export async function validateBranchAndHours(
 
   if (branch.startOperations && branch.endOperations) {
     const timeToCheck = scheduledAt ? new Date(scheduledAt) : new Date();
-    const hhmm = `${String(timeToCheck.getHours()).padStart(2, '0')}:${String(timeToCheck.getMinutes()).padStart(2, '0')}`;
+    const hhmm = formatInTimeZone(timeToCheck, branch.timezone, 'HH:mm');
 
     if (!isWithinOperatingHours(hhmm, branch.startOperations, branch.endOperations)) {
       throw new AppError(
