@@ -1,5 +1,11 @@
 import { runWithTenant, withoutTenant, getOrganizationId, getBranchId } from '../../src/core/infrastructure/tenant/tenant-context';
 import { getPrisma } from '../../src/core/infrastructure/database/prisma/get-prisma';
+import { PrismaClient, OrganizationPlan } from '@prisma/client';
+import { shouldSkipIntegration } from './utils';
+
+// Los describes que tocan BD solo corren contra la BD local de pruebas
+// (`npm run test:integration`); bajo `npm test` se saltan para no tocar la BD de dev.
+const dbTestsSkipped = shouldSkipIntegration();
 
 describe('Tenant Isolation', () => {
   const ORG_A_ID = 'org-a-uuid';
@@ -70,6 +76,7 @@ describe('Tenant Isolation', () => {
     const prisma = getPrisma();
 
     it('should automatically filter User queries by organizationId', async () => {
+      if (dbTestsSkipped) return;
       // This test verifies that the extension is working
       // In a real scenario, it would query actual data
 
@@ -88,18 +95,61 @@ describe('Tenant Isolation', () => {
       });
     });
 
-    it('should throw error when querying User without tenant context', async () => {
-      // Without tenant context, getOrganizationId() should throw
-      await expect(async () => {
-        await prisma.user.findMany();
-      }).rejects.toThrow('Tenant context is not set');
+    it('should not throw when querying User without tenant context (passthrough)', async () => {
+      if (dbTestsSkipped) return;
+      // Sin contexto → la extension NO filtra (rutas públicas: login, signup,
+      // webhooks usan withoutTenant). El query pasa sin filtro de tenant.
+      await withoutTenant(async () => {
+        const users = await prisma.user.findMany();
+        expect(Array.isArray(users)).toBe(true);
+      });
     });
   });
 
   describe('Prisma Extension - Branch Level', () => {
     const prisma = getPrisma();
+    const basePrisma = new PrismaClient();
+    const createdOrderIds: string[] = [];
+
+    // Branch real para poder crear una orden (FK de orders.branchId se valida).
+    let seededOrgId: string;
+    let seededBranchId: string;
+
+    beforeAll(async () => {
+      if (dbTestsSkipped) return;
+      const org = await basePrisma.organization.create({
+        data: { name: `Tenant Isolation Org ${Date.now()}`, plan: OrganizationPlan.FREE },
+      });
+      seededOrgId = org.id;
+
+      const branch = await basePrisma.branch.create({
+        data: {
+          organizationId: seededOrgId,
+          name: 'Tenant Isolation Branch',
+          state: 'CDMX',
+          city: 'CDMX',
+          street: 'Reforma',
+          exteriorNumber: '100',
+          phone: '5551111111',
+          timezone: 'America/Mexico_City',
+          currency: 'MXN',
+        },
+      });
+      seededBranchId = branch.id;
+    });
+
+    afterAll(async () => {
+      if (dbTestsSkipped) return;
+      if (createdOrderIds.length > 0) {
+        await prisma.order.deleteMany({ where: { id: { in: createdOrderIds } } });
+      }
+      await basePrisma.branch.deleteMany({ where: { id: seededBranchId } });
+      await basePrisma.organization.deleteMany({ where: { id: seededOrgId } });
+      await basePrisma.$disconnect();
+    });
 
     it('should automatically filter Order queries by branchId', async () => {
+      if (dbTestsSkipped) return;
       await runWithTenant({ organizationId: ORG_A_ID, branchId: BRANCH_A1_ID }, async () => {
         try {
           await prisma.order.findMany({
@@ -113,6 +163,7 @@ describe('Tenant Isolation', () => {
     });
 
     it('should throw error when querying Order without branchId', async () => {
+      if (dbTestsSkipped) return;
       await runWithTenant({ organizationId: ORG_A_ID }, async () => {
         // branchId is undefined, should throw
         await expect(async () => {
@@ -122,10 +173,12 @@ describe('Tenant Isolation', () => {
     });
 
     it('should automatically inject branchId when creating Order', async () => {
-      await runWithTenant({ organizationId: ORG_A_ID, branchId: BRANCH_A1_ID }, async () => {
-        try {
+      if (dbTestsSkipped) return;
+      await runWithTenant(
+        { organizationId: seededOrgId, branchId: seededBranchId },
+        async () => {
           // Create order without specifying branchId
-          await prisma.order.create({
+          const order = await prisma.order.create({
             data: {
               total: 100,
               subtotal: 100,
@@ -138,10 +191,10 @@ describe('Tenant Isolation', () => {
               // branchId should be injected automatically
             },
           });
-        } catch (error) {
-          // Expected in test environment
+          createdOrderIds.push(order.id);
+          expect(order.branchId).toBe(seededBranchId);
         }
-      });
+      );
     });
   });
 
@@ -196,6 +249,7 @@ describe('Tenant Isolation', () => {
     const prisma = getPrisma();
 
     it('should NOT filter Organization queries', async () => {
+      if (dbTestsSkipped) return;
       // Organization is a global model - should not be filtered
       await runWithTenant({ organizationId: ORG_A_ID }, async () => {
         try {
@@ -208,6 +262,7 @@ describe('Tenant Isolation', () => {
     });
 
     it('should NOT filter Branch queries', async () => {
+      if (dbTestsSkipped) return;
       // Branch queries need to see all branches in org for switching
       await runWithTenant({ organizationId: ORG_A_ID, branchId: BRANCH_A1_ID }, async () => {
         try {

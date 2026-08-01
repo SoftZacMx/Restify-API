@@ -7,6 +7,7 @@ import { MercadoPagoConfig } from 'mercadopago';
 const mockPreferenceCreate = jest.fn();
 const mockPreferenceGet = jest.fn();
 const mockPaymentGet = jest.fn();
+const mockPaymentCancel = jest.fn();
 
 jest.mock('mercadopago', () => ({
   MercadoPagoConfig: jest.fn().mockImplementation(() => ({})),
@@ -16,6 +17,7 @@ jest.mock('mercadopago', () => ({
   })),
   Payment: jest.fn().mockImplementation(() => ({
     get: mockPaymentGet,
+    cancel: mockPaymentCancel,
   })),
 }));
 
@@ -187,6 +189,25 @@ describe('MercadoPagoService', () => {
     });
   });
 
+  describe('cancelPayment', () => {
+    it('cancela el pago en MP y devuelve el status mapeado', async () => {
+      mockPaymentCancel.mockResolvedValue({ status: 'cancelled', status_detail: 'cancelled_by_user' });
+
+      const result = await service.cancelPayment('12345');
+
+      expect(mockPaymentCancel).toHaveBeenCalledWith({ id: '12345' });
+      expect(result).toEqual({ status: 'cancelled', statusDetail: 'cancelled_by_user' });
+    });
+
+    it('devuelve unknown cuando MP no reporta status', async () => {
+      mockPaymentCancel.mockResolvedValue({});
+
+      const result = await service.cancelPayment('12345');
+
+      expect(result).toEqual({ status: 'unknown', statusDetail: '' });
+    });
+  });
+
   describe('clientes por branch (multitenancy)', () => {
     const branchA = { organizationId: 'org-1', branchId: 'branch-a' };
     const branchB = { organizationId: 'org-2', branchId: 'branch-b' };
@@ -240,6 +261,29 @@ describe('MercadoPagoService', () => {
 
       // Dos clientes: uno para env, otro para branch-a
       expect(MercadoPagoConfig).toHaveBeenCalledTimes(2);
+    });
+
+    it('lanza PAYMENT_CONFIG_NOT_CONFIGURED cuando no hay access token', async () => {
+      mockPaymentConfigService.get.mockResolvedValue({
+        mercadoPago: { accessToken: '', webhookSecret: '' },
+      });
+
+      await expect(service.getPreference('pref-1')).rejects.toMatchObject({
+        code: 'PAYMENT_CONFIG_NOT_CONFIGURED',
+      });
+      expect(MercadoPagoConfig).not.toHaveBeenCalled();
+    });
+
+    it('clearClient() sin branchId limpia todos los clientes', async () => {
+      await runWithTenant(branchA, () => service.getPreference('pref-1'));
+      await runWithTenant(branchB, () => service.getPreference('pref-2'));
+      expect(MercadoPagoConfig).toHaveBeenCalledTimes(2);
+
+      service.clearClient();
+
+      await runWithTenant(branchA, () => service.getPreference('pref-3'));
+      await runWithTenant(branchB, () => service.getPreference('pref-4'));
+      expect(MercadoPagoConfig).toHaveBeenCalledTimes(4);
     });
   });
 

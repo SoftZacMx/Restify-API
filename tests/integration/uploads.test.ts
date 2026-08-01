@@ -1,6 +1,10 @@
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
 import type { Express } from 'express';
+import {
+  ensureTestEnv as ensureBaseTestEnv,
+  shouldSkipIntegration,
+} from './utils';
 
 /**
  * Transversal — Storage de imágenes (S3), Tarea T9.
@@ -19,26 +23,12 @@ import type { Express } from 'express';
  */
 
 function ensureTestEnv(): void {
-  process.env.NODE_ENV = process.env.NODE_ENV || 'test';
-  process.env.DATABASE_URL =
-    process.env.DATABASE_URL || 'mysql://root:root_password@localhost:3306/restify';
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-    process.env.JWT_SECRET = 'integration_test_jwt_secret_min_32_chars_ok';
-  }
-  process.env.STRIPE_SECRET_KEY =
-    process.env.STRIPE_SECRET_KEY || 'sk_test_integration_uploads_api_mock';
-  process.env.PAYMENT_CONFIG_ENCRYPTION_KEY =
-    process.env.PAYMENT_CONFIG_ENCRYPTION_KEY || 'a'.repeat(64);
+  ensureBaseTestEnv();
   // Rutas protegidas pasan sin billing; el signup no setea currentPeriodEnd.
   process.env.BILLING_ENABLED = 'false';
   process.env.EMAIL_ENABLED = 'false';
   // El upload queda como no-op: no necesita bucket ni credenciales reales.
   process.env.S3_ENABLED = 'false';
-}
-
-function shouldSkipIntegration(): boolean {
-  ensureTestEnv();
-  return !process.env.DATABASE_URL || process.env.DATABASE_URL.includes('test');
 }
 
 function buildSignupBody(suffix: string) {

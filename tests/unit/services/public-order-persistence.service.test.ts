@@ -244,5 +244,50 @@ describe('PublicOrderPersistenceService', () => {
       await expect(service.persistOrder(baseInput))
         .rejects.toMatchObject({ code: 'MENU_ITEM_NOT_FOUND' });
     });
+
+    it('should throw MENU_ITEM_NOT_FOUND when an extra disappeared before persist', async () => {
+      buildService({ menuItems: [mockMenuItemRow] });
+
+      await expect(service.persistOrder({
+        ...baseInput,
+        items: [{ menuItemId: 'menu-1', quantity: 1, extras: [{ extraId: 'nope', quantity: 1 }] }],
+      })).rejects.toMatchObject({ code: 'MENU_ITEM_NOT_FOUND' });
+    });
+
+    it('should map ingredients and products into the stock sale batch', async () => {
+      const baseWithIngredients = {
+        ...mockMenuItemRow,
+        productId: 'prod-1',
+        ingredients: [{ productId: 'prod-1', quantity: 2, unit: 'kg' as const }],
+      };
+      const extraWithIngredients = {
+        ...mockExtraRow,
+        productId: 'prod-2',
+        ingredients: [{ productId: 'prod-2', quantity: 1, unit: 'u' as const }],
+      };
+      buildService({ menuItems: [baseWithIngredients, extraWithIngredients] });
+
+      await service.persistOrder({
+        ...baseInput,
+        items: [{ menuItemId: 'menu-1', quantity: 1, extras: [{ extraId: 'extra-1', quantity: 1 }] }],
+      });
+
+      const saleBatch = mockStockService.recordSalesBatch.mock.calls[0][0];
+      expect(saleBatch[0]).toEqual(expect.objectContaining({
+        menuItem: expect.objectContaining({
+          productId: 'prod-1',
+          ingredients: [{ productId: 'prod-1', quantity: 2, unit: 'kg' }],
+        }),
+        extras: [
+          expect.objectContaining({
+            menuItem: expect.objectContaining({
+              productId: 'prod-2',
+              ingredients: [{ productId: 'prod-2', quantity: 1, unit: 'u' }],
+            }),
+          }),
+        ],
+      }));
+      expect(mockStockService.recordSalesBatch.mock.calls[0][2]).toBeNull();
+    });
   });
 });

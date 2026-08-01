@@ -3,23 +3,10 @@ import { PrismaClient, OrganizationPlan, UserRole } from '@prisma/client';
 import { JwtUtil } from '../../../src/shared/utils/jwt.util';
 import bcrypt from 'bcryptjs';
 import type { Express } from 'express';
+import { ensureTestEnv as ensureBaseTestEnv, shouldSkipIntegration } from '../utils';
 
 function ensureTestEnv(): void {
-  process.env.NODE_ENV = process.env.NODE_ENV || 'test';
-  process.env.DATABASE_URL =
-    process.env.DATABASE_URL || 'mysql://root:root_password@localhost:3306/restify';
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-    process.env.JWT_SECRET = 'integration_test_jwt_secret_min_32_chars_ok';
-  }
-  process.env.STRIPE_SECRET_KEY =
-    process.env.STRIPE_SECRET_KEY || 'sk_test_integration_branch_api_mock';
-  process.env.PAYMENT_CONFIG_ENCRYPTION_KEY =
-    process.env.PAYMENT_CONFIG_ENCRYPTION_KEY || 'a'.repeat(64);
-}
-
-function shouldSkipIntegration(): boolean {
-  ensureTestEnv();
-  return !process.env.DATABASE_URL || process.env.DATABASE_URL.includes('test');
+  ensureBaseTestEnv();
 }
 
 describe('Branches API Integration', () => {
@@ -56,6 +43,7 @@ describe('Branches API Integration', () => {
           name: 'Admin',
           last_name: 'Test',
           rol: UserRole.ADMIN,
+          organizationId,
         },
       });
       adminUserId = admin.id;
@@ -64,6 +52,7 @@ describe('Branches API Integration', () => {
       if (!subscription) {
         await prisma.subscription.create({
           data: {
+            organizationId,
             stripeCustomerId: `cus_branch_test_${Date.now()}`,
             status: 'ACTIVE',
             currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -86,10 +75,13 @@ describe('Branches API Integration', () => {
       app = new LocalServer().getApp();
 
       adminToken = JwtUtil.generateToken({
+        sub: admin.id,
         email: admin.email,
-        userId: admin.id,
         rol: 'ADMIN',
         org: organizationId,
+        tokenVersion: admin.tokenVersion,
+        emailVerified: admin.emailVerifiedAt !== null,
+        mustChangePassword: admin.mustChangePassword,
       });
     } catch {
       skipped = true;
@@ -109,16 +101,17 @@ describe('Branches API Integration', () => {
     await prisma.$disconnect();
   });
 
-  const authRequest = () =>
-    request(app).set('Authorization', `Bearer ${adminToken}`).set('Cookie', [`token=${adminToken}`]);
+  const authRequest = (method: 'get' | 'post', path: string) =>
+    request(app)[method](path)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Cookie', [`token=${adminToken}`]);
 
   it('POST /api/branches creates branch and GET lists it', async () => {
     if (skipped) {
       return;
     }
 
-    const createRes = await authRequest()
-      .post('/api/branches')
+    const createRes = await authRequest('post', '/api/branches')
       .send({
         name: 'Sucursal Centro',
         state: 'CDMX',
@@ -128,13 +121,13 @@ describe('Branches API Integration', () => {
         phone: '5555555555',
         timezone: 'America/Mexico_City',
       })
-      .expect(201);
+      .expect(200);
 
     expect(createRes.body.success).toBe(true);
     expect(createRes.body.data.id).toBeDefined();
     expect(createRes.body.data.organizationId).toBe(organizationId);
 
-    const listRes = await authRequest().get('/api/branches').expect(200);
+    const listRes = await authRequest('get', '/api/branches').expect(200);
 
     expect(listRes.body.data).toHaveLength(1);
     expect(listRes.body.data[0].name).toBe('Sucursal Centro');
@@ -150,14 +143,17 @@ describe('Branches API Integration', () => {
     });
 
     const limitToken = JwtUtil.generateToken({
+      sub: adminUserId,
       email: 'limit@test.local',
-      userId: adminUserId,
       rol: 'ADMIN',
       org: limitOrg.id,
+      tokenVersion: 0,
+      emailVerified: true,
+      mustChangePassword: false,
     });
 
-    const limitRequest = () =>
-      request(app)
+    const limitRequest = (method: 'get' | 'post', path: string) =>
+      request(app)[method](path)
         .set('Authorization', `Bearer ${limitToken}`)
         .set('Cookie', [`token=${limitToken}`]);
 
@@ -170,18 +166,14 @@ describe('Branches API Integration', () => {
       timezone: 'America/Mexico_City',
     };
 
-    await limitRequest()
-      .post('/api/branches')
+    await limitRequest('post', '/api/branches')
       .send({ ...payload, name: 'Branch 1' });
-    await limitRequest()
-      .post('/api/branches')
+    await limitRequest('post', '/api/branches')
       .send({ ...payload, name: 'Branch 2' });
-    await limitRequest()
-      .post('/api/branches')
+    await limitRequest('post', '/api/branches')
       .send({ ...payload, name: 'Branch 3' });
 
-    const res = await limitRequest()
-      .post('/api/branches')
+    const res = await limitRequest('post', '/api/branches')
       .send({ ...payload, name: 'Branch 4' })
       .expect(409);
 

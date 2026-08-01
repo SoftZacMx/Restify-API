@@ -7,6 +7,7 @@ import {
   UpdateBranchData,
 } from '../../../domain/interfaces/branch-repository.interface';
 import { Branch, BranchStatus } from '../../../domain/entities/branch.entity';
+import { withoutTenant } from '../../tenant/tenant-context';
 
 export class BranchRepository implements IBranchRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -59,18 +60,23 @@ export class BranchRepository implements IBranchRepository {
 
     const ids = branches.map((b) => b.id);
 
-    const [accessCounts, orderAgg] = await Promise.all([
-      this.prisma.userBranchAccess.groupBy({
-        by: ['branchId'],
-        where: { branchId: { in: ids } },
-        _count: { branchId: true },
-      }),
-      this.prisma.order.groupBy({
-        by: ['branchId'],
-        where: { branchId: { in: ids } },
-        _max: { createdAt: true },
-      }),
-    ]);
+    // Agregados multi-sucursal de la org: la tenant extension solo filtra por UN
+    // branchId del contexto, así que se ejecutan sin contexto. Ya están acotados
+    // a las sucursales accesibles de la org (`ids`), por lo que no escapan datos.
+    const [accessCounts, orderAgg] = await withoutTenant(() =>
+      Promise.all([
+        this.prisma.userBranchAccess.groupBy({
+          by: ['branchId'],
+          where: { branchId: { in: ids } },
+          _count: { branchId: true },
+        }),
+        this.prisma.order.groupBy({
+          by: ['branchId'],
+          where: { branchId: { in: ids } },
+          _max: { createdAt: true },
+        }),
+      ])
+    );
 
     const countByBranchId = new Map(
       accessCounts.map((row) => [row.branchId, row._count.branchId])

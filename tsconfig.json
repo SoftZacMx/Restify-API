@@ -21,7 +21,6 @@
     "paths": {
       "@/*": ["src/*"],
       "@core/*": ["src/core/*"],
-      "@handlers/*": ["src/handlers/*"],
       "@shared/*": ["src/shared/*"]
     }
   },

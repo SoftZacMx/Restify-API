@@ -180,6 +180,242 @@ describe('LoginUseCase', () => {
         expect((error as AppError).code).toBe('INVALID_CREDENTIALS');
       }
     });
+
+    it('should throw ACCOUNT_DISABLED when account is disabled (multi-tenant)', async () => {
+      const disabledAccountUser = new User(
+        '123',
+        'John',
+        'Doe',
+        null,
+        'john@example.com',
+        'hashed_password',
+        null,
+        true,
+        UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.DISABLED,
+        0,
+        new Date(),
+        false,
+        new Date(),
+        new Date()
+      );
+
+      mockUserRepository.findByEmail.mockResolvedValue(disabledAccountUser);
+
+      await expect(loginUseCase.execute(validInput)).rejects.toMatchObject({
+        code: 'ACCOUNT_DISABLED',
+      });
+    });
+
+    it('should throw ORGANIZATION_NOT_FOUND when organization does not exist', async () => {
+      const mockUser = new User(
+        '123',
+        'John',
+        'Doe',
+        null,
+        'john@example.com',
+        'hashed_password',
+        null,
+        true,
+        UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
+        new Date(),
+        new Date()
+      );
+
+      mockUserRepository.findByEmail.mockResolvedValue(mockUser);
+      (BcryptUtil.compare as jest.Mock).mockResolvedValue(true);
+      mockOrganizationRepository.findById.mockResolvedValue(null);
+
+      await expect(loginUseCase.execute(validInput)).rejects.toMatchObject({
+        code: 'ORGANIZATION_NOT_FOUND',
+      });
+    });
+
+    it('should throw ORGANIZATION_INACTIVE when organization is not active', async () => {
+      const mockUser = new User(
+        '123',
+        'John',
+        'Doe',
+        null,
+        'john@example.com',
+        'hashed_password',
+        null,
+        true,
+        UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
+        new Date(),
+        new Date()
+      );
+
+      mockUserRepository.findByEmail.mockResolvedValue(mockUser);
+      (BcryptUtil.compare as jest.Mock).mockResolvedValue(true);
+      mockOrganizationRepository.findById.mockResolvedValue({
+        id: 'org-1',
+        name: 'Acme',
+        plan: OrganizationPlan.FREE,
+        status: 'CANCELLED',
+        deletedAt: null,
+      });
+
+      await expect(loginUseCase.execute(validInput)).rejects.toMatchObject({
+        code: 'ORGANIZATION_INACTIVE',
+      });
+    });
+
+    it('should return all branches and first branch as initial for Owner/Admin', async () => {
+      const ownerUser = new User(
+        '123',
+        'John',
+        'Doe',
+        null,
+        'john@example.com',
+        'hashed_password',
+        null,
+        true,
+        UserRole.OWNER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
+        new Date(),
+        new Date()
+      );
+
+      mockUserRepository.findByEmail.mockResolvedValue(ownerUser);
+      (BcryptUtil.compare as jest.Mock).mockResolvedValue(true);
+      (JwtUtil.generateToken as jest.Mock).mockReturnValue('jwt_token_here');
+      mockBranchRepository.findAllIdsByOrganizationId.mockResolvedValue(['branch-1', 'branch-2']);
+      mockBranchRepository.findManyForList.mockResolvedValue([
+        { id: 'branch-1', name: 'Sucursal 1' },
+        { id: 'branch-2', name: 'Sucursal 2' },
+      ] as any);
+
+      const result = await loginUseCase.execute(validInput);
+
+      expect(result.branches).toEqual([
+        { id: 'branch-1', name: 'Sucursal 1' },
+        { id: 'branch-2', name: 'Sucursal 2' },
+      ]);
+      expect(mockUserBranchAccessRepository.findBranchIdsByUserId).not.toHaveBeenCalled();
+      expect(JwtUtil.generateToken).toHaveBeenCalledWith(
+        expect.objectContaining({ branch: 'branch-1' }),
+        '8h'
+      );
+      expect(result.user.organizationName).toBe('Acme');
+    });
+
+    it('should not include branches when Owner has no branches', async () => {
+      const ownerUser = new User(
+        '123',
+        'John',
+        'Doe',
+        null,
+        'john@example.com',
+        'hashed_password',
+        null,
+        true,
+        UserRole.ADMIN,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
+        new Date(),
+        new Date()
+      );
+
+      mockUserRepository.findByEmail.mockResolvedValue(ownerUser);
+      (BcryptUtil.compare as jest.Mock).mockResolvedValue(true);
+      (JwtUtil.generateToken as jest.Mock).mockReturnValue('jwt_token_here');
+      mockBranchRepository.findAllIdsByOrganizationId.mockResolvedValue([]);
+
+      const result = await loginUseCase.execute(validInput);
+
+      expect(result.branches).toBeUndefined();
+      expect(JwtUtil.generateToken).toHaveBeenCalledWith(
+        expect.objectContaining({ branch: undefined }),
+        '8h'
+      );
+    });
+
+    it('should return assigned branches and first assigned as initial for non-owner roles', async () => {
+      const managerUser = new User(
+        '123',
+        'John',
+        'Doe',
+        null,
+        'john@example.com',
+        'hashed_password',
+        null,
+        true,
+        UserRole.MANAGER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
+        new Date(),
+        new Date()
+      );
+
+      mockUserRepository.findByEmail.mockResolvedValue(managerUser);
+      (BcryptUtil.compare as jest.Mock).mockResolvedValue(true);
+      (JwtUtil.generateToken as jest.Mock).mockReturnValue('jwt_token_here');
+      mockUserBranchAccessRepository.findBranchIdsByUserId.mockResolvedValue(['branch-9']);
+      mockBranchRepository.findManyForList.mockResolvedValue([
+        { id: 'branch-9', name: 'Sucursal 9' },
+      ] as any);
+
+      const result = await loginUseCase.execute(validInput);
+
+      expect(result.branches).toEqual([{ id: 'branch-9', name: 'Sucursal 9' }]);
+      expect(mockBranchRepository.findAllIdsByOrganizationId).not.toHaveBeenCalled();
+      expect(JwtUtil.generateToken).toHaveBeenCalledWith(
+        expect.objectContaining({ branch: 'branch-9' }),
+        '8h'
+      );
+    });
+
+    it('should not include branches when non-owner role has no assigned branches', async () => {
+      const waiterUser = new User(
+        '123',
+        'John',
+        'Doe',
+        null,
+        'john@example.com',
+        'hashed_password',
+        null,
+        true,
+        UserRole.WAITER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        new Date(),
+        false,
+        new Date(),
+        new Date()
+      );
+
+      mockUserRepository.findByEmail.mockResolvedValue(waiterUser);
+      (BcryptUtil.compare as jest.Mock).mockResolvedValue(true);
+      (JwtUtil.generateToken as jest.Mock).mockReturnValue('jwt_token_here');
+      mockUserBranchAccessRepository.findBranchIdsByUserId.mockResolvedValue([]);
+
+      const result = await loginUseCase.execute(validInput);
+
+      expect(result.branches).toBeUndefined();
+    });
   });
 });
 

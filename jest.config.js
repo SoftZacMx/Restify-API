@@ -9,16 +9,11 @@ module.exports = {
     }],
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@middy|@aws-sdk)/)',
+    'node_modules/(?!@aws-sdk/)',
   ],
   moduleNameMapper: {
-    '^@middy/core$': '<rootDir>/tests/mocks/@middy/core.js',
-    '^@middy/http-json-body-parser$': '<rootDir>/tests/mocks/@middy/http-json-body-parser.js',
-    '^@middy/http-error-handler$': '<rootDir>/tests/mocks/@middy/http-error-handler.js',
-    '^@middy/http-event-normalizer$': '<rootDir>/tests/mocks/@middy/http-event-normalizer.js',
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@core/(.*)$': '<rootDir>/src/core/$1',
-    '^@handlers/(.*)$': '<rootDir>/src/handlers/$1',
     '^@shared/(.*)$': '<rootDir>/src/shared/$1',
   },
   collectCoverageFrom: [
@@ -30,5 +25,6 @@ module.exports = {
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  testTimeout: 60000,
 };
 

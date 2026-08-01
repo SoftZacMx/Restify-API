@@ -1,712 +1,518 @@
 /// <reference types="jest" />
 
-// Mock @middy modules before importing handlers
-jest.mock('@middy/core', () => {
-  return {
-    __esModule: true,
-    default: (handler: any) => {
-      const middlewares: any[] = []; // Each handler gets its own middlewares array
-      
-      const wrappedHandler = async (event: any, context: any) => {
-        const request: any = { event, context, response: null, error: null };
-        
-        try {
-          // Execute before middlewares
-          for (const middleware of middlewares) {
-            if (middleware.before) {
-              await middleware.before(request);
-            }
-          }
-          
-          // Execute handler
-          const result = await handler(request.event, request.context);
-          request.response = result;
-          
-          // Execute after middlewares
-          for (const middleware of middlewares) {
-            if (middleware.after) {
-              await middleware.after(request);
-            }
-          }
-          
-          return request.response || result;
-        } catch (error) {
-          request.error = error;
-          
-          // Execute error middlewares
-          for (const middleware of middlewares) {
-            if (middleware.onError) {
-              await middleware.onError(request);
-            }
-          }
-          
-          if (request.response) {
-            return request.response;
-          }
-          throw error;
-        }
-      };
-      
-      wrappedHandler.use = (middleware: any) => {
-        middlewares.push(middleware);
-        return wrappedHandler;
-      };
-      
-      return wrappedHandler;
-    },
-  };
-});
-
-jest.mock('@middy/http-json-body-parser', () => ({
-  __esModule: true,
-  default: () => ({
-    before: async (request: any) => {
-      if (request.event.body && typeof request.event.body === 'string') {
-        try {
-          request.event.body = JSON.parse(request.event.body);
-        } catch {
-          // Keep as string if not valid JSON
-        }
-      }
-    },
-  }),
-}));
-
-jest.mock('@middy/http-event-normalizer', () => ({
-  __esModule: true,
-  default: () => ({
-    before: async (request: any) => {
-      request.event.pathParameters = request.event.pathParameters || {};
-      request.event.queryStringParameters = request.event.queryStringParameters || {};
-    },
-  }),
-}));
-
-jest.mock('../../src/shared/middleware/zod-validator.middleware', () => {
-  const { AppError } = require('../../src/shared/errors');
-  const { ZodError } = require('zod');
-  
-  return {
-    zodValidator: (options: any) => ({
-      before: async (request: any) => {
-        const { schema, eventKey } = options;
-        let data = request.event[eventKey];
-        
-        // Handle null queryStringParameters
-        if (eventKey === 'queryStringParameters' && data === null) {
-          data = {};
-        }
-        
-        // Parse body if it's still a string (httpJsonBodyParser may not have run yet)
-        if (eventKey === 'body' && typeof data === 'string') {
-          try {
-            data = JSON.parse(data);
-          } catch {
-            // Keep as string if not valid JSON
-          }
-        }
-        
-        if (data !== undefined && data !== null) {
-          try {
-            const validated = schema.parse(data);
-            request.event[eventKey] = validated;
-          } catch (error: any) {
-            if (error instanceof ZodError) {
-              const errorMessage = error.errors
-                .map((e: any) => `${e.path.join('.')}: ${e.message}`)
-                .join(', ');
-              throw new AppError('VALIDATION_ERROR', errorMessage);
-            }
-            throw error;
-          }
-        }
-      },
-    }),
-  };
-});
-
-jest.mock('../../src/shared/middleware/error-handler.middleware', () => ({
-  customErrorHandler: () => ({
-    onError: async (request: any) => {
-      const { AppError } = require('../../src/shared/errors');
-      
-      if (request.error instanceof AppError) {
-        request.response = {
-          statusCode: request.error.statusCode,
-          body: JSON.stringify({
-            success: false,
-            error: {
-              code: request.error.code,
-              message: request.error.message,
-            },
-            timestamp: new Date().toISOString(),
-          }),
-        };
-      } else {
-        request.response = {
-          statusCode: 500,
-          body: JSON.stringify({
-            success: false,
-            error: {
-              code: 'INTERNAL_ERROR',
-              message: request.error.message || 'Internal server error',
-            },
-            timestamp: new Date().toISOString(),
-          }),
-        };
-      }
-    },
-  }),
-}));
-
-jest.mock('../../src/shared/middleware/response-formatter.middleware', () => ({
-  responseFormatter: () => ({
-    after: async (request: any) => {
-      if (request.response && typeof request.response === 'object' && !request.response.statusCode) {
-        request.response = {
-          statusCode: 200,
-          body: JSON.stringify({
-            success: true,
-            data: request.response,
-            timestamp: new Date().toISOString(),
-          }),
-        };
-      }
-    },
-  }),
-}));
-
-import { APIGatewayProxyEvent, Context } from 'aws-lambda';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, PaymentStatus, PaymentMethod, PaymentGateway } from '@prisma/client';
+import { PayPublicOrderUseCase } from '../../src/core/application/use-cases/payments/pay-public-order.use-case';
+import { GetPaymentSessionUseCase } from '../../src/core/application/use-cases/payments/get-payment-session.use-case';
+import { GetQRPaymentStatusUseCase } from '../../src/core/application/use-cases/payments/get-qr-payment-status.use-case';
+import { ListPaymentsUseCase } from '../../src/core/application/use-cases/payments/list-payments.use-case';
+import { PaymentConfigService } from '../../src/core/application/services/payment-config.service';
+import { BranchTimezoneService } from '../../src/core/application/services/branch-timezone.service';
+import { PaymentRepository } from '../../src/core/infrastructure/database/repositories/payment.repository';
+import { PaymentSessionRepository } from '../../src/core/infrastructure/database/repositories/payment-session.repository';
+import { OrderRepository } from '../../src/core/infrastructure/database/repositories/order.repository';
+import { BranchRepository } from '../../src/core/infrastructure/database/repositories/branch.repository';
+import { runWithTenant } from '../../src/core/infrastructure/tenant/tenant-context';
+import { encrypt, decrypt } from '../../src/shared/utils/crypto.util';
+import { AppError } from '../../src/shared/errors';
 import {
-  payOrderWithCashHandler,
-  payOrderWithTransferHandler,
-  payOrderWithCardPhysicalHandler,
-  payOrderWithSplitPaymentHandler,
-  getPaymentHandler,
-  listPaymentsHandler,
-} from '../../src/handlers/payments';
-import { createOrderHandler } from '../../src/handlers/orders/create-order.handler';
-import { createUserHandler } from '../../src/handlers/users/create-user.handler';
-import { createProductHandler } from '../../src/handlers/products/create-product.handler';
-import { createTableHandler } from '../../src/handlers/tables/create-table.handler';
+  ensurePaymentE2EEnv,
+  shouldSkipPaymentE2E,
+  createPaymentE2ETenant,
+  cleanupPaymentE2ETenant,
+  createFakeMercadoPagoService,
+  prismaClient,
+  PaymentE2ETenant,
+} from './payment-e2e.helper';
 
-const prisma = new PrismaClient();
-const mockContext: Context = {
-  callbackWaitsForEmptyEventLoop: false,
-  functionName: 'test',
-  functionVersion: '1',
-  invokedFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:test',
-  memoryLimitInMB: '128',
-  awsRequestId: 'test-request-id',
-  logGroupName: '/aws/lambda/test',
-  logStreamName: 'test-stream',
-  getRemainingTimeInMillis: () => 30000,
-  done: () => {},
-  fail: () => {},
-  succeed: () => {},
-};
+const e2eSkip = shouldSkipPaymentE2E();
+describe('E2E Pagos — PayPublicOrder / sessions / status / list / config (BD real)', () => {
+  if (e2eSkip) {
+    it('se omite: requiere MySQL local (DATABASE_URL con localhost)', () => {});
+    return;
+  }
 
-// Check if DATABASE_URL is configured
-const shouldSkip = !process.env.DATABASE_URL || process.env.DATABASE_URL.includes('test');
+  const base = new PrismaClient();
+  const prisma = prismaClient;
 
-describe('Payments E2E Tests', () => {
-  let userId: string = '';
-  let orderId: string = '';
-  let productId: string = '';
-  let tableId: string = '';
+  let tenant: PaymentE2ETenant;
+  const createdOrderIds: string[] = [];
+  const createdPaymentIds: string[] = [];
+
+  const paymentRepo = new PaymentRepository(prisma);
+  const sessionRepo = new PaymentSessionRepository(prisma);
+  const orderRepo = new OrderRepository(prisma);
+  const branchRepo = new BranchRepository(prisma);
+  const mp = createFakeMercadoPagoService();
+
+  const payPublicOrder = new PayPublicOrderUseCase(
+    orderRepo,
+    paymentRepo,
+    sessionRepo,
+    branchRepo,
+    mp.service
+  );
+  const getPaymentSession = new GetPaymentSessionUseCase(sessionRepo);
+  const getQRStatus = new GetQRPaymentStatusUseCase(paymentRepo, mp.service);
+  const listPayments = new ListPaymentsUseCase(
+    paymentRepo,
+    new BranchTimezoneService(branchRepo)
+  );
+  const paymentConfig = new PaymentConfigService(branchRepo);
+
+  async function createPublicOrder(overrides: Partial<{
+    userId: string | null;
+    status: boolean;
+    total: number;
+    branchId: string | null;
+    origin: string;
+  }> = {}) {
+    const order = await base.order.create({
+      data: {
+        status: overrides.status ?? false,
+        paymentMethod: null,
+        total: overrides.total ?? 150,
+        subtotal: overrides.total ?? 150,
+        iva: 0,
+        delivered: false,
+        tableId: null,
+        tip: 0,
+        origin: overrides.origin ?? 'online-delivery',
+        client: null,
+        paymentDiffer: false,
+        note: null,
+        userId: overrides.userId ?? null,
+        customerName: 'Cliente E2E',
+        customerPhone: '5550000000',
+        branchId: overrides.branchId === undefined ? tenant.branchId : overrides.branchId,
+      },
+    });
+    createdOrderIds.push(order.id);
+    return order;
+  }
+
+  async function createPendingMPPayment(orderId: string, gatewayTransactionId: string) {
+    const payment = await base.payment.create({
+      data: {
+        orderId,
+        userId: null,
+        amount: 150,
+        currency: 'MXN',
+        status: PaymentStatus.PENDING,
+        paymentMethod: PaymentMethod.QR_MERCADO_PAGO,
+        gateway: PaymentGateway.MERCADO_PAGO,
+        gatewayTransactionId,
+        branchId: tenant.branchId,
+      },
+    });
+    createdPaymentIds.push(payment.id);
+    return payment;
+  }
 
   beforeAll(async () => {
-    if (shouldSkip) {
-      console.log('⚠️  Skipping E2E tests: DATABASE_URL not configured');
-      return;
-    }
-
-    try {
-
-      // Create test user
-      const userEvent: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/users',
-        body: JSON.stringify({
-          name: 'Test',
-          last_name: 'User',
-          email: `test-payment-${Date.now()}@example.com`,
-          password: 'password123',
-          rol: 'WAITER',
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-
-      const userResponse = await createUserHandler(userEvent as any, mockContext);
-      const userBody = JSON.parse(userResponse.body);
-      userId = userBody.data.id;
-
-      // Create test product
-      const productEvent: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/products',
-        body: JSON.stringify({
-          name: 'Test Product',
-          description: 'Test Description',
-          userId: userId,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-
-      const productResponse = await createProductHandler(productEvent as any, mockContext);
-      const productBody = JSON.parse(productResponse.body);
-      productId = productBody.data.id;
-
-      // Create test table
-      const tableEvent: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/tables',
-        body: JSON.stringify({
-          name: `e2e-pay-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-          userId: userId,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-
-      const tableResponse = await createTableHandler(tableEvent as any, mockContext);
-      const tableBody = JSON.parse(tableResponse.body);
-      tableId = tableBody.data.id;
-    } catch (error) {
-      console.error('Error setting up test data:', error);
-    }
+    tenant = await createPaymentE2ETenant(base);
   });
 
   afterAll(async () => {
-    if (shouldSkip) return;
-
-    try {
-      // Cleanup
-      if (orderId) {
-        await prisma.order.deleteMany({ where: { id: orderId } });
-      }
-      if (productId) {
-        await prisma.product.deleteMany({ where: { id: productId } });
-      }
-      if (tableId) {
-        await prisma.table.deleteMany({ where: { id: tableId } });
-      }
-      if (userId) {
-        await prisma.user.deleteMany({ where: { id: userId } });
-      }
-      await prisma.payment.deleteMany({ where: { userId } });
-      await prisma.$disconnect();
-    } catch (error) {
-      // Ignore cleanup errors
+    await cleanupPaymentE2ETenant(base, tenant.branchId, tenant.orgId);
+    if (createdPaymentIds.length) {
+      await base.payment.deleteMany({ where: { id: { in: createdPaymentIds } } });
     }
+    if (createdOrderIds.length) {
+      await base.payment.deleteMany({ where: { orderId: { in: createdOrderIds } } });
+      await base.order.deleteMany({ where: { id: { in: createdOrderIds } } });
+    }
+    await base.$disconnect();
   });
 
-  beforeEach(async () => {
-    if (shouldSkip) {
-      console.log('⚠️  Skipping E2E test: DATABASE_URL not configured');
-      return;
-    }
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-    // Create a new order for each test
-    try {
-      const orderEvent: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/orders',
-        body: JSON.stringify({
-          userId: userId,
-          paymentMethod: 1,
-          origin: 'Local',
-          tableId: tableId,
-          orderItems: [
-            {
-              productId: productId,
-              quantity: 2,
-              price: 10.00,
+  describe('PayPublicOrderUseCase', () => {
+    it('crea Payment + Session y llama a MP con la preferencia correcta', async () => {
+      const order = await createPublicOrder();
+      mp.createPreference.mockResolvedValue({
+        id: 'pref-happy-e2e',
+        initPoint: 'https://init.mercadopago.com/happy',
+        sandboxInitPoint: '',
+        expirationDate: null,
+      });
+
+      const result = await payPublicOrder.execute({ orderId: order.id });
+
+      expect(result.paymentId).toBeTruthy();
+      expect(result.preferenceId).toBe('pref-happy-e2e');
+      expect(result.initPoint).toBe('https://init.mercadopago.com/happy');
+      expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now());
+
+      const payment = await base.payment.findUnique({ where: { id: result.paymentId } });
+      expect(payment).not.toBeNull();
+      expect(payment!.orderId).toBe(order.id);
+      expect(payment!.status).toBe(PaymentStatus.PENDING);
+      expect(payment!.paymentMethod).toBe(PaymentMethod.QR_MERCADO_PAGO);
+      expect(payment!.gateway).toBe(PaymentGateway.MERCADO_PAGO);
+      expect(payment!.gatewayTransactionId).toBe('pref-happy-e2e');
+      expect(payment!.branchId).toBe(tenant.branchId);
+
+      const session = await base.paymentSession.findUnique({
+        where: { paymentId: result.paymentId },
+      });
+      expect(session).not.toBeNull();
+      expect(session!.clientSecret).toBe('https://init.mercadopago.com/happy');
+      expect(session!.expiresAt.getTime()).toBe(result.expiresAt.getTime());
+
+      expect(mp.createPreference).toHaveBeenCalledTimes(1);
+      const params = mp.createPreference.mock.calls[0][0];
+      expect(params.amount).toBe(150);
+      expect(params.currency).toBe('MXN');
+      expect(params.metadata.orderId).toBe(order.id);
+      expect(params.metadata.paymentId).toBe(result.paymentId);
+      expect(params.notificationUrl).toContain(`branchId=${tenant.branchId}`);
+    });
+
+    it('lanza ORDER_NOT_FOUND si la orden no existe', async () => {
+      await expect(payPublicOrder.execute({ orderId: 'no-existe' })).rejects.toMatchObject({
+        code: 'ORDER_NOT_FOUND',
+      });
+    });
+
+    it('lanza ORDER_ALREADY_PAID si la orden ya está pagada', async () => {
+      const order = await createPublicOrder({ status: true });
+      await expect(payPublicOrder.execute({ orderId: order.id })).rejects.toMatchObject({
+        code: 'ORDER_ALREADY_PAID',
+      });
+    });
+
+    it('lanza VALIDATION_ERROR si la orden tiene userId (solo públicas)', async () => {
+      const order = await createPublicOrder({ userId: tenant.userId });
+      await expect(payPublicOrder.execute({ orderId: order.id })).rejects.toMatchObject({
+        code: 'VALIDATION_ERROR',
+      });
+    });
+
+    it('reutiliza un pago MP pendiente con sesión vigente sin crear duplicados', async () => {
+      const order = await createPublicOrder();
+      const existing = await createPendingMPPayment(order.id, 'pref-reuse-e2e');
+      await base.paymentSession.create({
+        data: {
+          paymentId: existing.id,
+          clientSecret: 'https://init.mercadopago.com/reuse',
+          expiresAt: new Date(Date.now() + 60_000),
+          branchId: tenant.branchId,
+        },
+      });
+
+      const result = await payPublicOrder.execute({ orderId: order.id });
+
+      expect(result.paymentId).toBe(existing.id);
+      expect(result.preferenceId).toBe('pref-reuse-e2e');
+      expect(result.initPoint).toBe('https://init.mercadopago.com/reuse');
+      expect(mp.createPreference).not.toHaveBeenCalled();
+
+      const count = await base.payment.count({ where: { orderId: order.id } });
+      expect(count).toBe(1);
+    });
+
+    it('sesión expirada: cancela el pago viejo y crea uno nuevo', async () => {
+      const order = await createPublicOrder();
+      const existing = await createPendingMPPayment(order.id, 'pref-expired-e2e');
+      await base.paymentSession.create({
+        data: {
+          paymentId: existing.id,
+          clientSecret: 'https://init.mercadopago.com/expired',
+          expiresAt: new Date(Date.now() - 60_000),
+          branchId: tenant.branchId,
+        },
+      });
+      mp.createPreference.mockResolvedValue({
+        id: 'pref-new-e2e',
+        initPoint: 'https://init.mercadopago.com/new',
+        sandboxInitPoint: '',
+        expirationDate: null,
+      });
+
+      const result = await payPublicOrder.execute({ orderId: order.id });
+
+      expect(result.paymentId).not.toBe(existing.id);
+
+      const oldPayment = await base.payment.findUnique({ where: { id: existing.id } });
+      expect(oldPayment!.status).toBe(PaymentStatus.CANCELED);
+
+      const oldSession = await base.paymentSession.findUnique({ where: { paymentId: existing.id } });
+      expect(oldSession).toBeNull();
+
+      const newSession = await base.paymentSession.findUnique({ where: { paymentId: result.paymentId } });
+      expect(newSession).not.toBeNull();
+      expect(mp.createPreference).toHaveBeenCalledTimes(1);
+    });
+
+    it('soporta órdenes sin branchId (fallback legacy)', async () => {
+      const order = await createPublicOrder({ branchId: null });
+      mp.createPreference.mockResolvedValue({
+        id: 'pref-legacy-e2e',
+        initPoint: 'https://init.mercadopago.com/legacy',
+        sandboxInitPoint: '',
+        expirationDate: null,
+      });
+
+      const result = await payPublicOrder.execute({ orderId: order.id });
+
+      expect(result.preferenceId).toBe('pref-legacy-e2e');
+      const params = mp.createPreference.mock.calls[0][0];
+      expect(params.branchId).toBeUndefined();
+    });
+  });
+
+  describe('GetPaymentSessionUseCase', () => {
+    it('devuelve la sesión vigente', async () => {
+      const order = await createPublicOrder();
+      const payment = await createPendingMPPayment(order.id, 'pref-session-e2e');
+      const session = await base.paymentSession.create({
+        data: {
+          paymentId: payment.id,
+          clientSecret: 'secret-e2e',
+          connectionId: 'conn-1',
+          expiresAt: new Date(Date.now() + 60_000),
+          branchId: tenant.branchId,
+        },
+      });
+
+      const result = await runWithTenant(
+        { organizationId: tenant.orgId, branchId: tenant.branchId },
+        () => getPaymentSession.execute({ payment_id: payment.id })
+      );
+
+      expect(result.id).toBe(session.id);
+      expect(result.clientSecret).toBe('secret-e2e');
+      expect(result.connectionId).toBe('conn-1');
+    });
+
+    it('lanza PAYMENT_SESSION_NOT_FOUND si no existe', async () => {
+      await runWithTenant(
+        { organizationId: tenant.orgId, branchId: tenant.branchId },
+        async () => {
+          await expect(getPaymentSession.execute({ payment_id: 'no-session' })).rejects.toMatchObject({
+            code: 'PAYMENT_SESSION_NOT_FOUND',
+          });
+        }
+      );
+    });
+
+    it('lanza PAYMENT_SESSION_EXPIRED si la sesión venció', async () => {
+      const order = await createPublicOrder();
+      const payment = await createPendingMPPayment(order.id, 'pref-session-expired-e2e');
+      await base.paymentSession.create({
+        data: {
+          paymentId: payment.id,
+          clientSecret: 'secret-expired',
+          expiresAt: new Date(Date.now() - 60_000),
+          branchId: tenant.branchId,
+        },
+      });
+
+      await runWithTenant(
+        { organizationId: tenant.orgId, branchId: tenant.branchId },
+        async () => {
+          await expect(getPaymentSession.execute({ payment_id: payment.id })).rejects.toMatchObject({
+            code: 'PAYMENT_SESSION_EXPIRED',
+          });
+        }
+      );
+    });
+  });
+
+  describe('GetQRPaymentStatusUseCase', () => {
+    it('lanza PAYMENT_NOT_FOUND si no hay pago MP para la orden', async () => {
+      const order = await createPublicOrder();
+      await runWithTenant(
+        { organizationId: tenant.orgId, branchId: tenant.branchId },
+        async () => {
+          await expect(getQRStatus.execute({ orderId: order.id })).rejects.toMatchObject({
+            code: 'PAYMENT_NOT_FOUND',
+          });
+        }
+      );
+    });
+
+    it('devuelve el estado local cuando es terminal (sin llamar a MP)', async () => {
+      const order = await createPublicOrder();
+      await base.payment.create({
+        data: {
+          orderId: order.id,
+          userId: null,
+          amount: 150,
+          currency: 'MXN',
+          status: PaymentStatus.SUCCEEDED,
+          paymentMethod: PaymentMethod.QR_MERCADO_PAGO,
+          gateway: PaymentGateway.MERCADO_PAGO,
+          gatewayTransactionId: 'mp-terminal-1',
+          branchId: tenant.branchId,
+        },
+      });
+
+      const result = await runWithTenant(
+        { organizationId: tenant.orgId, branchId: tenant.branchId },
+        () => getQRStatus.execute({ orderId: order.id })
+      );
+
+      expect(result.status).toBe(PaymentStatus.SUCCEEDED);
+      expect(mp.getPayment).not.toHaveBeenCalled();
+    });
+
+    it('consulta MP cuando está PENDING y actualiza a SUCCEEDED si fue aprobado', async () => {
+      const order = await createPublicOrder();
+      const payment = await createPendingMPPayment(order.id, 'mp-pending-live');
+      mp.getPayment.mockResolvedValue({
+        id: 555,
+        status: 'approved',
+        statusDetail: 'accredited',
+        externalReference: order.id,
+        transactionAmount: 150,
+        currencyId: 'MXN',
+        paymentMethodId: 'visa',
+        paymentTypeId: 'credit_card',
+        dateApproved: new Date().toISOString(),
+        feeDetails: [],
+      });
+
+      const result = await runWithTenant(
+        { organizationId: tenant.orgId, branchId: tenant.branchId },
+        () => getQRStatus.execute({ orderId: order.id })
+      );
+
+      expect(result.status).toBe(PaymentStatus.SUCCEEDED);
+      const updated = await base.payment.findUnique({ where: { id: payment.id } });
+      expect(updated!.status).toBe(PaymentStatus.SUCCEEDED);
+    });
+  });
+
+  describe('ListPaymentsUseCase', () => {
+    it('lista los pagos del branch (aislados por tenant)', async () => {
+      const order = await createPublicOrder();
+      await base.payment.create({
+        data: {
+          orderId: order.id,
+          userId: null,
+          amount: 150,
+          currency: 'MXN',
+          status: PaymentStatus.SUCCEEDED,
+          paymentMethod: PaymentMethod.QR_MERCADO_PAGO,
+          gateway: PaymentGateway.MERCADO_PAGO,
+          gatewayTransactionId: 'list-paid-1',
+          branchId: tenant.branchId,
+        },
+      });
+      await base.payment.create({
+        data: {
+          orderId: order.id,
+          userId: null,
+          amount: 150,
+          currency: 'MXN',
+          status: PaymentStatus.FAILED,
+          paymentMethod: PaymentMethod.QR_MERCADO_PAGO,
+          gateway: PaymentGateway.MERCADO_PAGO,
+          gatewayTransactionId: 'list-failed-1',
+          branchId: tenant.branchId,
+        },
+      });
+
+      const all = await runWithTenant(
+        { organizationId: tenant.orgId, branchId: tenant.branchId },
+        () => listPayments.execute()
+      );
+      expect(all.length).toBeGreaterThanOrEqual(2);
+      expect(all.every((p) => p.gateway === PaymentGateway.MERCADO_PAGO)).toBe(true);
+
+      const failed = await runWithTenant(
+        { organizationId: tenant.orgId, branchId: tenant.branchId },
+        () => listPayments.execute({ status: PaymentStatus.FAILED })
+      );
+      expect(failed.length).toBe(1);
+      expect(failed[0].status).toBe(PaymentStatus.FAILED);
+    });
+  });
+
+  describe('PaymentConfigService', () => {
+    it('get() sin tenant cae a la config del .env', async () => {
+      const previous = process.env.MP_ACCESS_TOKEN;
+      process.env.MP_ACCESS_TOKEN = 'APP_USR-env-token';
+      try {
+        const config = await paymentConfig.get();
+        expect(config.mercadoPago.accessToken).toBe('APP_USR-env-token');
+      } finally {
+        if (previous === undefined) delete process.env.MP_ACCESS_TOKEN;
+        else process.env.MP_ACCESS_TOKEN = previous;
+      }
+    });
+
+    it('getForCharging() sin branch lanza MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED', async () => {
+      await expect(paymentConfig.getForCharging()).rejects.toMatchObject({
+        code: 'MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED',
+      });
+    });
+
+    it('getForCharging() no cae al .env cuando el branch no configuró cuenta', async () => {
+      process.env.MP_ACCESS_TOKEN = 'APP_USR-debe-ignorarse';
+      try {
+        await runWithTenant(
+          { organizationId: tenant.orgId, branchId: tenant.branchId },
+          async () => {
+            await expect(paymentConfig.getForCharging()).rejects.toMatchObject({
+              code: 'MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED',
+            });
+          }
+        );
+      } finally {
+        delete process.env.MP_ACCESS_TOKEN;
+      }
+    });
+
+    it('save() persiste encriptado y get()/getForCharging() lo devuelven', async () => {
+      await runWithTenant(
+        { organizationId: tenant.orgId, branchId: tenant.branchId },
+        async () => {
+          await paymentConfig.save({
+            mercadoPago: {
+              accessToken: 'APP_USR-branch-token',
+              webhookSecret: 'webhook-secret',
             },
-          ],
-          orderMenuItems: [],
-          tip: 0,
-          paymentDiffer: false,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
+          });
 
-      const orderResponse = await createOrderHandler(orderEvent as any, mockContext);
-      const orderBody = JSON.parse(orderResponse.body);
-      if (orderBody && orderBody.data && orderBody.data.id) {
-        orderId = orderBody.data.id;
-      } else {
-        console.warn('Order creation failed or returned unexpected format:', orderBody);
-      }
-    } catch (error) {
-      console.error('Error creating order in beforeEach:', error);
-      // Don't throw, just log - tests will be skipped anyway
-    }
-  });
+          const branch = await base.branch.findUnique({ where: { id: tenant.branchId } });
+          expect(branch!.paymentConfig).toMatch(/^[0-9a-f]+:[0-9a-f]+:[0-9a-f]+$/);
+          const decrypted = JSON.parse(decrypt(branch!.paymentConfig!));
+          expect(decrypted.mercadoPago.accessToken).toBe('APP_USR-branch-token');
 
-  afterEach(async () => {
-    if (shouldSkip) return;
+          const got = await paymentConfig.get();
+          expect(got.mercadoPago.accessToken).toBe('APP_USR-branch-token');
 
-    try {
-      // Cleanup payments and payment differentiations
-      if (orderId) {
-        await prisma.payment.deleteMany({ where: { orderId } });
-        await prisma.paymentDifferentiation.deleteMany({ where: { orderId } });
-      }
-    } catch (error) {
-      // Ignore cleanup errors
-    }
-  });
-
-  describe('POST /api/payments/cash', () => {
-    it('should pay order with cash successfully', async () => {
-      if (shouldSkip) {
-        console.log('⚠️  Skipping E2E test: DATABASE_URL not configured');
-        return;
-      }
-
-      const event: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/payments/cash',
-        body: JSON.stringify({
-          orderId: orderId,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-
-      const response = await payOrderWithCashHandler(event as any, mockContext);
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(true);
-      expect(body.data.payment).toBeDefined();
-      expect(body.data.payment.status).toBe('SUCCEEDED');
-      expect(body.data.payment.paymentMethod).toBe('CASH');
-      expect(body.data.order.status).toBe(true);
-      expect(body.data.order.paymentMethod).toBe(1);
+          const charging = await paymentConfig.getForCharging();
+          expect(charging.mercadoPago.accessToken).toBe('APP_USR-branch-token');
+        }
+      );
     });
 
-    it('should return error when order not found', async () => {
-      if (shouldSkip) {
-        console.log('⚠️  Skipping E2E test: DATABASE_URL not configured');
-        return;
-      }
+    it('clearCache() fuerza la relectura desde la BD', async () => {
+      await runWithTenant(
+        { organizationId: tenant.orgId, branchId: tenant.branchId },
+        async () => {
+          await paymentConfig.save({
+            mercadoPago: { accessToken: 'APP_USR-cached', webhookSecret: 'ws' },
+          });
+          paymentConfig.clearCache(tenant.branchId);
 
-      const event: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/payments/cash',
-        body: JSON.stringify({
-          orderId: '550e8400-e29b-41d4-a716-446655440000',
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
+          const branch = await base.branch.findUnique({ where: { id: tenant.branchId } });
+          const decrypted = JSON.parse(decrypt(branch!.paymentConfig!));
+          decrypted.mercadoPago.accessToken = 'APP_USR-db-direct';
+          await base.branch.update({
+            where: { id: tenant.branchId },
+            data: { paymentConfig: encrypt(JSON.stringify(decrypted)) },
+          });
 
-      const response = await payOrderWithCashHandler(event as any, mockContext);
-
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(false);
-      expect(body.error.code).toBe('ORDER_NOT_FOUND');
-    });
-
-    it('should return error when order is already paid', async () => {
-      if (shouldSkip) {
-        console.log('⚠️  Skipping E2E test: DATABASE_URL not configured');
-        return;
-      }
-
-      // Pay order first
-      const firstPaymentEvent: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/payments/cash',
-        body: JSON.stringify({
-          orderId: orderId,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-
-      await payOrderWithCashHandler(firstPaymentEvent as any, mockContext);
-
-      // Try to pay again
-      const response = await payOrderWithCashHandler(firstPaymentEvent as any, mockContext);
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(false);
-      expect(body.error.code).toBe('ORDER_ALREADY_PAID');
-    });
-  });
-
-  describe('POST /api/payments/transfer', () => {
-    it('should pay order with transfer successfully', async () => {
-      if (shouldSkip) {
-        console.log('⚠️  Skipping E2E test: DATABASE_URL not configured');
-        return;
-      }
-
-      const event: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/payments/transfer',
-        body: JSON.stringify({
-          orderId: orderId,
-          transferNumber: 'TRF-123456',
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-
-      const response = await payOrderWithTransferHandler(event as any, mockContext);
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(true);
-      expect(body.data.payment.status).toBe('SUCCEEDED');
-      expect(body.data.payment.paymentMethod).toBe('TRANSFER');
-      expect(body.data.order.paymentMethod).toBe(2);
-    });
-  });
-
-  describe('POST /api/payments/card-physical', () => {
-    it('should pay order with physical card successfully', async () => {
-      if (shouldSkip) {
-        console.log('⚠️  Skipping E2E test: DATABASE_URL not configured');
-        return;
-      }
-
-      const event: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/payments/card-physical',
-        body: JSON.stringify({
-          orderId: orderId,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-
-      const response = await payOrderWithCardPhysicalHandler(event as any, mockContext);
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(true);
-      expect(body.data.payment.status).toBe('SUCCEEDED');
-      expect(body.data.payment.paymentMethod).toBe('CARD_PHYSICAL');
-      expect(body.data.order.paymentMethod).toBe(3);
-    });
-  });
-
-  describe('POST /api/payments/split', () => {
-    it('should pay order with split payment successfully', async () => {
-      if (shouldSkip) {
-        console.log('⚠️  Skipping E2E test: DATABASE_URL not configured');
-        return;
-      }
-
-      // Get order total first
-      const order = await prisma.order.findUnique({ where: { id: orderId } });
-      const orderTotal = Number(order?.total || 0);
-      const firstAmount = Math.floor(orderTotal / 2 * 100) / 100;
-      const secondAmount = orderTotal - firstAmount;
-
-      const event: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/payments/split',
-        body: JSON.stringify({
-          orderId: orderId,
-          firstPayment: {
-            amount: firstAmount,
-            paymentMethod: 'CASH',
-          },
-          secondPayment: {
-            amount: secondAmount,
-            paymentMethod: 'TRANSFER',
-          },
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-
-      const response = await payOrderWithSplitPaymentHandler(event as any, mockContext);
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(true);
-      expect(body.data.paymentDifferentiation).toBeDefined();
-      expect(body.data.payments).toHaveLength(2);
-      expect(body.data.order.status).toBe(true);
-      expect(body.data.order.paymentDiffer).toBe(true);
-      expect(body.data.order.paymentMethod).toBeNull();
-    });
-
-    it('should return error when payment methods are the same', async () => {
-      if (shouldSkip) {
-        console.log('⚠️  Skipping E2E test: DATABASE_URL not configured');
-        return;
-      }
-
-      const order = await prisma.order.findUnique({ where: { id: orderId } });
-      const orderTotal = Number(order?.total || 0);
-
-      const event: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/payments/split',
-        body: JSON.stringify({
-          orderId: orderId,
-          firstPayment: {
-            amount: orderTotal / 2,
-            paymentMethod: 'CASH',
-          },
-          secondPayment: {
-            amount: orderTotal / 2,
-            paymentMethod: 'CASH', // Same method
-          },
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-
-      const response = await payOrderWithSplitPaymentHandler(event as any, mockContext);
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(false);
-      expect(body.error.code).toBe('SPLIT_PAYMENT_SAME_METHOD');
-    });
-
-    it('should return error when total amount exceeds order total', async () => {
-      if (shouldSkip) {
-        console.log('⚠️  Skipping E2E test: DATABASE_URL not configured');
-        return;
-      }
-
-      const order = await prisma.order.findUnique({ where: { id: orderId } });
-      const orderTotal = Number(order?.total || 0);
-
-      const event: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/payments/split',
-        body: JSON.stringify({
-          orderId: orderId,
-          firstPayment: {
-            amount: orderTotal + 10,
-            paymentMethod: 'CASH',
-          },
-          secondPayment: {
-            amount: orderTotal + 10,
-            paymentMethod: 'TRANSFER',
-          },
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-
-      const response = await payOrderWithSplitPaymentHandler(event as any, mockContext);
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(false);
-      expect(body.error.code).toBe('SPLIT_PAYMENT_AMOUNT_EXCEEDS_TOTAL');
-    });
-  });
-
-  describe('GET /api/payments/:payment_id', () => {
-    it('should get payment by id successfully', async () => {
-      if (shouldSkip) {
-        console.log('⚠️  Skipping E2E test: DATABASE_URL not configured');
-        return;
-      }
-
-      // Create payment first
-      const paymentEvent: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/payments/cash',
-        body: JSON.stringify({
-          orderId: orderId,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-
-      const paymentResponse = await payOrderWithCashHandler(paymentEvent as any, mockContext);
-      const paymentBody = JSON.parse(paymentResponse.body);
-      const paymentId = paymentBody.data.payment.id;
-
-      // Get payment
-      const event: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'GET',
-        path: `/api/payments/${paymentId}`,
-        pathParameters: {
-          payment_id: paymentId,
-        },
-      };
-
-      const response = await getPaymentHandler(event as any, mockContext);
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(true);
-      expect(body.data.id).toBe(paymentId);
-      expect(body.data.status).toBe('SUCCEEDED');
-    });
-  });
-
-  describe('GET /api/payments', () => {
-    it('should list payments successfully', async () => {
-      if (shouldSkip) {
-        console.log('⚠️  Skipping E2E test: DATABASE_URL not configured');
-        return;
-      }
-
-      // Create a payment first
-      const paymentEvent: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'POST',
-        path: '/api/payments/cash',
-        body: JSON.stringify({
-          orderId: orderId,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      };
-
-      await payOrderWithCashHandler(paymentEvent as any, mockContext);
-
-      // List payments
-      const event: Partial<APIGatewayProxyEvent> = {
-        httpMethod: 'GET',
-        path: '/api/payments',
-        queryStringParameters: {
-          orderId: orderId,
-        },
-      };
-
-      const response = await listPaymentsHandler(event as any, mockContext);
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(true);
-      expect(Array.isArray(body.data)).toBe(true);
-      expect(body.data.length).toBeGreaterThan(0);
+          const got = await paymentConfig.get();
+          expect(got.mercadoPago.accessToken).toBe('APP_USR-db-direct');
+        }
+      );
     });
   });
 });
-
