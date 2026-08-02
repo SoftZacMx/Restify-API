@@ -90,8 +90,11 @@ export class WebSocketServer {
               return;
             }
 
-            // Verify that userId from token matches userId in request
-            if (tokenPayload.userId && tokenPayload.userId !== userId) {
+            // El userId declarado debe ser el del token firmado (`sub`; `userId` es
+            // legacy). Sin esta igualdad, cualquier token válido podría registrarse
+            // suplantando a otro usuario.
+            const tokenUserId = tokenPayload.userId ?? tokenPayload.sub;
+            if (tokenUserId !== userId) {
               socket.emit(WebSocketEventType.ERROR, {
                 type: WebSocketEventType.ERROR,
                 data: { message: 'UserId mismatch: token userId does not match provided userId' },

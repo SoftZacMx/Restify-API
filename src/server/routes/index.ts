@@ -46,8 +46,10 @@ router.use('/api/organization', organizationRoutes);
 // Webhook de Mercado Pago (no auth, no tenant - MP envía directamente)
 router.use('/api/payments/webhooks', paymentWebhookRoutes);
 
-// Rutas públicas: sin auth, CON validación de suscripción
-router.use('/api/public', SubscriptionMiddleware.validateSubscription, publicRoutes);
+// Rutas públicas: sin auth. La validación de suscripción se hace por ruta DENTRO de
+// public.routes (validatePublicSubscription, tras resolver el tenant del branch) —
+// aquí no hay JWT del cual leer la organización.
+router.use('/api/public', publicRoutes);
 
 // ===================================================
 // TENANT CONTEXT (Phase 1.2)
@@ -55,6 +57,9 @@ router.use('/api/public', SubscriptionMiddleware.validateSubscription, publicRou
 // ===================================================
 router.use(AuthMiddleware.authenticate);
 router.use(TenantMiddleware.attach);
+// Revocación y estado: rechaza tokens revocados (tokenVersion), usuarios deshabilitados
+// y organizaciones inactivas, con cache corto (ver auth.middleware).
+router.use(AuthMiddleware.validateTokenAndStatus);
 router.use(SubscriptionMiddleware.validateSubscription);
 
 // Rutas CON validación de suscripción y tenant context

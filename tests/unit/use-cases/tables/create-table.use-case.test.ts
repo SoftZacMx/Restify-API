@@ -32,7 +32,7 @@ describe('CreateTableUseCase', () => {
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
 
-      changePasswordAndClearFlag: jest.fn(),    };
+      changePasswordAndClearFlag: jest.fn(),      changePasswordAndRevokeSessions: jest.fn(),    };
 
     createTableUseCase = new CreateTableUseCase(
       mockTableRepository,

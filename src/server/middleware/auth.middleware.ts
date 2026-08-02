@@ -9,6 +9,12 @@ export interface AuthenticatedRequest extends Request {
   user?: JwtPayload;
 }
 
+// Cache de validaciones exitosas de token/estado (TTL corto). Evita 2 queries por
+// request; el costo es que una revocación tarda hasta TTL segundos en surtir efecto.
+const TOKEN_VALIDATION_TTL_MS = 30 * 1000;
+const TOKEN_VALIDATION_CACHE_MAX = 10_000;
+const tokenValidationCache = new Map<string, number>(); // key → expiresAt (epoch ms)
+
 /**
  * Authentication middleware for Express routes
  * Validates JWT token from cookie (HttpOnly) or Authorization header (fallback)
@@ -103,7 +109,8 @@ export class AuthMiddleware {
    * - User account is active
    * - Organization is active
    *
-   * Note: This queries the database. Consider adding cache (TTL 30-60s) for production.
+   * Las validaciones exitosas se cachean TOKEN_VALIDATION_TTL_MS para no consultar
+   * la base en cada request; una revocación tarda a lo sumo ese TTL en aplicar.
    */
   static async validateTokenAndStatus(
     req: AuthenticatedRequest,
@@ -113,6 +120,13 @@ export class AuthMiddleware {
     try {
       if (!req.user) {
         throw new AppError('UNAUTHORIZED', 'Authentication required');
+      }
+
+      const cacheKey = `${req.user.sub}:${req.user.tokenVersion}`;
+      const cachedUntil = tokenValidationCache.get(cacheKey);
+      if (cachedUntil && cachedUntil > Date.now()) {
+        next();
+        return;
       }
 
       const userRepository = container.resolve<IUserRepository>('IUserRepository');
@@ -143,6 +157,12 @@ export class AuthMiddleware {
       if (org.status !== 'ACTIVE') {
         throw new AppError('ORGANIZATION_INACTIVE', 'Organization is not active');
       }
+
+      // Cachear el éxito; acotar el tamaño para que no crezca sin límite.
+      if (tokenValidationCache.size >= TOKEN_VALIDATION_CACHE_MAX) {
+        tokenValidationCache.clear();
+      }
+      tokenValidationCache.set(cacheKey, Date.now() + TOKEN_VALIDATION_TTL_MS);
 
       next();
     } catch (error) {

@@ -31,7 +31,7 @@ describe('LoginUseCase', () => {
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
 
-      changePasswordAndClearFlag: jest.fn(),      findAll: jest.fn(),
+      changePasswordAndClearFlag: jest.fn(),      changePasswordAndRevokeSessions: jest.fn(),      findAll: jest.fn(),
     } as unknown as jest.Mocked<IUserRepository>;
 
     mockOrganizationRepository = {

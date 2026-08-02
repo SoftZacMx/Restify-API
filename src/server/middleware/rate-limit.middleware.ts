@@ -117,3 +117,24 @@ export const publicStatusRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+/**
+ * Rate limiter para el webhook de Mercado Pago.
+ * Es un endpoint anónimo y cada POST dispara una consulta a la API de MP más varias
+ * a la BD: sin límite es un vector barato de abuso. Generoso para no tirar webhooks
+ * legítimos (MP reenvía en ráfagas), estricto para frenar inundaciones.
+ */
+export const mpWebhookRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 120, // 120 req/min por IP
+  message: {
+    success: false,
+    error: {
+      code: 'TOO_MANY_REQUESTS',
+      message: 'Too many requests. Please try again later.',
+    },
+    timestamp: new Date().toISOString(),
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+

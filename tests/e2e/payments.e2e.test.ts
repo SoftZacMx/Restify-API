@@ -6,11 +6,13 @@ import { GetPaymentSessionUseCase } from '../../src/core/application/use-cases/p
 import { GetQRPaymentStatusUseCase } from '../../src/core/application/use-cases/payments/get-qr-payment-status.use-case';
 import { ListPaymentsUseCase } from '../../src/core/application/use-cases/payments/list-payments.use-case';
 import { PaymentConfigService } from '../../src/core/application/services/payment-config.service';
+import { TenantResolverService } from '../../src/core/application/services/tenant-resolver.service';
 import { BranchTimezoneService } from '../../src/core/application/services/branch-timezone.service';
 import { PaymentRepository } from '../../src/core/infrastructure/database/repositories/payment.repository';
 import { PaymentSessionRepository } from '../../src/core/infrastructure/database/repositories/payment-session.repository';
 import { OrderRepository } from '../../src/core/infrastructure/database/repositories/order.repository';
 import { BranchRepository } from '../../src/core/infrastructure/database/repositories/branch.repository';
+import { OrganizationRepository } from '../../src/core/infrastructure/database/repositories/organization.repository';
 import { runWithTenant } from '../../src/core/infrastructure/tenant/tenant-context';
 import { encrypt, decrypt } from '../../src/shared/utils/crypto.util';
 import { AppError } from '../../src/shared/errors';
@@ -42,14 +44,19 @@ describe('E2E Pagos — PayPublicOrder / sessions / status / list / config (BD r
   const sessionRepo = new PaymentSessionRepository(prisma);
   const orderRepo = new OrderRepository(prisma);
   const branchRepo = new BranchRepository(prisma);
+  const orgRepo = new OrganizationRepository(prisma);
   const mp = createFakeMercadoPagoService();
 
+  // Instancia propia para el flujo de cobro: su cache no debe contaminar los tests
+  // de PaymentConfigService de más abajo (que asumen branch sin config).
+  const payConfigForCharge = new PaymentConfigService(branchRepo);
   const payPublicOrder = new PayPublicOrderUseCase(
     orderRepo,
     paymentRepo,
     sessionRepo,
-    branchRepo,
-    mp.service
+    mp.service,
+    payConfigForCharge,
+    new TenantResolverService(branchRepo, orgRepo)
   );
   const getPaymentSession = new GetPaymentSessionUseCase(sessionRepo);
   const getQRStatus = new GetQRPaymentStatusUseCase(paymentRepo, mp.service);
@@ -129,6 +136,27 @@ describe('E2E Pagos — PayPublicOrder / sessions / status / list / config (BD r
   });
 
   describe('PayPublicOrderUseCase', () => {
+    // El flujo de cobro exige que el branch tenga su propia cuenta de MP configurada.
+    beforeAll(async () => {
+      await base.branch.update({
+        where: { id: tenant.branchId },
+        data: {
+          paymentConfig: encrypt(
+            JSON.stringify({ mercadoPago: { accessToken: 'APP_USR-e2e-pay', webhookSecret: '' } })
+          ),
+        },
+      });
+    });
+
+    // Dejar el branch sin config para los tests de PaymentConfigService de más abajo.
+    afterAll(async () => {
+      await base.branch.update({
+        where: { id: tenant.branchId },
+        data: { paymentConfig: null },
+      });
+      payConfigForCharge.clearCache();
+    });
+
     it('crea Payment + Session y llama a MP con la preferencia correcta', async () => {
       const order = await createPublicOrder();
       mp.createPreference.mockResolvedValue({
@@ -246,20 +274,39 @@ describe('E2E Pagos — PayPublicOrder / sessions / status / list / config (BD r
       expect(mp.createPreference).toHaveBeenCalledTimes(1);
     });
 
-    it('soporta órdenes sin branchId (fallback legacy)', async () => {
+    it('rechaza órdenes sin branchId: nunca cobra sin tenant (legacy eliminado)', async () => {
       const order = await createPublicOrder({ branchId: null });
-      mp.createPreference.mockResolvedValue({
-        id: 'pref-legacy-e2e',
-        initPoint: 'https://init.mercadopago.com/legacy',
-        sandboxInitPoint: '',
-        expirationDate: null,
+
+      await expect(payPublicOrder.execute({ orderId: order.id })).rejects.toMatchObject({
+        code: 'ORDER_NOT_FOUND',
       });
+      expect(mp.createPreference).not.toHaveBeenCalled();
+    });
 
-      const result = await payPublicOrder.execute({ orderId: order.id });
-
-      expect(result.preferenceId).toBe('pref-legacy-e2e');
-      const params = mp.createPreference.mock.calls[0][0];
-      expect(params.branchId).toBeUndefined();
+    it('rechaza el cobro cuando el branch no configuró su cuenta de MP', async () => {
+      const order = await createPublicOrder();
+      await base.branch.update({
+        where: { id: tenant.branchId },
+        data: { paymentConfig: null },
+      });
+      payConfigForCharge.clearCache();
+      try {
+        await expect(payPublicOrder.execute({ orderId: order.id })).rejects.toMatchObject({
+          code: 'MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED',
+        });
+        expect(mp.createPreference).not.toHaveBeenCalled();
+      } finally {
+        // Restaurar la config para los demás tests de este bloque
+        await base.branch.update({
+          where: { id: tenant.branchId },
+          data: {
+            paymentConfig: encrypt(
+              JSON.stringify({ mercadoPago: { accessToken: 'APP_USR-e2e-pay', webhookSecret: '' } })
+            ),
+          },
+        });
+        payConfigForCharge.clearCache();
+      }
     });
   });
 

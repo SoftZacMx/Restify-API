@@ -106,6 +106,21 @@ export class UserRepository implements IUserRepository {
     return User.fromPrisma(user);
   }
 
+  async changePasswordAndRevokeSessions(id: string, hashedPassword: string): Promise<User> {
+    // Flujo "olvidé mi contraseña": la cuenta pudo estar comprometida, así que además
+    // de guardar la nueva contraseña se invalidan TODAS las sesiones activas.
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        password: hashedPassword,
+        mustChangePassword: false,
+        tokenVersion: { increment: 1 },
+      },
+    });
+
+    return User.fromPrisma(user);
+  }
+
   async markEmailVerified(id: string): Promise<User> {
     // Confirma la titularidad del correo (4.1.E). La idempotencia (no re-verificar)
     // la maneja el use-case leyendo emailVerifiedAt antes de llamar aquí.

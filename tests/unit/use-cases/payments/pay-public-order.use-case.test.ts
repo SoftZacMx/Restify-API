@@ -2,8 +2,10 @@ import { PayPublicOrderUseCase } from '../../../../src/core/application/use-case
 import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-repository.interface';
 import { IPaymentRepository } from '../../../../src/core/domain/interfaces/payment-repository.interface';
 import { IPaymentSessionRepository } from '../../../../src/core/domain/interfaces/payment-session-repository.interface';
-import { IBranchRepository } from '../../../../src/core/domain/interfaces/branch-repository.interface';
 import { MercadoPagoService } from '../../../../src/core/infrastructure/payment-gateways/mercado-pago.service';
+import { PaymentConfigService } from '../../../../src/core/application/services/payment-config.service';
+import { TenantResolverService } from '../../../../src/core/application/services/tenant-resolver.service';
+import { AppError } from '../../../../src/shared/errors';
 import * as tenantContext from '../../../../src/core/infrastructure/tenant/tenant-context';
 import { Payment } from '../../../../src/core/domain/entities/payment.entity';
 import { PaymentSession } from '../../../../src/core/domain/entities/payment-session.entity';
@@ -16,8 +18,9 @@ describe('PayPublicOrderUseCase', () => {
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockPaymentRepository: jest.Mocked<IPaymentRepository>;
   let mockPaymentSessionRepository: jest.Mocked<IPaymentSessionRepository>;
-  let mockBranchRepository: jest.Mocked<IBranchRepository>;
   let mockMercadoPagoService: jest.Mocked<MercadoPagoService>;
+  let mockPaymentConfigService: jest.Mocked<PaymentConfigService>;
+  let mockTenantResolver: jest.Mocked<TenantResolverService>;
   let runWithTenantSpy: jest.SpyInstance;
 
   const orderId = 'order-123';
@@ -142,18 +145,6 @@ describe('PayPublicOrderUseCase', () => {
       deleteByPaymentId: jest.fn(),
     };
 
-    mockBranchRepository = {
-      findById: jest.fn(),
-      findBySlug: jest.fn(),
-      findByIdAndOrganizationId: jest.fn(),
-      findAllIdsByOrganizationId: jest.fn(),
-      findManyByOrganizationId: jest.fn(),
-      findManyForList: jest.fn(),
-      countActiveByOrganizationId: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-    };
-
     mockMercadoPagoService = {
       createPreference: jest.fn().mockResolvedValue(preferenceResult),
       getPreference: jest.fn(),
@@ -162,14 +153,29 @@ describe('PayPublicOrderUseCase', () => {
       validateWebhookSignature: jest.fn(),
     } as any;
 
+    mockPaymentConfigService = {
+      getForCharging: jest.fn().mockResolvedValue({
+        mercadoPago: { accessToken: 'token-branch', webhookSecret: '' },
+      }),
+    } as any;
+
+    mockTenantResolver = {
+      resolve: jest.fn().mockResolvedValue({
+        ok: true,
+        tenant: { organizationId, branchId },
+        branch,
+      }),
+    } as any;
+
     runWithTenantSpy = jest.spyOn(tenantContext, 'runWithTenant');
 
     useCase = new PayPublicOrderUseCase(
       mockOrderRepository,
       mockPaymentRepository,
       mockPaymentSessionRepository,
-      mockBranchRepository,
       mockMercadoPagoService,
+      mockPaymentConfigService,
+      mockTenantResolver,
     );
   });
 
@@ -216,10 +222,10 @@ describe('PayPublicOrderUseCase', () => {
   describe('resolución de tenant', () => {
     it('ejecuta dentro de runWithTenant con org y branch cuando la branch existe', async () => {
       mockOrderRepository.findById.mockResolvedValue(publicOrder);
-      mockBranchRepository.findById.mockResolvedValue(branch);
 
       const result = await useCase.execute({ orderId });
 
+      expect(mockTenantResolver.resolve).toHaveBeenCalledWith(branchId, { requireActiveBranch: true });
       expect(runWithTenantSpy).toHaveBeenCalledWith(
         { organizationId, branchId },
         expect.any(Function)
@@ -232,36 +238,63 @@ describe('PayPublicOrderUseCase', () => {
       });
     });
 
-    it('procesa sin tenant cuando la branch no se encuentra (fallback)', async () => {
+    it('lanza BRANCH_NOT_FOUND cuando la branch no se encuentra: nunca cobra sin tenant', async () => {
       mockOrderRepository.findById.mockResolvedValue(publicOrder);
-      mockBranchRepository.findById.mockResolvedValue(null);
+      mockTenantResolver.resolve.mockResolvedValue({ ok: false, reason: 'BRANCH_NOT_FOUND' });
 
-      await useCase.execute({ orderId });
-
+      await expect(useCase.execute({ orderId })).rejects.toMatchObject({
+        code: 'BRANCH_NOT_FOUND',
+      });
       expect(runWithTenantSpy).not.toHaveBeenCalled();
-      expect(mockMercadoPagoService.createPreference).toHaveBeenCalled();
+      expect(mockPaymentRepository.create).not.toHaveBeenCalled();
+      expect(mockMercadoPagoService.createPreference).not.toHaveBeenCalled();
     });
 
-    it('soporta órdenes sin branchId (fallback legacy, sin tenant)', async () => {
+    it('lanza ORGANIZATION_INACTIVE cuando la organización no está activa', async () => {
+      mockOrderRepository.findById.mockResolvedValue(publicOrder);
+      mockTenantResolver.resolve.mockResolvedValue({
+        ok: false,
+        reason: 'ORGANIZATION_INACTIVE',
+        organizationId,
+        orgStatus: 'CLOSED',
+      });
+
+      await expect(useCase.execute({ orderId })).rejects.toMatchObject({
+        code: 'ORGANIZATION_INACTIVE',
+      });
+      expect(mockMercadoPagoService.createPreference).not.toHaveBeenCalled();
+    });
+
+    it('rechaza órdenes sin branchId: nunca cobra sin tenant (legacy eliminado)', async () => {
       mockOrderRepository.findById.mockResolvedValue(legacyOrder);
 
-      await useCase.execute({ orderId });
-
-      expect(mockBranchRepository.findById).not.toHaveBeenCalled();
+      await expect(useCase.execute({ orderId })).rejects.toMatchObject({
+        code: 'ORDER_NOT_FOUND',
+      });
+      expect(mockTenantResolver.resolve).not.toHaveBeenCalled();
       expect(runWithTenantSpy).not.toHaveBeenCalled();
-      expect(mockMercadoPagoService.createPreference).toHaveBeenCalledWith(
-        expect.objectContaining({
-          branchId: undefined,
-          notificationUrl: 'https://api.restify.com/webhooks/mercado-pago',
-        })
+      expect(mockMercadoPagoService.createPreference).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('cuenta de MP del comercio', () => {
+    it('lanza MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED si el branch no configuró su cuenta, sin crear nada', async () => {
+      mockOrderRepository.findById.mockResolvedValue(publicOrder);
+      mockPaymentConfigService.getForCharging.mockRejectedValue(
+        new AppError('MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED')
       );
+
+      await expect(useCase.execute({ orderId })).rejects.toMatchObject({
+        code: 'MERCHANT_PAYMENT_ACCOUNT_NOT_CONFIGURED',
+      });
+      expect(mockPaymentRepository.create).not.toHaveBeenCalled();
+      expect(mockMercadoPagoService.createPreference).not.toHaveBeenCalled();
     });
   });
 
   describe('flujo exitoso', () => {
     it('crea el Payment PENDING, la preferencia en MP y la PaymentSession, y retorna el resultado', async () => {
       mockOrderRepository.findById.mockResolvedValue(publicOrder);
-      mockBranchRepository.findById.mockResolvedValue(branch);
 
       const result = await useCase.execute({ orderId });
 
@@ -309,7 +342,6 @@ describe('PayPublicOrderUseCase', () => {
   describe('reuso de pago MP pendiente', () => {
     it('reutiliza el pago MP pendiente cuando su sesión sigue vigente sin crear duplicados', async () => {
       mockOrderRepository.findById.mockResolvedValue(publicOrder);
-      mockBranchRepository.findById.mockResolvedValue(branch);
       mockPaymentRepository.findAll.mockResolvedValue([pendingMPPayment]);
       mockPaymentSessionRepository.findByPaymentId.mockResolvedValue(validSession);
 
@@ -328,7 +360,6 @@ describe('PayPublicOrderUseCase', () => {
 
     it('descarta la sesión expirada, cancela el pago viejo y crea uno nuevo', async () => {
       mockOrderRepository.findById.mockResolvedValue(publicOrder);
-      mockBranchRepository.findById.mockResolvedValue(branch);
       mockPaymentRepository.findAll.mockResolvedValue([pendingMPPayment]);
       mockPaymentSessionRepository.findByPaymentId.mockResolvedValue(expiredSession);
 
@@ -345,7 +376,6 @@ describe('PayPublicOrderUseCase', () => {
 
     it('ignora pagos pendientes de otro gateway: no los reutiliza ni los cancela, y crea uno MP nuevo', async () => {
       mockOrderRepository.findById.mockResolvedValue(publicOrder);
-      mockBranchRepository.findById.mockResolvedValue(branch);
       mockPaymentRepository.findAll.mockResolvedValue([stripePendingPayment]);
 
       const result = await useCase.execute({ orderId });

@@ -18,12 +18,6 @@ export const payOrderWithCardPhysicalSchema = z.object({
   orderId: z.string().uuid('Invalid order ID format'),
 });
 
-// Pay Order with Stripe Schema
-export const payOrderWithCardStripeSchema = z.object({
-  orderId: z.string().uuid('Invalid order ID format'),
-  connectionId: z.string().optional().nullable(), // WebSocket connection ID
-});
-
 // Split Payment Schema
 export const payOrderWithSplitPaymentSchema = z.object({
   orderId: z.string().uuid('Invalid order ID format'),
@@ -116,14 +110,6 @@ export const getQRPaymentStatusSchema = z.object({
   orderId: z.string().uuid('Invalid order ID format'),
 });
 
-// Confirm Stripe Payment Schema
-export const confirmStripePaymentSchema = z.object({
-  paymentIntentId: z.string().min(1, 'Payment intent ID is required'),
-  status: z.enum(['succeeded', 'failed'], {
-    errorMap: () => ({ message: 'Status must be succeeded or failed' }),
-  }),
-});
-
 // Get Payment Schema
 export const getPaymentSchema = z.object({
   payment_id: z.string().uuid('Invalid payment ID format'),
@@ -148,10 +134,8 @@ export const getPaymentSessionSchema = z.object({
 export type PayOrderWithCashInput = z.infer<typeof payOrderWithCashSchema>;
 export type PayOrderWithTransferInput = z.infer<typeof payOrderWithTransferSchema>;
 export type PayOrderWithCardPhysicalInput = z.infer<typeof payOrderWithCardPhysicalSchema>;
-export type PayOrderWithCardStripeInput = z.infer<typeof payOrderWithCardStripeSchema>;
 export type PayOrderWithSplitPaymentInput = z.infer<typeof payOrderWithSplitPaymentSchema>;
 export type PayOrderWithQRMercadoPagoInput = z.infer<typeof payOrderWithQRMercadoPagoSchema>;
-export type ConfirmStripePaymentInput = z.infer<typeof confirmStripePaymentSchema>;
 export type GetQRPaymentStatusInput = z.infer<typeof getQRPaymentStatusSchema>;
 export type GetPaymentInput = z.infer<typeof getPaymentSchema>;
 export type ListPaymentsInput = z.infer<typeof listPaymentsSchema>;

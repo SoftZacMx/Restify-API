@@ -5,7 +5,6 @@ import { PaymentSessionRepository } from '../../database/repositories/payment-se
 import { IPaymentSessionRepository } from '../../../domain/interfaces/payment-session-repository.interface';
 import { PaymentDifferentiationRepository } from '../../database/repositories/payment-differentiation.repository';
 import { IPaymentDifferentiationRepository } from '../../../domain/interfaces/payment-differentiation-repository.interface';
-import { StripeService } from '../../payment-gateways/stripe.service';
 import { StripeSubscriptionService } from '../../payment-gateways/stripe-subscription.service';
 import { MercadoPagoService } from '../../payment-gateways/mercado-pago.service';
 import { PayOrderWithQRMercadoPagoUseCase } from '../../../application/use-cases/payments/pay-order-with-qr-mercado-pago.use-case';
@@ -26,7 +25,6 @@ container.register<IPaymentDifferentiationRepository>('IPaymentDifferentiationRe
   useFactory: () => new PaymentDifferentiationRepository(prismaClient),
 });
 
-container.registerSingleton(StripeService);
 container.registerSingleton(StripeSubscriptionService);
 container.registerSingleton(MercadoPagoService);
 container.register('MercadoPagoService', { useFactory: () => container.resolve(MercadoPagoService) });

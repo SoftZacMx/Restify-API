@@ -2,10 +2,11 @@ import { inject, injectable } from 'tsyringe';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { IPaymentRepository } from '../../../domain/interfaces/payment-repository.interface';
 import { IPaymentSessionRepository } from '../../../domain/interfaces/payment-session-repository.interface';
-import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
 import { PaymentStatus, PaymentMethod, PaymentGateway } from '@prisma/client';
 import { AppError } from '../../../../shared/errors';
 import { MercadoPagoService } from '../../../infrastructure/payment-gateways/mercado-pago.service';
+import { PaymentConfigService } from '../../services/payment-config.service';
+import { TenantResolverService } from '../../services/tenant-resolver.service';
 import { runWithTenant, withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 import { buildNotificationUrl } from './pay-order-with-qr-mercado-pago.use-case';
 
@@ -26,8 +27,9 @@ export class PayPublicOrderUseCase {
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('IPaymentRepository') private readonly paymentRepository: IPaymentRepository,
     @inject('IPaymentSessionRepository') private readonly paymentSessionRepository: IPaymentSessionRepository,
-    @inject('IBranchRepository') private readonly branchRepository: IBranchRepository,
-    @inject('MercadoPagoService') private readonly mercadoPagoService: MercadoPagoService
+    @inject('MercadoPagoService') private readonly mercadoPagoService: MercadoPagoService,
+    @inject(PaymentConfigService) private readonly paymentConfigService: PaymentConfigService,
+    @inject(TenantResolverService) private readonly tenantResolver: TenantResolverService
   ) {}
 
   async execute(input: PayPublicOrderInput): Promise<PayPublicOrderResult> {
@@ -43,22 +45,28 @@ export class PayPublicOrderUseCase {
       throw new AppError('VALIDATION_ERROR', 'This endpoint is only for public orders');
     }
 
-    // Establecer tenant context a partir de la orden para las operaciones restantes
-    if (order.branchId) {
-      const branch = await withoutTenant(() => this.branchRepository.findById(order.branchId!));
-      if (branch) {
-        return runWithTenant(
-          { organizationId: branch.organizationId, branchId: branch.id },
-          () => this.processPayment(order)
-        );
-      }
+    // Sin sucursal no hay cuenta de MP a la cual dirigir el cobro: nunca cobrar sin tenant.
+    if (!order.branchId) {
+      throw new AppError('ORDER_NOT_FOUND');
     }
 
-    // Fallback legacy (sin branchId)
-    return this.processPayment(order);
+    // Establecer tenant context a partir de la orden (no de input del cliente).
+    // Igual que las demás rutas públicas, exige branch activo y organización ACTIVE.
+    const resolution = await this.tenantResolver.resolve(order.branchId, { requireActiveBranch: true });
+    if (!resolution.ok) {
+      throw new AppError(
+        resolution.reason === 'ORGANIZATION_INACTIVE' ? 'ORGANIZATION_INACTIVE' : 'BRANCH_NOT_FOUND'
+      );
+    }
+
+    return runWithTenant(resolution.tenant, () => this.processPayment(order));
   }
 
   private async processPayment(order: any): Promise<PayPublicOrderResult> {
+    // El comercio debe tener su propia cuenta de MP configurada: nunca cobrar con la del
+    // .env (mandaría el dinero a la cuenta equivocada). Falla antes de crear el pago.
+    await this.paymentConfigService.getForCharging();
+
     // Si ya existe un pago pendiente de MP, reutilizar
     const existingPayments = await this.paymentRepository.findAll({
       orderIds: [order.id],

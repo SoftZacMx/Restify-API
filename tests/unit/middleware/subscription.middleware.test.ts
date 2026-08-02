@@ -125,4 +125,53 @@ describe('SubscriptionMiddleware', () => {
     expect(mockNext).not.toHaveBeenCalled();
     expect(mockRes.status).toHaveBeenCalledWith(403);
   });
+
+  describe('validatePublicSubscription (rutas públicas, org desde tenant context)', () => {
+    const { runWithTenant } = require('../../../src/core/infrastructure/tenant/tenant-context');
+
+    it('llama next() cuando la suscripción del comercio está activa', async () => {
+      mockFindFirst.mockResolvedValue({
+        status: 'ACTIVE',
+        currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      });
+
+      await runWithTenant({ organizationId: 'org-1', branchId: 'branch-1' }, () =>
+        SubscriptionMiddleware.validatePublicSubscription(mockReq, mockRes, mockNext)
+      );
+
+      expect(mockFindFirst).toHaveBeenCalledWith({ where: { organizationId: 'org-1' } });
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockRes.status).not.toHaveBeenCalled();
+    });
+
+    it('bloquea con 403 cuando la suscripción del comercio venció', async () => {
+      mockFindFirst.mockResolvedValue({
+        status: 'CANCELED',
+        currentPeriodEnd: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      });
+
+      await runWithTenant({ organizationId: 'org-1', branchId: 'branch-1' }, () =>
+        SubscriptionMiddleware.validatePublicSubscription(mockReq, mockRes, mockNext)
+      );
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(403);
+    });
+
+    it('falla cerrado (503) si no hay tenant context resuelto', async () => {
+      await SubscriptionMiddleware.validatePublicSubscription(mockReq, mockRes, mockNext);
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(503);
+    });
+
+    it('deja pasar sin consultar cuando BILLING_ENABLED=false', async () => {
+      process.env.BILLING_ENABLED = 'false';
+
+      await SubscriptionMiddleware.validatePublicSubscription(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockFindFirst).not.toHaveBeenCalled();
+    });
+  });
 });

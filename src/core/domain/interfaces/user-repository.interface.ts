@@ -13,6 +13,7 @@ export interface IUserRepository {
   markEmailVerified(id: string): Promise<User>;
   /** Guarda la nueva contraseña (ya hasheada) y baja el flag `mustChangePassword`. */
   changePasswordAndClearFlag(id: string, hashedPassword: string): Promise<User>;
+  changePasswordAndRevokeSessions(id: string, hashedPassword: string): Promise<User>;
 }
 
 export interface UserFilters {

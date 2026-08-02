@@ -27,7 +27,7 @@ export class S3FileStorage implements IFileStorage {
     this.publicBaseUrl = process.env.S3_PUBLIC_BASE_URL || undefined;
     // Endpoint/credenciales propios de S3 (MinIO en dev) con fallback a los AWS
     // genéricos. En dev S3 vive en MinIO (:9000), separado de LocalStack (:4566)
-    // que sigue sirviendo SQS/SES/DynamoDB. En prod basta con dejar S3_* sin setear
+    // que sigue sirviendo SES/DynamoDB. En prod basta con dejar S3_* sin setear
     // y reusa los AWS_* (o S3 real con endpoint undefined).
     this.endpoint = process.env.S3_ENDPOINT_URL || process.env.AWS_ENDPOINT_URL || undefined;
 

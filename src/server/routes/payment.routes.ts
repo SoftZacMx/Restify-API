@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import {
-  payOrderWithCardStripeController,
-  confirmStripePaymentController,
   getPaymentController,
   listPaymentsController,
   getPaymentSessionController,
@@ -10,10 +8,9 @@ import {
   mercadoPagoWebhookController,
 } from '../../controllers/payments';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
+import { mpWebhookRateLimiter } from '../middleware/rate-limit.middleware';
 import {
-  payOrderWithCardStripeSchema,
   payOrderWithQRMercadoPagoSchema,
-  confirmStripePaymentSchema,
   getPaymentSchema,
   listPaymentsSchema,
   getPaymentSessionSchema,
@@ -22,22 +19,16 @@ import {
 
 // Router separado para webhooks (montado fuera del bloque auth+tenant en index.ts)
 const webhookRouter = Router();
-webhookRouter.post('/mercado-pago', mercadoPagoWebhookController);
+webhookRouter.post('/mercado-pago', mpWebhookRateLimiter, mercadoPagoWebhookController);
 export { webhookRouter as paymentWebhookRoutes };
 
 const router = Router();
-
-/** POST /api/payments/card-stripe */
-router.post('/card-stripe', zodValidator({ schema: payOrderWithCardStripeSchema, source: 'body' }), payOrderWithCardStripeController);
 
 /** POST /api/payments/qr-mercado-pago */
 router.post('/qr-mercado-pago', zodValidator({ schema: payOrderWithQRMercadoPagoSchema, source: 'body' }), payOrderWithQRMercadoPagoController);
 
 /** GET /api/payments/qr-mercado-pago/:orderId */
 router.get('/qr-mercado-pago/:orderId', zodValidator({ schema: getQRPaymentStatusSchema, source: 'params' }), getQRPaymentStatusController);
-
-/** POST /api/payments/stripe/confirm */
-router.post('/stripe/confirm', zodValidator({ schema: confirmStripePaymentSchema, source: 'body' }), confirmStripePaymentController);
 
 /** GET /api/payments */
 router.get('/', zodValidator({ schema: listPaymentsSchema, source: 'query' }), listPaymentsController);

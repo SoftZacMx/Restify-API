@@ -274,12 +274,12 @@ describe('WebSocketConnectionManager', () => {
       const socket6 = { id: 'socket-6', connected: true, emit: jest.fn(), on: jest.fn() } as any;
 
       // Register connections with different roles
-      connectionManager.registerConnection(socket1, 'conn-1', { userId: 'user-1', userRole: UserRole.ADMIN });
-      connectionManager.registerConnection(socket2, 'conn-2', { userId: 'user-2', userRole: UserRole.WAITER });
-      connectionManager.registerConnection(socket3, 'conn-3', { userId: 'user-3', userRole: UserRole.MANAGER });
-      connectionManager.registerConnection(socket4, 'conn-4', { userId: 'user-4', userRole: UserRole.CHEF });
-      connectionManager.registerConnection(socket5, 'conn-5', { userId: 'user-5', userRole: UserRole.OWNER });
-      connectionManager.registerConnection(socket6, 'conn-6', { userId: 'user-6' }); // No role (client)
+      connectionManager.registerConnection(socket1, 'conn-1', { userId: 'user-1', userRole: UserRole.ADMIN, branchId: 'branch-1' });
+      connectionManager.registerConnection(socket2, 'conn-2', { userId: 'user-2', userRole: UserRole.WAITER, branchId: 'branch-1' });
+      connectionManager.registerConnection(socket3, 'conn-3', { userId: 'user-3', userRole: UserRole.MANAGER, branchId: 'branch-1' });
+      connectionManager.registerConnection(socket4, 'conn-4', { userId: 'user-4', userRole: UserRole.CHEF, branchId: 'branch-1' });
+      connectionManager.registerConnection(socket5, 'conn-5', { userId: 'user-5', userRole: UserRole.OWNER, branchId: 'branch-1' });
+      connectionManager.registerConnection(socket6, 'conn-6', { userId: 'user-6', branchId: 'branch-1' }); // No role (client)
 
       const message: WebSocketMessage = {
         type: WebSocketEventType.ORDER_CREATED,
@@ -287,7 +287,7 @@ describe('WebSocketConnectionManager', () => {
         timestamp: new Date(),
       };
 
-      const result = connectionManager.sendToStaffRoles(message);
+      const result = connectionManager.sendToStaffRoles(message, { branchId: 'branch-1' });
 
       expect(result).toBe(5); // Should notify 5 staff connections (incl. OWNER)
       expect(socket1.emit).toHaveBeenCalledWith(WebSocketEventType.ORDER_CREATED, message);
@@ -325,8 +325,8 @@ describe('WebSocketConnectionManager', () => {
       const socketOrg1 = { id: 'socket-o1', connected: true, emit: jest.fn(), on: jest.fn() } as any;
       const socketOrg2 = { id: 'socket-o2', connected: true, emit: jest.fn(), on: jest.fn() } as any;
 
-      connectionManager.registerConnection(socketOrg1, 'conn-o1', { userId: 'user-o1', userRole: UserRole.OWNER, organizationId: 'org-1' });
-      connectionManager.registerConnection(socketOrg2, 'conn-o2', { userId: 'user-o2', userRole: UserRole.OWNER, organizationId: 'org-2' });
+      connectionManager.registerConnection(socketOrg1, 'conn-o1', { userId: 'user-o1', userRole: UserRole.OWNER, organizationId: 'org-1', branchId: 'branch-1' });
+      connectionManager.registerConnection(socketOrg2, 'conn-o2', { userId: 'user-o2', userRole: UserRole.OWNER, organizationId: 'org-2', branchId: 'branch-1' });
 
       const message: WebSocketMessage = {
         type: WebSocketEventType.ORDER_NEW_ONLINE,
@@ -334,7 +334,7 @@ describe('WebSocketConnectionManager', () => {
         timestamp: new Date(),
       };
 
-      const result = connectionManager.sendToStaffRoles(message, { organizationId: 'org-1' });
+      const result = connectionManager.sendToStaffRoles(message, { branchId: 'branch-1', organizationId: 'org-1' });
 
       expect(result).toBe(1);
       expect(socketOrg1.emit).toHaveBeenCalled();
@@ -345,7 +345,7 @@ describe('WebSocketConnectionManager', () => {
       const socket1 = { id: 'socket-1', connected: true, emit: jest.fn(), on: jest.fn() } as any;
       
       // Register connection without staff role
-      connectionManager.registerConnection(socket1, 'conn-1', { userId: 'user-1' });
+      connectionManager.registerConnection(socket1, 'conn-1', { userId: 'user-1', branchId: 'branch-1' });
 
       const message: WebSocketMessage = {
         type: WebSocketEventType.ORDER_CREATED,
@@ -353,7 +353,7 @@ describe('WebSocketConnectionManager', () => {
         timestamp: new Date(),
       };
 
-      const result = connectionManager.sendToStaffRoles(message);
+      const result = connectionManager.sendToStaffRoles(message, { branchId: 'branch-1' });
       expect(result).toBe(0);
       expect(socket1.emit).not.toHaveBeenCalled();
     });
@@ -362,8 +362,8 @@ describe('WebSocketConnectionManager', () => {
       const socket1 = { id: 'socket-1', connected: true, emit: jest.fn(), on: jest.fn() } as any;
       const socket2 = { id: 'socket-2', connected: false, emit: jest.fn(), on: jest.fn() } as any; // Disconnected
 
-      connectionManager.registerConnection(socket1, 'conn-1', { userId: 'user-1', userRole: UserRole.WAITER });
-      connectionManager.registerConnection(socket2, 'conn-2', { userId: 'user-2', userRole: UserRole.ADMIN });
+      connectionManager.registerConnection(socket1, 'conn-1', { userId: 'user-1', userRole: UserRole.WAITER, branchId: 'branch-1' });
+      connectionManager.registerConnection(socket2, 'conn-2', { userId: 'user-2', userRole: UserRole.ADMIN, branchId: 'branch-1' });
 
       const message: WebSocketMessage = {
         type: WebSocketEventType.ORDER_UPDATED,
@@ -371,7 +371,7 @@ describe('WebSocketConnectionManager', () => {
         timestamp: new Date(),
       };
 
-      const result = connectionManager.sendToStaffRoles(message);
+      const result = connectionManager.sendToStaffRoles(message, { branchId: 'branch-1' });
 
       expect(result).toBe(1); // Only socket1 should receive the message
       expect(socket1.emit).toHaveBeenCalled();

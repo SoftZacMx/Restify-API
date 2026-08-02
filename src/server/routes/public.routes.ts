@@ -12,24 +12,31 @@ import { createPublicOrderSchema, payPublicOrderParamsSchema, getPublicOrderStat
 import { publicBranchSlugParamSchema } from '../../core/application/dto/branch.dto';
 import { publicMenuRateLimiter, publicOrderRateLimiter, publicStatusRateLimiter } from '../middleware/rate-limit.middleware';
 import { PublicTenantMiddleware } from '../middleware/public-tenant.middleware';
+import { SubscriptionMiddleware } from '../middleware/subscription.middleware';
 
 const router = Router();
+
+// Suscripción del comercio: se valida tras resolver el tenant (la org sale del branch).
+// Solo aplica a las rutas que generan operación nueva (menú/pedidos). Las rutas de
+// seguimiento y pago de pedidos existentes quedan fuera: un cliente que ya pidió debe
+// poder rastrear/pagar aunque la suscripción del comercio venza después.
+const requireMerchantSubscription = SubscriptionMiddleware.validatePublicSubscription;
 
 /** GET /api/public/branch/:slug — Resuelve un slug público a los datos mínimos de la sucursal (incluido branchId) */
 router.get('/branch/:slug', publicMenuRateLimiter, zodValidator({ schema: publicBranchSlugParamSchema, source: 'params' }), resolvePublicBranchController);
 
 /** GET /api/public/menu?branchId=xxx — Menú público (items activos agrupados por categoría) */
-router.get('/menu', publicMenuRateLimiter, PublicTenantMiddleware.fromBranch, listPublicMenuController);
+router.get('/menu', publicMenuRateLimiter, PublicTenantMiddleware.fromBranch, requireMerchantSubscription, listPublicMenuController);
 
 /** POST /api/public/orders — Crear pedido público (sin auth, branchId en body). Flujo legacy. */
-router.post('/orders', publicOrderRateLimiter, zodValidator({ schema: createPublicOrderSchema, source: 'body' }), PublicTenantMiddleware.fromBranch, createPublicOrderController);
+router.post('/orders', publicOrderRateLimiter, zodValidator({ schema: createPublicOrderSchema, source: 'body' }), PublicTenantMiddleware.fromBranch, requireMerchantSubscription, createPublicOrderController);
 
 /**
  * POST /api/public/checkout — Inicia el pago SIN crear la orden todavía (Opción A).
  * Guarda un borrador y devuelve el initPoint de Mercado Pago + trackingToken. La orden
  * real se materializa al confirmar el pago (webhook). Reemplaza al par crear-orden + pagar.
  */
-router.post('/checkout', publicOrderRateLimiter, zodValidator({ schema: createPublicOrderSchema, source: 'body' }), PublicTenantMiddleware.fromBranch, startPublicCheckoutController);
+router.post('/checkout', publicOrderRateLimiter, zodValidator({ schema: createPublicOrderSchema, source: 'body' }), PublicTenantMiddleware.fromBranch, requireMerchantSubscription, startPublicCheckoutController);
 
 /** POST /api/public/orders/:orderId/pay — Pagar pedido público con MP */
 router.post('/orders/:orderId/pay', publicOrderRateLimiter, zodValidator({ schema: payPublicOrderParamsSchema, source: 'params' }), payPublicOrderController);

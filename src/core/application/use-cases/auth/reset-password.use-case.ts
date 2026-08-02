@@ -9,9 +9,10 @@ import { AppError } from '../../../../shared/errors';
  * Flujo forgot-password (paso 2) — confirma el restablecimiento de contraseña.
  *
  * Valida el token (firma + expiry + `purpose === 'password_reset'`), hashea la
- * nueva contraseña y la persiste. `changePasswordAndClearFlag` además baja el flag
- * `mustChangePassword`. El token es de vida corta (5 min); no se persiste ni marca
- * como consumido (stateless), igual que el flujo de verificación de email.
+ * nueva contraseña y la persiste revocando TODAS las sesiones activas (el escenario
+ * típico de un reset es una cuenta posiblemente comprometida). El token es de vida
+ * corta (5 min); no se persiste ni marca como consumido (stateless), igual que el
+ * flujo de verificación de email.
  */
 @injectable()
 export class ResetPasswordUseCase {
@@ -35,6 +36,6 @@ export class ResetPasswordUseCase {
     }
 
     const hashedPassword = await BcryptUtil.hash(input.password);
-    await this.userRepository.changePasswordAndClearFlag(user.id, hashedPassword);
+    await this.userRepository.changePasswordAndRevokeSessions(user.id, hashedPassword);
   }
 }

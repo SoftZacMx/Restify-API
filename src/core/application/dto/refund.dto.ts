@@ -21,18 +21,8 @@ export const listRefundsSchema = z.object({
   dateTo: z.string().optional(), // ISO date string
 });
 
-// Process Stripe Refund Schema
-export const processStripeRefundSchema = z.object({
-  refundId: z.string().uuid('Invalid refund ID format'),
-  stripeRefundId: z.string().min(1, 'Stripe refund ID is required'),
-  status: z.enum(['succeeded', 'failed'], {
-    errorMap: () => ({ message: 'Status must be succeeded or failed' }),
-  }),
-});
-
 // Type exports
 export type CreateRefundInput = z.infer<typeof createRefundSchema>;
 export type GetRefundInput = z.infer<typeof getRefundSchema>;
 export type ListRefundsInput = z.infer<typeof listRefundsSchema>;
-export type ProcessStripeRefundInput = z.infer<typeof processStripeRefundSchema>;
 

@@ -3,6 +3,7 @@ import { IPaymentRepository } from '../../../domain/interfaces/payment-repositor
 import { PaymentStatus, PaymentGateway } from '@prisma/client';
 import { AppError } from '../../../../shared/errors';
 import { MercadoPagoService } from '../../../infrastructure/payment-gateways/mercado-pago.service';
+import { logger } from '../../../../shared/utils/logger';
 
 export interface GetQRPaymentStatusInput {
   orderId: string;
@@ -43,6 +44,24 @@ export class GetQRPaymentStatusUseCase {
         const mpStatus = await this.mercadoPagoService.getPayment(mpPayment.gatewayTransactionId);
 
         if (mpStatus.status === 'approved') {
+          // Misma defensa que el webhook: con la firma desactivada, el monto cobrado
+          // debe coincidir con el esperado ANTES de aprobar. Si no, queda PROCESSING
+          // para revisión manual; nunca se marca exitoso un pago por monto distinto.
+          if (Math.abs(mpStatus.transactionAmount - mpPayment.amount) > 0.01) {
+            logger.warn(
+              { paymentId: mpPayment.id, orderId: input.orderId, paid: mpStatus.transactionAmount, expected: mpPayment.amount },
+              '[GetQRPaymentStatus] monto pagado no coincide con el esperado — no se aprueba'
+            );
+            await this.paymentRepository.update(mpPayment.id, {
+              status: PaymentStatus.PROCESSING,
+            });
+            return {
+              paymentId: mpPayment.id,
+              status: PaymentStatus.PROCESSING,
+              gatewayTransactionId: mpPayment.gatewayTransactionId,
+            };
+          }
+
           await this.paymentRepository.update(mpPayment.id, {
             status: PaymentStatus.SUCCEEDED,
           });

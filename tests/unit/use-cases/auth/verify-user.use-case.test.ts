@@ -22,7 +22,7 @@ describe('VerifyUserUseCase', () => {
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
 
-      changePasswordAndClearFlag: jest.fn(),      findAll: jest.fn(),
+      changePasswordAndClearFlag: jest.fn(),      changePasswordAndRevokeSessions: jest.fn(),      findAll: jest.fn(),
     };
 
     verifyUserUseCase = new VerifyUserUseCase(mockUserRepository);

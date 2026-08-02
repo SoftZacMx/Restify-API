@@ -44,7 +44,7 @@ describe('CreateMenuItemUseCase', () => {
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
 
-      changePasswordAndClearFlag: jest.fn(),    };
+      changePasswordAndClearFlag: jest.fn(),      changePasswordAndRevokeSessions: jest.fn(),    };
 
     createMenuItemUseCase = new CreateMenuItemUseCase(
       mockMenuItemRepository,

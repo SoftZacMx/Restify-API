@@ -38,7 +38,7 @@ describe('ReactivateUserUseCase', () => {
       reactivate: jest.fn(),
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
-      changePasswordAndClearFlag: jest.fn(),
+      changePasswordAndClearFlag: jest.fn(),      changePasswordAndRevokeSessions: jest.fn(),
       findAll: jest.fn(),
     } as unknown as jest.Mocked<IUserRepository>;
 

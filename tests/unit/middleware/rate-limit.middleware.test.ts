@@ -10,12 +10,13 @@ import {
   publicMenuRateLimiter,
   publicOrderRateLimiter,
   publicStatusRateLimiter,
+  mpWebhookRateLimiter,
 } from '../../../src/server/middleware/rate-limit.middleware';
 
 const rateLimit = require('express-rate-limit');
 
 describe('rate-limit middleware', () => {
-  it('configura los 6 rate limiters con windowMs y max esperados', () => {
+  it('configura los 7 rate limiters con windowMs y max esperados', () => {
     const configs = [
       { limiter: authRateLimiter, windowMs: 15 * 60 * 1000, max: 5 },
       { limiter: apiRateLimiter, windowMs: 1 * 60 * 1000, max: 100 },
@@ -23,6 +24,7 @@ describe('rate-limit middleware', () => {
       { limiter: publicMenuRateLimiter, windowMs: 1 * 60 * 1000, max: 30 },
       { limiter: publicOrderRateLimiter, windowMs: 1 * 60 * 1000, max: 5 },
       { limiter: publicStatusRateLimiter, windowMs: 1 * 60 * 1000, max: 60 },
+      { limiter: mpWebhookRateLimiter, windowMs: 1 * 60 * 1000, max: 120 },
     ];
 
     for (const { limiter, windowMs, max } of configs) {
@@ -39,7 +41,7 @@ describe('rate-limit middleware', () => {
       );
     }
 
-    expect(rateLimit).toHaveBeenCalledTimes(6);
+    expect(rateLimit).toHaveBeenCalledTimes(7);
   });
 
   it('auth limiter no cuenta intentos exitosos (solo fallidos)', () => {

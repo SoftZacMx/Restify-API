@@ -100,6 +100,27 @@ describe('GetQRPaymentStatusUseCase', () => {
       expect(result.status).toBe(PaymentStatus.SUCCEEDED);
     });
 
+    it('NO aprueba cuando el monto pagado no coincide con el esperado: queda PROCESSING', async () => {
+      mockPaymentRepository.findAll.mockResolvedValue([buildPayment(PaymentStatus.PENDING)]);
+      mockMercadoPagoService.getPayment.mockResolvedValue({
+        id: 99999, status: 'approved', statusDetail: 'accredited',
+        externalReference: orderId, transactionAmount: 10.0, currencyId: 'MXN',
+        paymentMethodId: 'visa', paymentTypeId: 'credit_card', dateApproved: '2026-03-27T12:00:00.000Z',
+        feeDetails: [],
+      });
+      mockPaymentRepository.update.mockResolvedValue(buildPayment(PaymentStatus.PROCESSING));
+
+      const result = await useCase.execute({ orderId });
+
+      expect(mockPaymentRepository.update).toHaveBeenCalledWith(paymentId, {
+        status: PaymentStatus.PROCESSING,
+      });
+      expect(mockPaymentRepository.update).not.toHaveBeenCalledWith(paymentId, {
+        status: PaymentStatus.SUCCEEDED,
+      });
+      expect(result.status).toBe(PaymentStatus.PROCESSING);
+    });
+
     it('mantiene el estado local cuando MP no reporta approved (pending → PROCESSING no aplica)', async () => {
       mockPaymentRepository.findAll.mockResolvedValue([buildPayment(PaymentStatus.PENDING)]);
       mockMercadoPagoService.getPayment.mockResolvedValue({

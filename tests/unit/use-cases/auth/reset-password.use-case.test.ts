@@ -45,7 +45,7 @@ describe('ResetPasswordUseCase', () => {
       reactivate: jest.fn(),
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
-      changePasswordAndClearFlag: jest.fn(),
+      changePasswordAndRevokeSessions: jest.fn(),
     } as unknown as jest.Mocked<IUserRepository>;
 
     useCase = new ResetPasswordUseCase(mockUserRepository);
@@ -61,8 +61,8 @@ describe('ResetPasswordUseCase', () => {
 
     await useCase.execute({ token, password: VALID_PASSWORD });
 
-    expect(mockUserRepository.changePasswordAndClearFlag).toHaveBeenCalledTimes(1);
-    const [id, hashed] = mockUserRepository.changePasswordAndClearFlag.mock.calls[0];
+    expect(mockUserRepository.changePasswordAndRevokeSessions).toHaveBeenCalledTimes(1);
+    const [id, hashed] = mockUserRepository.changePasswordAndRevokeSessions.mock.calls[0];
     expect(id).toBe('user-1');
     // La contraseña se guarda hasheada, nunca en claro.
     expect(hashed).not.toBe(VALID_PASSWORD);
@@ -72,7 +72,7 @@ describe('ResetPasswordUseCase', () => {
     await expect(
       useCase.execute({ token: 'garbage', password: VALID_PASSWORD })
     ).rejects.toThrow(AppError);
-    expect(mockUserRepository.changePasswordAndClearFlag).not.toHaveBeenCalled();
+    expect(mockUserRepository.changePasswordAndRevokeSessions).not.toHaveBeenCalled();
   });
 
   it('rejects a token with the wrong purpose (email verification token)', async () => {
@@ -81,7 +81,7 @@ describe('ResetPasswordUseCase', () => {
     await expect(
       useCase.execute({ token: wrongToken, password: VALID_PASSWORD })
     ).rejects.toThrow(AppError);
-    expect(mockUserRepository.changePasswordAndClearFlag).not.toHaveBeenCalled();
+    expect(mockUserRepository.changePasswordAndRevokeSessions).not.toHaveBeenCalled();
   });
 
   it('rejects when the user no longer exists', async () => {
@@ -89,7 +89,7 @@ describe('ResetPasswordUseCase', () => {
     mockUserRepository.findById.mockResolvedValue(null);
 
     await expect(useCase.execute({ token, password: VALID_PASSWORD })).rejects.toThrow(AppError);
-    expect(mockUserRepository.changePasswordAndClearFlag).not.toHaveBeenCalled();
+    expect(mockUserRepository.changePasswordAndRevokeSessions).not.toHaveBeenCalled();
   });
 
   it('rejects when the user is inactive', async () => {
@@ -97,6 +97,6 @@ describe('ResetPasswordUseCase', () => {
     mockUserRepository.findById.mockResolvedValue(buildUser({ status: false }));
 
     await expect(useCase.execute({ token, password: VALID_PASSWORD })).rejects.toThrow(AppError);
-    expect(mockUserRepository.changePasswordAndClearFlag).not.toHaveBeenCalled();
+    expect(mockUserRepository.changePasswordAndRevokeSessions).not.toHaveBeenCalled();
   });
 });

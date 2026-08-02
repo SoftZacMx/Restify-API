@@ -160,7 +160,7 @@ describe('mercadoPagoWebhookController', () => {
         payment: { id: 'pay-1', orderId: 'order-1', status: 'SUCCEEDED', gatewayTransactionId: '123' },
         order: { id: 'order-1', status: true, paymentMethod: null },
       });
-      const orderRepo = { findById: jest.fn().mockResolvedValue({ id: 'order-1', origin: 'online-pickup', customerName: 'Ana', total: 90, createdAt: new Date(), branchId: null }) };
+      const orderRepo = { findById: jest.fn().mockResolvedValue({ id: 'order-1', origin: 'online-pickup', customerName: 'Ana', total: 90, createdAt: new Date(), branchId: 'branch-2' }) };
       const wsManager = { sendToStaffRoles: jest.fn() };
       mockResolve
         .mockReturnValueOnce({ execute: confirmExecute })
@@ -175,7 +175,31 @@ describe('mercadoPagoWebhookController', () => {
 
       const message = wsManager.sendToStaffRoles.mock.calls[0][0];
       expect(message.data.orderType).toBe('PICKUP');
-      expect(wsManager.sendToStaffRoles).toHaveBeenCalledWith(expect.anything(), undefined);
+      expect(wsManager.sendToStaffRoles).toHaveBeenCalledWith(expect.anything(), { branchId: 'branch-2' });
+    });
+
+    it('NO notifica cuando la orden online no tiene branchId (nunca broadcast global)', async () => {
+      const confirmExecute = jest.fn().mockResolvedValue({
+        payment: { id: 'pay-1', orderId: 'order-1', status: 'SUCCEEDED', gatewayTransactionId: '123' },
+        order: { id: 'order-1', status: true, paymentMethod: null },
+      });
+      const orderRepo = { findById: jest.fn().mockResolvedValue({ id: 'order-1', origin: 'online-pickup', customerName: 'Ana', total: 90, createdAt: new Date(), branchId: null }) };
+      const wsManager = { sendToStaffRoles: jest.fn() };
+      mockResolve
+        .mockReturnValueOnce({ execute: confirmExecute })
+        .mockReturnValueOnce(orderRepo)
+        .mockReturnValueOnce(wsManager);
+      mockReq = {
+        body: { type: 'payment', action: 'payment.created', data: { id: 123 } },
+        query: {},
+      };
+
+      await mercadoPagoWebhookController(mockReq, mockRes, mockNext);
+
+      expect(wsManager.sendToStaffRoles).not.toHaveBeenCalled();
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, data: { received: true } })
+      );
     });
 
     it('no notifica por WebSocket cuando la orden no es online', async () => {

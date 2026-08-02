@@ -27,7 +27,7 @@ describe('ListUsersUseCase', () => {
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
 
-      changePasswordAndClearFlag: jest.fn(),    };
+      changePasswordAndClearFlag: jest.fn(),      changePasswordAndRevokeSessions: jest.fn(),    };
 
     listUsersUseCase = new ListUsersUseCase(mockUserRepository);
   });

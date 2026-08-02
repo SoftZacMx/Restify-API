@@ -42,7 +42,7 @@ describe('ResendVerificationUseCase', () => {
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
 
-      changePasswordAndClearFlag: jest.fn(),    } as unknown as jest.Mocked<IUserRepository>;
+      changePasswordAndClearFlag: jest.fn(),      changePasswordAndRevokeSessions: jest.fn(),    } as unknown as jest.Mocked<IUserRepository>;
 
     mockSendVerificationEmail = {
       execute: jest.fn(),

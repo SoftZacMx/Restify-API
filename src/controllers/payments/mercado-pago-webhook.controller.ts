@@ -26,23 +26,26 @@ export const mercadoPagoWebhookController = async (req: Request, res: Response, 
           const order = await orderRepository.findById(result.order.id);
 
           if (order && (order.origin === 'online-delivery' || order.origin === 'online-pickup')) {
-            const connectionManager = container.resolve<IWebSocketConnectionManager>('IWebSocketConnectionManager');
-            const message: WebSocketMessage = {
-              type: WebSocketEventType.ORDER_NEW_ONLINE,
-              data: {
-                orderId: order.id,
-                customerName: order.customerName,
-                orderType: order.origin === 'online-delivery' ? 'DELIVERY' : 'PICKUP',
-                total: order.total,
-                createdAt: order.createdAt,
-              },
-              timestamp: new Date(),
-            };
-            // Notificar solo al staff de la sucursal del pedido (aísla otras sucursales/tenants).
-            connectionManager.sendToStaffRoles(
-              message,
-              order.branchId ? { branchId: order.branchId } : undefined
-            );
+            if (order.branchId) {
+              const connectionManager = container.resolve<IWebSocketConnectionManager>('IWebSocketConnectionManager');
+              const message: WebSocketMessage = {
+                type: WebSocketEventType.ORDER_NEW_ONLINE,
+                data: {
+                  orderId: order.id,
+                  customerName: order.customerName,
+                  orderType: order.origin === 'online-delivery' ? 'DELIVERY' : 'PICKUP',
+                  total: order.total,
+                  createdAt: order.createdAt,
+                },
+                timestamp: new Date(),
+              };
+              // Notificar solo al staff de la sucursal del pedido (aísla otras sucursales/tenants).
+              connectionManager.sendToStaffRoles(message, { branchId: order.branchId });
+            } else {
+              // Orden sin sucursal (legacy): no hay staff identificable sin riesgo de
+              // notificar a otros tenants. Se omite la notificación, nunca broadcast global.
+              logger.warn({ orderId: order.id }, 'Orden online pagada sin branchId — notificación omitida');
+            }
           }
         } catch (err) {
           logger.error({ err }, 'Failed to send online order WebSocket notification');

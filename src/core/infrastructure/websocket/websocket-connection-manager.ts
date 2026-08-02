@@ -123,7 +123,7 @@ export class WebSocketConnectionManager implements IWebSocketConnectionManager {
    */
   sendToStaffRoles(
     message: WebSocketMessage,
-    scope?: { branchId?: string; organizationId?: string }
+    scope: { branchId: string; organizationId?: string }
   ): number {
     const staffRoles: UserRole[] = [
       UserRole.OWNER,
@@ -136,9 +136,9 @@ export class WebSocketConnectionManager implements IWebSocketConnectionManager {
     const staffConnections = this.getAllConnections().filter((conn) => {
       if (!conn.userRole || !staffRoles.includes(conn.userRole)) return false;
       // Aislar por organización: nunca notificar staff de otro restaurante.
-      if (scope?.organizationId && conn.organizationId !== scope.organizationId) return false;
-      // Acotar a la sucursal del pedido cuando se especifica.
-      if (scope?.branchId && conn.branchId !== scope.branchId) return false;
+      if (scope.organizationId && conn.organizationId !== scope.organizationId) return false;
+      // Solo el staff de la sucursal del pedido. Conexiones sin branch no reciben.
+      if (conn.branchId !== scope.branchId) return false;
       return true;
     });
 

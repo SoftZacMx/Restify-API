@@ -1,5 +1,3 @@
-export { payOrderWithCardStripeController } from './pay-order-with-card-stripe.controller';
-export { confirmStripePaymentController } from './confirm-stripe-payment.controller';
 export { getPaymentController } from './get-payment.controller';
 export { listPaymentsController } from './list-payments.controller';
 export { getPaymentSessionController } from './get-payment-session.controller';

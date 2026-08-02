@@ -97,14 +97,13 @@ export interface IWebSocketConnectionManager {
    * Send message to all connections of staff users (OWNER, ADMIN, MANAGER, WAITER, CHEF)
    * Excludes client users.
    *
-   * `scope` acota los destinatarios al tenant correcto:
-   *  - `organizationId`: solo staff de esa organización (aísla restaurantes distintos).
-   *  - `branchId`: solo staff cuya sucursal activa coincide.
-   * Sin `scope` se mantiene el broadcast a todo el staff (comportamiento legacy).
+   * `scope.branchId` es obligatorio: toda notificación de staff pertenece a una sucursal
+   * y solo el staff de esa sucursal debe recibirla (nunca broadcast entre tenants).
+   * `organizationId` acota adicionalmente por organización.
    */
   sendToStaffRoles(
     message: WebSocketMessage,
-    scope?: { branchId?: string; organizationId?: string }
+    scope: { branchId: string; organizationId?: string }
   ): number;
 }
 

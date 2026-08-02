@@ -20,7 +20,7 @@ describe('DeleteUserUseCase', () => {
       markForPasswordReset: jest.fn(),
       markEmailVerified: jest.fn(),
 
-      changePasswordAndClearFlag: jest.fn(),    };
+      changePasswordAndClearFlag: jest.fn(),      changePasswordAndRevokeSessions: jest.fn(),    };
 
     deleteUserUseCase = new DeleteUserUseCase(mockUserRepository);
   });
