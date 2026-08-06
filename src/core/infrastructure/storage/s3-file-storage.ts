@@ -49,7 +49,12 @@ export class S3FileStorage implements IFileStorage {
    * Sube un archivo a S3. Si `S3_ENABLED` no es 'true', no sube nada y solo loggea
    * (no-op), devolviendo la key y una URL derivada para no romper los flujos.
    */
-  async upload(key: string, body: Buffer, contentType: string): Promise<UploadResult> {
+  async upload(
+    key: string,
+    body: Buffer,
+    contentType: string,
+    cacheControl?: string
+  ): Promise<UploadResult> {
     if (!this.enabled) {
       logger.info({ key, contentType }, '[S3] S3_ENABLED=false → archivo no subido (no-op)');
       return { key, url: this.buildUrl(key) };
@@ -61,6 +66,7 @@ export class S3FileStorage implements IFileStorage {
         Key: key,
         Body: body,
         ContentType: contentType,
+        CacheControl: cacheControl,
       });
 
       await this.client.send(command);

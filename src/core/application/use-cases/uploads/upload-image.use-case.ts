@@ -45,7 +45,24 @@ export class UploadImageUseCase {
 
     const key = this.buildKey(input.kind, input.mimeType);
 
-    return this.fileStorage.upload(key, input.buffer, input.mimeType);
+    return this.fileStorage.upload(
+      key,
+      input.buffer,
+      input.mimeType,
+      this.cacheControlFor(input.kind)
+    );
+  }
+
+  /** Los logos reusan su key al reemplazarse; las imágenes con UUID son inmutables. */
+  private cacheControlFor(kind: ImageKind): string {
+    switch (kind) {
+      case 'org_logo':
+      case 'branch_logo':
+        return 'no-cache';
+      case 'product_image':
+      case 'menu_item_image':
+        return 'public, max-age=31536000, immutable';
+    }
   }
 
   /**

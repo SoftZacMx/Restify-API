@@ -36,7 +36,12 @@ describe('UploadImageUseCase', () => {
       size: 100,
     });
 
-    expect(fileStorage.upload).toHaveBeenCalledWith('organizations/org-1/logo.png', buffer, 'image/png');
+    expect(fileStorage.upload).toHaveBeenCalledWith(
+      'organizations/org-1/logo.png',
+      buffer,
+      'image/png',
+      'no-cache'
+    );
     expect(result).toEqual({ url: 'https://s3/x.png', key: 'organizations/org-1/logo.png' });
   });
 
@@ -50,7 +55,12 @@ describe('UploadImageUseCase', () => {
       size: 100,
     });
 
-    expect(fileStorage.upload).toHaveBeenCalledWith('branches/branch-1/logo.jpg', buffer, 'image/jpeg');
+    expect(fileStorage.upload).toHaveBeenCalledWith(
+      'branches/branch-1/logo.jpg',
+      buffer,
+      'image/jpeg',
+      'no-cache'
+    );
     expect(result.key).toBe('branches/branch-1/logo.jpg');
   });
 
@@ -59,8 +69,9 @@ describe('UploadImageUseCase', () => {
 
     await useCase.execute({ kind: 'product_image', buffer, mimeType: 'image/png', size: 100 });
 
-    const key = fileStorage.upload.mock.calls[0][0];
+    const [key, , , cacheControl] = fileStorage.upload.mock.calls[0];
     expect(key).toMatch(/^branches\/branch-1\/products\/[0-9a-f-]+\.png$/);
+    expect(cacheControl).toBe('public, max-age=31536000, immutable');
   });
 
   it('sube una imagen de menú con UUID aleatorio', async () => {
@@ -68,8 +79,9 @@ describe('UploadImageUseCase', () => {
 
     await useCase.execute({ kind: 'menu_item_image', buffer, mimeType: 'image/webp', size: 100 });
 
-    const key = fileStorage.upload.mock.calls[0][0];
+    const [key, , , cacheControl] = fileStorage.upload.mock.calls[0];
     expect(key).toMatch(/^branches\/branch-1\/menu-items\/[0-9a-f-]+\.webp$/);
+    expect(cacheControl).toBe('public, max-age=31536000, immutable');
   });
 
   it('rechaza MIME no permitido', async () => {

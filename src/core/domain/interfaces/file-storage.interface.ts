@@ -18,8 +18,14 @@ export interface IFileStorage {
    * @param key Ruta destino dentro del bucket (incluye prefijo de tenant).
    * @param body Contenido binario del archivo.
    * @param contentType MIME type (p.ej. `image/webp`).
+   * @param cacheControl Cabecera Cache-Control del objeto.
    */
-  upload(key: string, body: Buffer, contentType: string): Promise<UploadResult>;
+  upload(
+    key: string,
+    body: Buffer,
+    contentType: string,
+    cacheControl?: string
+  ): Promise<UploadResult>;
 
   /**
    * Elimina un archivo del storage por su key. No falla si no existe.
