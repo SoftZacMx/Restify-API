@@ -49,7 +49,7 @@ export class CreateUserUseCase {
     // Check if user with email already exists
     const existingUser = await this.userRepository.findByEmail(input.email);
     if (existingUser) {
-      throw new AppError('VALIDATION_ERROR', 'User with this email already exists');
+      throw new AppError('EMAIL_ALREADY_EXISTS', 'An account with this email already exists');
     }
 
     // Resolver las sucursales a asignar según el rol.

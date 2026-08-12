@@ -113,7 +113,7 @@ describe('CreateUserUseCase', () => {
         fail('Should have thrown an error');
       } catch (error) {
         expect(error).toBeInstanceOf(AppError);
-        expect((error as AppError).code).toBe('VALIDATION_ERROR');
+        expect((error as AppError).code).toBe('EMAIL_ALREADY_EXISTS');
       }
     });
 

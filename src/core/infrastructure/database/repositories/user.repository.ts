@@ -1,7 +1,8 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient, Prisma, UserRole } from '@prisma/client';
 import { injectable } from 'tsyringe';
 import { IUserRepository, UserFilters } from '../../../domain/interfaces/user-repository.interface';
 import { User } from '../../../domain/entities/user.entity';
+import { AppError } from '../../../../shared/errors';
 
 @injectable()
 export class UserRepository implements IUserRepository {
@@ -24,19 +25,29 @@ export class UserRepository implements IUserRepository {
   }
 
   async create(userData: Partial<User>): Promise<User> {
-    const user = await this.prisma.user.create({
-      data: {
-        name: userData.name!,
-        last_name: userData.last_name!,
-        second_last_name: userData.second_last_name || null,
-        email: userData.email!,
-        password: userData.password!,
-        phone: userData.phone || null,
-        status: userData.status ?? true,
-        rol: userData.rol! as UserRole,
-        organizationId: userData.organizationId!,
-      },
-    });
+    let user;
+    try {
+      user = await this.prisma.user.create({
+        data: {
+          name: userData.name!,
+          last_name: userData.last_name!,
+          second_last_name: userData.second_last_name || null,
+          email: userData.email!,
+          password: userData.password!,
+          phone: userData.phone || null,
+          status: userData.status ?? true,
+          rol: userData.rol! as UserRole,
+          organizationId: userData.organizationId!,
+        },
+      });
+    } catch (error) {
+      // Red de seguridad frente a race conditions: dos requests concurrentes pasan el
+      // findByEmail antes de que ninguno inserte; el segundo choca con users_email_key.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new AppError('EMAIL_ALREADY_EXISTS', 'An account with this email already exists');
+      }
+      throw error;
+    }
 
     return User.fromPrisma(user);
   }

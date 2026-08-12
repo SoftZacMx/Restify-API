@@ -25,16 +25,16 @@ router.get(
   listMovementsController
 );
 
-// Mutaciones (MANAGER+)
+// Mutaciones (OWNER+)
 router.post(
   '/waste',
-  AuthMiddleware.authorize('ADMIN', 'MANAGER'),
+  AuthMiddleware.authorize('OWNER', 'ADMIN', 'MANAGER'),
   zodValidator({ schema: recordWasteSchema, source: 'body' }),
   recordWasteController
 );
 router.post(
   '/adjust',
-  AuthMiddleware.authorize('ADMIN', 'MANAGER'),
+  AuthMiddleware.authorize('OWNER', 'ADMIN', 'MANAGER'),
   zodValidator({ schema: recordAdjustmentSchema, source: 'body' }),
   recordAdjustmentController
 );
