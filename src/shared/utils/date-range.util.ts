@@ -31,3 +31,16 @@ export function endOfDayInZone(input: string, timezone: string): Date {
   }
   return new Date(s);
 }
+
+// Los reportes agregan en memoria: un rango abierto o de anios tumba el proceso.
+export const MAX_REPORT_RANGE_DAYS = 92;
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+export function rangeInDays(dateFrom: Date, dateTo: Date): number {
+  return Math.floor((dateTo.getTime() - dateFrom.getTime()) / MS_PER_DAY) + 1;
+}
+
+export function exceedsReportRangeLimit(dateFrom: Date, dateTo: Date): boolean {
+  return rangeInDays(dateFrom, dateTo) > MAX_REPORT_RANGE_DAYS;
+}

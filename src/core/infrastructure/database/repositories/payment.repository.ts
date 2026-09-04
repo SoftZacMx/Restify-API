@@ -2,6 +2,8 @@ import { PrismaClient, PaymentStatus, PaymentMethod, PaymentGateway, Prisma } fr
 import { IPaymentRepository, PaymentFilters } from '../../../domain/interfaces/payment-repository.interface';
 import { Payment } from '../../../domain/entities/payment.entity';
 
+const MAX_PAYMENTS_PER_QUERY = 500;
+
 export class PaymentRepository implements IPaymentRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -91,6 +93,7 @@ export class PaymentRepository implements IPaymentRepository {
       orderBy: {
         createdAt: 'desc',
       },
+      take: MAX_PAYMENTS_PER_QUERY,
     });
 
     return payments.map(

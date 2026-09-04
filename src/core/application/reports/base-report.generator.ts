@@ -1,4 +1,6 @@
 import { IReportGenerator, ReportType, BaseReportFilters, BaseReportResult } from '../../domain/interfaces/report-generator.interface';
+import { AppError } from '../../../shared/errors/app-error';
+import { MAX_REPORT_RANGE_DAYS, exceedsReportRangeLimit } from '../../../shared/utils/date-range.util';
 
 /**
  * Base abstract class for all report generators
@@ -48,10 +50,17 @@ export abstract class BaseReportGenerator implements IReportGenerator {
    * Can be overridden by subclasses for additional validation
    */
   protected validateFilters(filters: BaseReportFilters): void {
-    if (filters.dateFrom && filters.dateTo) {
-      if (filters.dateFrom > filters.dateTo) {
-        throw new Error('dateFrom cannot be greater than dateTo');
-      }
+    if (!filters.dateFrom || !filters.dateTo) {
+      throw new AppError('VALIDATION_ERROR', 'dateFrom and dateTo are required');
+    }
+    if (filters.dateFrom > filters.dateTo) {
+      throw new AppError('VALIDATION_ERROR', 'dateFrom cannot be greater than dateTo');
+    }
+    if (exceedsReportRangeLimit(filters.dateFrom, filters.dateTo)) {
+      throw new AppError(
+        'VALIDATION_ERROR',
+        `El rango no puede exceder ${MAX_REPORT_RANGE_DAYS} dias`
+      );
     }
   }
 

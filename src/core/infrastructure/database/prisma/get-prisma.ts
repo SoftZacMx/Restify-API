@@ -1,10 +1,20 @@
 import { PrismaClient } from '@prisma/client';
 import { createTenantExtension } from './tenant-extension';
 
-/**
- * Singleton Prisma client with tenant extension
- */
+// Un solo pool: el cliente extendido deriva del base y comparte sus conexiones.
+let basePrismaClient: PrismaClient | null = null;
 let prismaClientWithExtension: ReturnType<typeof createTenantExtension> | null = null;
+
+// Lazy: no depende de que el .env ya esté cargado al importar este módulo.
+function getOrCreateBaseClient(): PrismaClient {
+  if (!basePrismaClient) {
+    basePrismaClient = new PrismaClient({
+      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    });
+  }
+
+  return basePrismaClient;
+}
 
 /**
  * Get Prisma client with tenant filtering extension.
@@ -16,11 +26,7 @@ let prismaClientWithExtension: ReturnType<typeof createTenantExtension> | null =
  */
 export function getPrisma() {
   if (!prismaClientWithExtension) {
-    const baseClient = new PrismaClient({
-      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-    });
-
-    prismaClientWithExtension = createTenantExtension(baseClient);
+    prismaClientWithExtension = createTenantExtension(getOrCreateBaseClient());
   }
 
   return prismaClientWithExtension;
@@ -37,7 +43,5 @@ export function getPrisma() {
  * For normal application code, ALWAYS use getPrisma() instead.
  */
 export function getBasePrisma(): PrismaClient {
-  return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-  });
+  return getOrCreateBaseClient();
 }
