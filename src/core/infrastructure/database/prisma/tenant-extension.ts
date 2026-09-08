@@ -104,16 +104,26 @@ export function createTenantExtension(client: PrismaClient) {
  * Apply tenant filtering based on model type
  */
 function applyTenantFilter(model: string, args: any, query: any, operation: string): any {
-  const tenant = getTenant();
-
-  // Sin contexto de tenant → no filtrar (rutas públicas: login, signup, webhooks)
-  if (!tenant?.organizationId) {
+  // Los modelos globales nunca se filtran y no requieren contexto (p. ej. el resolver
+  // de tenant consulta Branch/Organization antes de establecerlo).
+  if (GLOBAL_MODELS.has(model)) {
     return query(args);
   }
 
-  // Global models - no filtering
-  if (GLOBAL_MODELS.has(model)) {
+  const tenant = getTenant();
+
+  // Bypass explícito (withoutTenant): operación intencional sin filtro.
+  if (tenant?.bypass) {
     return query(args);
+  }
+
+  // Sin contexto no se puede aislar: se rechaza en vez de devolver datos de todos los
+  // tenants. Los casos legítimos sin tenant deben marcarse con withoutTenant.
+  if (!tenant?.organizationId) {
+    throw new Error(
+      `TENANT_CONTEXT_MISSING: Operación sobre "${model}" sin contexto de tenant. ` +
+        `Ejecuta dentro de runWithTenant, o envuélvela en withoutTenant si es intencional.`
+    );
   }
 
   // Organization-level filtering

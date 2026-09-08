@@ -1,8 +1,10 @@
 import { AsyncLocalStorage } from 'async_hooks';
 
 export interface TenantStore {
-  organizationId: string;
+  organizationId?: string;
   branchId?: string;
+  // Distingue un bypass a propósito (withoutTenant) de un contexto ausente por olvido.
+  bypass?: boolean;
 }
 
 const storage = new AsyncLocalStorage<TenantStore>();
@@ -57,6 +59,5 @@ export function getBranchId(): string | undefined {
  * });
  */
 export async function withoutTenant<T>(fn: () => Promise<T>): Promise<T> {
-  // Clear tenant context by running with undefined
-  return storage.run(undefined as any, fn);
+  return storage.run({ bypass: true }, fn);
 }

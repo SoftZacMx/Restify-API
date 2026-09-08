@@ -3,6 +3,7 @@ import { IUserRepository } from '../../../domain/interfaces/user-repository.inte
 import { BcryptUtil } from '../../../../shared/utils/bcrypt.util';
 import { SetPasswordInput } from '../../dto/auth.dto';
 import { AppError } from '../../../../shared/errors';
+import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 
 @injectable()
 export class SetPasswordUseCase {
@@ -14,7 +15,7 @@ export class SetPasswordUseCase {
     const { password, user_id } = input;
 
     // Check if user exists
-    const user = await this.userRepository.findById(user_id);
+    const user = await withoutTenant(() => this.userRepository.findById(user_id));
 
     if (!user) {
       throw new AppError('USER_NOT_FOUND');
@@ -24,9 +25,11 @@ export class SetPasswordUseCase {
     const hashedPassword = await BcryptUtil.hash(password);
 
     // Update user password
-    await this.userRepository.update(user_id, {
-      password: hashedPassword,
-    } as any);
+    await withoutTenant(() =>
+      this.userRepository.update(user_id, {
+        password: hashedPassword,
+      } as any)
+    );
   }
 }
 

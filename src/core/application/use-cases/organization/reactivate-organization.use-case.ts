@@ -5,6 +5,7 @@ import { IBranchRepository } from '../../../domain/interfaces/branch-repository.
 import { ReactivateOrganizationInput } from '../../dto/organization.dto';
 import { JwtUtil } from '../../../../shared/utils/jwt.util';
 import { AppError } from '../../../../shared/errors';
+import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 
 /** Ventana (días) durante la cual el owner puede reactivar antes del hard-delete (C.3). */
 const REACTIVATION_WINDOW_DAYS = 30;
@@ -58,7 +59,7 @@ export class ReactivateOrganizationUseCase {
       throw new AppError('INVALID_TOKEN');
     }
 
-    const user = await this.userRepository.findById(payload.sub);
+    const user = await withoutTenant(() => this.userRepository.findById(payload.sub));
     // El token porta el owner; si el usuario ya no existe o dejó de ser owner, se rechaza.
     if (!user || !user.isOwner() || user.organizationId !== payload.org) {
       throw new AppError('INVALID_TOKEN');

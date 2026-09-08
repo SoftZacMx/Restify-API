@@ -41,21 +41,21 @@ describe('tenant-context (AsyncLocalStorage)', () => {
     ).toBeUndefined();
   });
 
-  it('sinTenant limpia el contexto aunque se corra dentro de runWithTenant', async () => {
+  it('withoutTenant marca el contexto como bypass aunque se corra dentro de runWithTenant', async () => {
     const inside = await runWithTenant(
       { organizationId: 'org-1' },
       () => withoutTenant(async () => getTenant())
     );
 
-    expect(inside).toBeUndefined();
+    expect(inside).toEqual({ bypass: true });
   });
 
-  it('sinTenant permite operar y luego restaura el contexto anterior', async () => {
+  it('withoutTenant permite operar y luego restaura el contexto anterior', async () => {
     const after = await runWithTenant(
       { organizationId: 'org-1' },
       async () => {
         await withoutTenant(async () => {
-          expect(getTenant()).toBeUndefined();
+          expect(getTenant()).toEqual({ bypass: true });
         });
         return getOrganizationId();
       }

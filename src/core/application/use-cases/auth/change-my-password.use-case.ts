@@ -2,6 +2,7 @@ import { inject, injectable } from 'tsyringe';
 import { IUserRepository } from '../../../domain/interfaces/user-repository.interface';
 import { BcryptUtil } from '../../../../shared/utils/bcrypt.util';
 import { AppError } from '../../../../shared/errors';
+import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 
 export interface ChangeMyPasswordInput {
   password: string;
@@ -25,12 +26,14 @@ export class ChangeMyPasswordUseCase {
   ) {}
 
   async execute(input: ChangeMyPasswordInput): Promise<void> {
-    const user = await this.userRepository.findById(input.userId);
+    const user = await withoutTenant(() => this.userRepository.findById(input.userId));
     if (!user) {
       throw new AppError('USER_NOT_FOUND');
     }
 
     const hashedPassword = await BcryptUtil.hash(input.password);
-    await this.userRepository.changePasswordAndClearFlag(user.id, hashedPassword);
+    await withoutTenant(() =>
+      this.userRepository.changePasswordAndClearFlag(user.id, hashedPassword)
+    );
   }
 }

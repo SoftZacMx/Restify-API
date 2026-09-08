@@ -7,6 +7,7 @@ import { BcryptUtil } from '../../../../shared/utils/bcrypt.util';
 import { JwtUtil } from '../../../../shared/utils/jwt.util';
 import { LoginInput } from '../../dto/auth.dto';
 import { AppError } from '../../../../shared/errors';
+import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 import { UserRole } from '@prisma/client';
 
 export interface LoginResult {
@@ -41,8 +42,8 @@ export class LoginUseCase {
   async execute(input: LoginInput): Promise<LoginResult> {
     const { email, password } = input;
 
-    // Find user by email
-    const user = await this.userRepository.findByEmail(email);
+    // Find user by email (sin tenant aún: el login precede a la resolución de organización)
+    const user = await withoutTenant(() => this.userRepository.findByEmail(email));
 
     if (!user) {
       throw new AppError('INVALID_CREDENTIALS', 'Invalid email or password');

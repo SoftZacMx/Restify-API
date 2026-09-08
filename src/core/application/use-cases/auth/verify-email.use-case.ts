@@ -3,6 +3,7 @@ import { IUserRepository } from '../../../domain/interfaces/user-repository.inte
 import { JwtUtil } from '../../../../shared/utils/jwt.util';
 import { VerifyEmailInput } from '../../dto/auth.dto';
 import { AppError } from '../../../../shared/errors';
+import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 
 export interface VerifyEmailResult {
   email: string;
@@ -32,7 +33,7 @@ export class VerifyEmailUseCase {
       throw new AppError('INVALID_TOKEN');
     }
 
-    const user = await this.userRepository.findById(payload.sub);
+    const user = await withoutTenant(() => this.userRepository.findById(payload.sub));
 
     if (!user) {
       throw new AppError('USER_NOT_FOUND');
@@ -42,7 +43,7 @@ export class VerifyEmailUseCase {
       return { email: user.email, alreadyVerified: true };
     }
 
-    await this.userRepository.markEmailVerified(user.id);
+    await withoutTenant(() => this.userRepository.markEmailVerified(user.id));
 
     return { email: user.email, alreadyVerified: false };
   }

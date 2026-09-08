@@ -3,6 +3,7 @@ import { IUserRepository } from '../../../domain/interfaces/user-repository.inte
 import { JwtUtil } from '../../../../shared/utils/jwt.util';
 import { VerifyUserInput } from '../../dto/auth.dto';
 import { AppError } from '../../../../shared/errors';
+import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 
 export interface VerifyUserResult {
   id: string;
@@ -23,7 +24,7 @@ export class VerifyUserUseCase {
   async execute(input: VerifyUserInput): Promise<VerifyUserResult> {
     const { email } = input;
 
-    const user = await this.userRepository.findByEmail(email);
+    const user = await withoutTenant(() => this.userRepository.findByEmail(email));
 
     if (!user) {
       throw new AppError('USER_NOT_FOUND');

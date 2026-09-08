@@ -390,8 +390,8 @@ describe('Task 3.5 — Tenant Data Isolation (Integration)', () => {
     it('Query a modelo branch-level sin ningún contexto no filtra (bypass)', async () => {
       if (skipped) return;
 
-      // Sin runWithTenant, getTenant() retorna undefined → extension no filtra
-      // Esto simula las rutas que usan withoutTenant() (webhooks, signup)
+      // withoutTenant marca bypass → la extension no filtra (webhooks, signup, login).
+      // Sin bypass ni contexto, un modelo con dueño lanzaría TENANT_CONTEXT_MISSING.
       await withoutTenant(async () => {
         const allOrders = await prisma.order.findMany({
           where: { id: { in: createdOrderIds } },

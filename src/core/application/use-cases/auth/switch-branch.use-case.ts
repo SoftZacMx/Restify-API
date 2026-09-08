@@ -5,6 +5,7 @@ import { IUserBranchAccessRepository } from '../../../domain/interfaces/user-bra
 import { IOrganizationRepository } from '../../../domain/interfaces/organization-repository.interface';
 import { JwtUtil, JwtPayload } from '../../../../shared/utils/jwt.util';
 import { AppError } from '../../../../shared/errors';
+import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 
 export interface SwitchBranchInput {
   branchId: string;
@@ -32,7 +33,7 @@ export class SwitchBranchUseCase {
     const { branchId, currentUser } = input;
 
     // Get full user details
-    const user = await this.userRepository.findById(currentUser.sub);
+    const user = await withoutTenant(() => this.userRepository.findById(currentUser.sub));
     if (!user) {
       throw new AppError('USER_NOT_FOUND', 'User not found');
     }

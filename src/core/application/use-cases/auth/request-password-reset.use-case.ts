@@ -3,6 +3,7 @@ import { IUserRepository } from '../../../domain/interfaces/user-repository.inte
 import { RequestPasswordResetInput } from '../../dto/auth.dto';
 import { JwtUtil } from '../../../../shared/utils/jwt.util';
 import { EmailService } from '../../../infrastructure/messaging/email.service';
+import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 import { logger } from '../../../../shared/utils/logger';
 
 /**
@@ -21,7 +22,7 @@ export class RequestPasswordResetUseCase {
   ) {}
 
   async execute(input: RequestPasswordResetInput): Promise<void> {
-    const user = await this.userRepository.findByEmail(input.email);
+    const user = await withoutTenant(() => this.userRepository.findByEmail(input.email));
 
     if (!user || !user.isActive()) {
       return; // No-op silencioso para no filtrar existencia/estado del email.

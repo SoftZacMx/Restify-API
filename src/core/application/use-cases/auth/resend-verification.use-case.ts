@@ -2,6 +2,7 @@ import { inject, injectable } from 'tsyringe';
 import { IUserRepository } from '../../../domain/interfaces/user-repository.interface';
 import { ResendVerificationInput } from '../../dto/auth.dto';
 import { SendVerificationEmailUseCase } from './send-verification-email.use-case';
+import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 import { logger } from '../../../../shared/utils/logger';
 
 /**
@@ -21,7 +22,7 @@ export class ResendVerificationUseCase {
   ) {}
 
   async execute(input: ResendVerificationInput): Promise<void> {
-    const user = await this.userRepository.findByEmail(input.email);
+    const user = await withoutTenant(() => this.userRepository.findByEmail(input.email));
 
     if (!user || user.isEmailVerified()) {
       return; // No-op silencioso para no filtrar existencia/estado del email.

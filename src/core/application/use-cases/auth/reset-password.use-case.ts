@@ -4,6 +4,7 @@ import { JwtUtil } from '../../../../shared/utils/jwt.util';
 import { BcryptUtil } from '../../../../shared/utils/bcrypt.util';
 import { ResetPasswordInput } from '../../dto/auth.dto';
 import { AppError } from '../../../../shared/errors';
+import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 
 /**
  * Flujo forgot-password (paso 2) — confirma el restablecimiento de contraseña.
@@ -29,13 +30,15 @@ export class ResetPasswordUseCase {
       throw new AppError('INVALID_TOKEN');
     }
 
-    const user = await this.userRepository.findById(payload.sub);
+    const user = await withoutTenant(() => this.userRepository.findById(payload.sub));
 
     if (!user || !user.isActive()) {
       throw new AppError('USER_NOT_FOUND');
     }
 
     const hashedPassword = await BcryptUtil.hash(input.password);
-    await this.userRepository.changePasswordAndRevokeSessions(user.id, hashedPassword);
+    await withoutTenant(() =>
+      this.userRepository.changePasswordAndRevokeSessions(user.id, hashedPassword)
+    );
   }
 }

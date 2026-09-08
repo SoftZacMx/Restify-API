@@ -9,6 +9,7 @@ import {
   verifySubscriptionCheckoutController,
 } from '../../controllers/subscription';
 import { AuthMiddleware } from '../middleware/auth.middleware';
+import { TenantMiddleware } from '../middleware/tenant.middleware';
 import { OWNER_ADMIN } from '../../shared/constants/roles.constants';
 
 const router = Router();
@@ -25,8 +26,10 @@ router.post('/webhooks/stripe', (req: Request, res: Response, next: NextFunction
 /** GET /api/subscription/plans — Ruta pública (el frontend la necesita antes del login) */
 router.get('/plans', listSubscriptionPlansController);
 
-// Rutas protegidas con autenticación
+// Rutas protegidas con autenticación + contexto de tenant (la suscripción es org-level:
+// sin este contexto, find() devolvería la suscripción de cualquier organización).
 router.use(AuthMiddleware.authenticate);
+router.use(TenantMiddleware.attach);
 
 /**
  * GET /api/subscription/status — Accesible por cualquier usuario autenticado.

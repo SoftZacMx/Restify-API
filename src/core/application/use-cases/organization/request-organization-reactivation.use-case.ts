@@ -4,6 +4,7 @@ import { IOrganizationRepository } from '../../../domain/interfaces/organization
 import { RequestReactivationInput } from '../../dto/organization.dto';
 import { JwtUtil } from '../../../../shared/utils/jwt.util';
 import { EmailService } from '../../../infrastructure/messaging/email.service';
+import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 import { logger } from '../../../../shared/utils/logger';
 
 /** Ventana (días) durante la cual el owner puede reactivar antes del hard-delete (C.3). */
@@ -37,7 +38,7 @@ export class RequestOrganizationReactivationUseCase {
 
     // Cualquier condición que no aplique termina en silencio: no se envía correo,
     // pero el controller responde igual (anti-enumeración).
-    const user = await this.userRepository.findByEmail(email);
+    const user = await withoutTenant(() => this.userRepository.findByEmail(email));
     if (!user || !user.isOwner()) {
       logger.info({ email }, '[Reactivation] Solicitud ignorada (no owner o inexistente)');
       return;

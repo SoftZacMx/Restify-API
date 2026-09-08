@@ -1,7 +1,7 @@
 import {
   createTenantExtension,
 } from '../../../src/core/infrastructure/database/prisma/tenant-extension';
-import { runWithTenant, getTenant } from '../../../src/core/infrastructure/tenant/tenant-context';
+import { runWithTenant, withoutTenant, getTenant } from '../../../src/core/infrastructure/tenant/tenant-context';
 
 describe('createTenantExtension — filtrado por tenant', () => {
   const mockClient = { $extends: jest.fn((config: any) => config) } as any;
@@ -25,8 +25,23 @@ describe('createTenantExtension — filtrado por tenant', () => {
   });
 
   describe('routing', () => {
-    it('sin tenant context no filtra (rutas públicas)', async () => {
-      const { query } = await runOp('findMany', 'Order', { where: { status: false } });
+    it('sin contexto, un modelo global no se filtra', async () => {
+      const { query } = await runOp('findMany', 'Organization', { where: { status: false } });
+
+      expect(query).toHaveBeenCalledWith({ where: { status: false } });
+    });
+
+    it('sin contexto, un modelo con dueño lanza TENANT_CONTEXT_MISSING', async () => {
+      await expect(
+        handlers.findMany({ model: 'Order', args: { where: {} }, query: jest.fn() })
+      ).rejects.toThrow(/TENANT_CONTEXT_MISSING/);
+    });
+
+    it('withoutTenant desactiva el filtro (bypass explícito)', async () => {
+      const query = jest.fn().mockResolvedValue('QUERY_RESULT');
+      await withoutTenant(() =>
+        handlers.findMany({ model: 'Order', args: { where: { status: false } }, query })
+      );
 
       expect(query).toHaveBeenCalledWith({ where: { status: false } });
     });

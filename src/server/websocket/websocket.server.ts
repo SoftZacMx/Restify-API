@@ -7,6 +7,7 @@ import { IPaymentSessionRepository } from '../../core/domain/interfaces/payment-
 import { IUserRepository } from '../../core/domain/interfaces/user-repository.interface';
 import { WebSocketEventType, WebSocketMessage } from '../../core/domain/interfaces/websocket-connection.interface';
 import { JwtUtil, JwtPayload } from '../../shared/utils/jwt.util';
+import { withoutTenant } from '../../core/infrastructure/tenant/tenant-context';
 import { AppError } from '../../shared/errors';
 import { logger } from '../../shared/utils/logger';
 import { stripEnvQuotes } from '../config/server.config';
@@ -114,7 +115,7 @@ export class WebSocketServer {
           // (e.g., client connects before payment session is created)
           let isValidConnection = true;
           if (paymentId) {
-            const session = await paymentSessionRepository.findByPaymentId(paymentId);
+            const session = await withoutTenant(() => paymentSessionRepository.findByPaymentId(paymentId));
             if (session && session.connectionId !== connectionId) {
               isValidConnection = false;
             }
@@ -134,7 +135,7 @@ export class WebSocketServer {
           if (userId) {
             try {
               const userRepository = container.resolve<IUserRepository>('IUserRepository');
-              const user = await userRepository.findById(userId);
+              const user = await withoutTenant(() => userRepository.findById(userId));
               
               if (!user) {
                 socket.emit(WebSocketEventType.ERROR, {
@@ -191,11 +192,11 @@ export class WebSocketServer {
           // Update PaymentSession with connectionId if paymentId is provided
           if (paymentId) {
             try {
-              const session = await paymentSessionRepository.findByPaymentId(paymentId);
+              const session = await withoutTenant(() => paymentSessionRepository.findByPaymentId(paymentId));
               if (session && !session.connectionId) {
-                await paymentSessionRepository.update(session.id, {
+                await withoutTenant(() => paymentSessionRepository.update(session.id, {
                   connectionId,
-                });
+                }));
               }
             } catch (error) {
               logger.error({ err: error }, 'Error updating PaymentSession with connectionId');
