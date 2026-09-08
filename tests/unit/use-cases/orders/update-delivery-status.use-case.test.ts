@@ -23,7 +23,6 @@ describe('UpdateDeliveryStatusUseCase', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
-      createWithItems: jest.fn(),
       createOrderItem: jest.fn(),
       updateOrderItem: jest.fn(),
       deleteOrderItem: jest.fn(),

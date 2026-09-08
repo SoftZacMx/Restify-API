@@ -60,7 +60,6 @@ describe('PayOrderWithQRMercadoPagoUseCase', () => {
       findByTrackingToken: jest.fn(),
       findAll: jest.fn(),
       create: jest.fn(),
-      createWithItems: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       createOrderItem: jest.fn(),

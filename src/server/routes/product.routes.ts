@@ -19,7 +19,7 @@ import {
   updateStockConfigSchema,
 } from '../../core/application/dto/stock.dto';
 import { AuthMiddleware } from '../middleware/auth.middleware';
-
+import { MANAGER_AND_UP } from '@/shared/constants/roles.constants';
 const router = Router();
 
 router.use(AuthMiddleware.authenticate);
@@ -27,21 +27,29 @@ router.use(AuthMiddleware.authenticate);
 // Stock (declarado ANTES de /:product_id para que no choque)
 router.get('/stock', zodValidator({ schema: listStockQuerySchema, source: 'query' }), listStockController);
 router.get(
-  '/:product_id/movements',
-  zodValidator({ schema: listMovementsQuerySchema, source: 'query' }),
+  '/:product_id/movements',  zodValidator({ schema: listMovementsQuerySchema, source: 'query' }),
   listProductMovementsController
 );
 router.patch(
   '/:product_id/stock-config',
-  AuthMiddleware.authorize('ADMIN'),
+  AuthMiddleware.authorize(...MANAGER_AND_UP),
   zodValidator({ schema: updateStockConfigSchema, source: 'body' }),
   updateStockConfigController
 );
 
-router.post('/', zodValidator({ schema: createProductSchema, source: 'body' }), createProductController);
-router.get('/', zodValidator({ schema: listProductsSchema, source: 'query' }), listProductsController);
-router.get('/:product_id', zodValidator({ schema: getProductSchema, source: 'params' }), getProductController);
-router.put('/:product_id', zodValidator({ schema: updateProductSchema, source: 'body' }), updateProductController);
-router.delete('/:product_id', zodValidator({ schema: deleteProductSchema, source: 'params' }), deleteProductController);
+router.post('/',
+  AuthMiddleware.authorize(...MANAGER_AND_UP),
+  zodValidator({ schema: createProductSchema, source: 'body' }),
+  createProductController);
+router.get('/',
+  zodValidator({ schema: listProductsSchema, source: 'query' }), listProductsController);
+router.get('/:product_id',
+  zodValidator({ schema: getProductSchema, source: 'params' }), getProductController);
+router.put('/:product_id',
+  AuthMiddleware.authorize(...MANAGER_AND_UP),
+  zodValidator({ schema: updateProductSchema, source: 'body' }), updateProductController);
+router.delete('/:product_id',
+  AuthMiddleware.authorize(...MANAGER_AND_UP),
+  zodValidator({ schema: deleteProductSchema, source: 'params' }), deleteProductController);
 
 export default router;

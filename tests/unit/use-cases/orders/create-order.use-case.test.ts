@@ -43,7 +43,7 @@ function createMockPrismaService(overrides: Record<string, any> = {}) {
       }),
     },
     table: {
-      update: jest.fn().mockResolvedValue({}),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     orderItem: {
       createMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -287,10 +287,55 @@ describe('CreateOrderUseCase', () => {
 
       await useCaseWithTable.execute(validInput);
 
-      expect(mockPrismaWithTable.mockTx.table.update).toHaveBeenCalledWith({
-        where: { id: 'table-123' },
+      expect(mockPrismaWithTable.mockTx.table.updateMany).toHaveBeenCalledWith({
+        where: { id: 'table-123', branchId: undefined, availabilityStatus: true },
         data: { availabilityStatus: false },
       });
+    });
+
+    it('should reject when the table was taken by a concurrent order', async () => {
+      const mockTable = new Table(
+        'table-123', 'Mesa 1', 'user-123', true, true, new Date(), new Date()
+      );
+
+      const mockPrismaWithTable = createMockPrismaService({
+        order: { tableId: 'table-123' },
+        products: [mockProductRow],
+        menuItems: [mockMenuItemRow],
+      });
+      // Otra orden se adelantó: la reserva no cambia ninguna fila.
+      mockPrismaWithTable.mockTx.table.updateMany.mockResolvedValue({ count: 0 });
+
+      const mockStockServiceLocal = {
+        recordSaleForOrderItem: jest.fn().mockResolvedValue([]),
+        reverseSaleForOrderItem: jest.fn().mockResolvedValue([]),
+        recordSalesBatch: jest.fn().mockResolvedValue(undefined),
+      } as any;
+
+      const useCaseWithTable = new CreateOrderUseCase(
+        mockUserRepository,
+        mockTableRepository,
+        mockBranchRepository,
+        mockPrismaWithTable as any,
+        mockStockServiceLocal,
+      );
+
+      const validInput = {
+        userId: 'user-123',
+        paymentMethod: 1,
+        tableId: 'table-123',
+        origin: 'Local',
+        orderItems: [
+          { productId: 'product-123', quantity: 1, price: 10.00, extras: [] },
+        ],
+        tip: 0,
+        paymentDiffer: false,
+      };
+
+      mockUserRepository.findById.mockResolvedValue(mockUser);
+      mockTableRepository.findById.mockResolvedValue(mockTable);
+
+      await expect(useCaseWithTable.execute(validInput)).rejects.toThrow('Table is not available');
     });
 
     it('should throw error when user not found', async () => {

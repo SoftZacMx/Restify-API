@@ -206,13 +206,17 @@ export class CreateOrderUseCase {
         },
       });
 
-      // Marcar mesa como no disponible (con lock para evitar doble reserva)
+      // Reservar la mesa solo si sigue libre: el update condicional es atómico, así que
+      // entre dos órdenes simultáneas sobre la misma mesa solo una la toma. branchId
+      // explícito porque dentro de la transacción no corre el filtro automático.
       if (order.tableId && input.origin.toLowerCase() === 'local') {
-        await tx.$queryRaw`SELECT id FROM tables WHERE id = ${order.tableId} FOR UPDATE`;
-        await tx.table.update({
-          where: { id: order.tableId },
+        const reserved = await tx.table.updateMany({
+          where: { id: order.tableId, branchId: branchId ?? undefined, availabilityStatus: true },
           data: { availabilityStatus: false },
         });
+        if (reserved.count === 0) {
+          throw new AppError('TABLE_NOT_AVAILABLE');
+        }
       }
 
       if (prepared.length > 0) {
