@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Restify — Arquitectura",
+    "output": "restify-architecture.html",
+    "quality_profile": "showcase",
+    "viewBox": [1180, 680]
+  },
+  "components": [
+    { "id": "browser", "type": "frontend", "label": "Restify Frontend", "sublabel": "React SPA", "tag": "REST + Socket.io", "pos": [40, 280], "size": [160, 64] },
+    { "id": "middleware", "type": "security", "label": "Middleware", "sublabel": "JWT · Tenant · Plan", "pos": [300, 90], "size": [180, 64] },
+    { "id": "api", "type": "backend", "label": "Express API", "sublabel": "HTTP + Socket.io", "pos": [300, 280], "size": [170, 64] },
+    { "id": "application", "type": "backend", "label": "Núcleo de Aplicación", "sublabel": "Use Cases · Services", "tag": "tsyringe DI", "pos": [560, 280], "size": [180, 64] },
+    { "id": "cron", "type": "backend", "label": "Scheduler", "sublabel": "node-cron", "pos": [300, 480], "size": [170, 64] },
+    { "id": "db", "type": "database", "label": "MySQL", "sublabel": "Prisma · por tenant", "pos": [560, 480], "size": [180, 64] },
+    { "id": "mercadopago", "type": "external", "label": "MercadoPago", "sublabel": "órdenes · reembolsos", "pos": [900, 96], "size": [180, 64] },
+    { "id": "stripe", "type": "external", "label": "Stripe", "sublabel": "suscripciones", "pos": [900, 240], "size": [180, 64] },
+    { "id": "s3", "type": "cloud", "label": "AWS S3", "sublabel": "archivos / uploads", "pos": [900, 384], "size": [180, 64] },
+    { "id": "ses", "type": "cloud", "label": "AWS SES", "sublabel": "email", "pos": [900, 528], "size": [180, 64] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Servidor · Express app", "wraps": ["middleware", "api", "application", "cron"] },
+    { "kind": "region", "label": "Servicios externos · AWS & Pagos", "wraps": ["mercadopago", "stripe", "s3", "ses"] }
+  ],
+  "connections": [
+    { "id": "client-api", "from": "browser", "to": "api", "label": "REST / WS", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "id": "mw-api", "from": "middleware", "to": "api", "label": "JWT · tenant", "variant": "security", "fromSide": "bottom", "toSide": "top" },
+    { "id": "api-app", "from": "api", "to": "application", "label": "use-case", "fromSide": "right", "toSide": "left" },
+    { "id": "app-db", "from": "application", "to": "db", "label": "Prisma", "fromSide": "bottom", "toSide": "top", "labelDy": 40 },
+    { "id": "cron-app", "from": "cron", "to": "application", "label": "cron", "variant": "dashed" },
+    { "id": "app-mp", "from": "application", "to": "mercadopago", "label": "órdenes", "fromSide": "right", "toSide": "left", "labelSegment": 2 },
+    { "id": "app-stripe", "from": "application", "to": "stripe", "label": "suscripción", "fromSide": "right", "toSide": "left", "labelSegment": 2 },
+    { "id": "app-s3", "from": "application", "to": "s3", "label": "uploads", "variant": "dashed", "fromSide": "right", "toSide": "left", "labelSegment": 2 },
+    { "id": "app-ses", "from": "application", "to": "ses", "label": "email", "variant": "dashed", "fromSide": "right", "toSide": "left", "labelSegment": 2 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Cliente", "items": ["React SPA con React Router y TanStack Query", "Estado global con Zustand", "REST vía Axios + tiempo real con Socket.io"] },
+    { "dot": "emerald", "title": "Servidor", "items": ["Express con inyección de dependencias (tsyringe)", "Arquitectura limpia: controllers → use-cases → domain → infra", "Tareas programadas con node-cron"] },
+    { "dot": "rose", "title": "Seguridad y multi-tenant", "items": ["Autenticación con JWT", "Aislamiento por tenant fail-closed (scope en Prisma)", "Control de plan / suscripción por request"] },
+    { "dot": "amber", "title": "Integraciones", "items": ["MercadoPago: órdenes y reembolsos", "Stripe: solo suscripciones", "AWS S3: archivos · AWS SES: email"] }
+  ]
+}

@@ -1,0 +1,246 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Restify — Multi-tenancy y extensión de Prisma",
+    "output": "restify-multitenancy.html",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "peticion",
+      "label": "Petición"
+    },
+    {
+      "id": "contexto",
+      "label": "Contexto de tenant"
+    },
+    {
+      "id": "extension",
+      "label": "Extensión de Prisma"
+    },
+    {
+      "id": "datos",
+      "label": "Datos"
+    },
+    {
+      "id": "fallos",
+      "label": "Fail-closed (rechazos)",
+      "variant": "exception"
+    }
+  ],
+  "mainPath": [
+    "req",
+    "setctx",
+    "intercept",
+    "classify",
+    "inject",
+    "db"
+  ],
+  "nodes": [
+    {
+      "id": "req",
+      "lane": "peticion",
+      "col": 0,
+      "type": "external",
+      "label": "Request + JWT",
+      "sublabel": "org · branch"
+    },
+    {
+      "id": "without",
+      "lane": "contexto",
+      "col": 0,
+      "type": "backend",
+      "label": "withoutTenant",
+      "sublabel": "signup · cron · admin",
+      "tag": "bypass"
+    },
+    {
+      "id": "setctx",
+      "lane": "contexto",
+      "col": 1,
+      "type": "security",
+      "label": "runWithTenant",
+      "sublabel": "AsyncLocalStorage"
+    },
+    {
+      "id": "intercept",
+      "lane": "extension",
+      "col": 2,
+      "type": "backend",
+      "label": "getPrisma()",
+      "sublabel": "intercepta la query"
+    },
+    {
+      "id": "classify",
+      "lane": "extension",
+      "col": 3,
+      "type": "backend",
+      "label": "Clasifica el modelo",
+      "sublabel": "global · org · branch",
+      "tag": "fail-closed",
+      "width": 150
+    },
+    {
+      "id": "inject",
+      "lane": "extension",
+      "col": 4,
+      "type": "backend",
+      "label": "Inyecta el filtro",
+      "sublabel": "organizationId / branchId",
+      "width": 132
+    },
+    {
+      "id": "passthrough",
+      "lane": "datos",
+      "col": 4,
+      "type": "cloud",
+      "label": "Sin filtro",
+      "sublabel": "global · bypass",
+      "width": 116
+    },
+    {
+      "id": "db",
+      "lane": "datos",
+      "col": 5,
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "query aislada por tenant",
+      "width": 116
+    },
+    {
+      "id": "nocontext",
+      "lane": "fallos",
+      "col": 3,
+      "type": "security",
+      "label": "CONTEXT_MISSING",
+      "sublabel": "sin runWithTenant",
+      "width": 126
+    },
+    {
+      "id": "nobranch",
+      "lane": "fallos",
+      "col": 4,
+      "type": "security",
+      "label": "BRANCH_REQUIRED",
+      "sublabel": "falta branchId",
+      "width": 126
+    },
+    {
+      "id": "unclassified",
+      "lane": "fallos",
+      "col": 5,
+      "type": "security",
+      "label": "MODEL_UNCLASSIFIED",
+      "sublabel": "modelo sin clasificar",
+      "width": 148
+    }
+  ],
+  "edges": [
+    {
+      "from": "req",
+      "to": "setctx",
+      "label": "org / branch",
+      "role": "main"
+    },
+    {
+      "from": "setctx",
+      "to": "intercept",
+      "label": "repo usa getPrisma()",
+      "role": "main"
+    },
+    {
+      "from": "intercept",
+      "to": "classify",
+      "role": "main"
+    },
+    {
+      "from": "classify",
+      "to": "inject",
+      "label": "modelo org / branch",
+      "role": "main"
+    },
+    {
+      "from": "inject",
+      "to": "db",
+      "label": "WHERE tenant",
+      "role": "main"
+    },
+    {
+      "from": "without",
+      "to": "intercept",
+      "label": "bypass = true",
+      "role": "branch",
+      "variant": "dashed"
+    },
+    {
+      "from": "classify",
+      "to": "passthrough",
+      "label": "modelo global / bypass",
+      "role": "branch"
+    },
+    {
+      "from": "passthrough",
+      "to": "db",
+      "role": "branch"
+    },
+    {
+      "from": "classify",
+      "to": "nocontext",
+      "label": "sin contexto",
+      "role": "error",
+      "variant": "security"
+    },
+    {
+      "from": "classify",
+      "to": "nobranch",
+      "label": "branch faltante",
+      "role": "error",
+      "variant": "security"
+    },
+    {
+      "from": "classify",
+      "to": "unclassified",
+      "label": "modelo nuevo",
+      "role": "error",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Fail-closed",
+      "items": [
+        "Sin contexto de tenant la query lanza error, no devuelve datos de todos los tenants",
+        "Un modelo nuevo sin clasificar también falla a propósito",
+        "Los modelos branch-level exigen branchId en el contexto"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "La extensión",
+      "items": [
+        "Envuelve todos los modelos y operaciones de Prisma",
+        "Inyecta organizationId (nivel org) o branchId (nivel branch)",
+        "getPrisma() es la única vía; getBasePrisma() la evita"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Vías de contexto",
+      "items": [
+        "runWithTenant desde el JWT en rutas privadas",
+        "PublicTenantMiddleware resuelve el branch en rutas públicas",
+        "withoutTenant para signup, cron y scripts de admin"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Transacciones",
+      "items": [
+        "El filtro se mantiene dentro de getPrisma().$transaction()",
+        "Los tx que se pasan entre capas siguen aislados por tenant"
+      ]
+    }
+  ]
+}
