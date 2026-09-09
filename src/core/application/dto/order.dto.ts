@@ -126,6 +126,14 @@ export const updateDeliveryStatusSchema = z.object({
   status: z.enum(['PREPARING', 'READY', 'ON_THE_WAY', 'DELIVERED']),
 });
 
+// Update Payment Method Schema (body)
+// Mismos métodos manuales que acepta el cobro: QR_MERCADO_PAGO lo asigna la pasarela.
+export const updateOrderPaymentMethodSchema = z.object({
+  paymentMethod: z.enum(['CASH', 'TRANSFER', 'CARD_PHYSICAL'], {
+    errorMap: () => ({ message: 'paymentMethod must be CASH, TRANSFER or CARD_PHYSICAL' }),
+  }),
+});
+
 // ============================================
 // Public Order Schemas
 // ============================================
@@ -175,4 +183,5 @@ export type DeleteOrderInput = z.infer<typeof deleteOrderSchema>;
 export type OrderItemInput = z.infer<typeof orderItemSchema>;
 export type UpdateOrderItemInput = z.infer<typeof updateOrderItemSchema>;
 export type OrderItemExtraInput = z.infer<typeof orderItemExtraSchema>;
+export type UpdateOrderPaymentMethodInput = z.infer<typeof updateOrderPaymentMethodSchema>;
 

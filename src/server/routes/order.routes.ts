@@ -9,9 +9,10 @@ import {
   deleteOrderController,
   payOrderController,
   updateDeliveryStatusController,
+  updateOrderPaymentMethodController,
 } from '../../controllers/orders';
 import { zodValidator } from '../../shared/middleware/zod-validator.middleware';
-import { createOrderSchema, listOrdersSchema, getOrderSchema, updateOrderSchema, deleteOrderSchema, updateDeliveryStatusSchema } from '../../core/application/dto/order.dto';
+import { createOrderSchema, listOrdersSchema, getOrderSchema, updateOrderSchema, deleteOrderSchema, updateDeliveryStatusSchema, updateOrderPaymentMethodSchema } from '../../core/application/dto/order.dto';
 import { payOrderSchema } from '../../core/application/dto/payment.dto';
 import { AuthMiddleware } from '../middleware/auth.middleware';
 
@@ -42,6 +43,9 @@ router.get('/:order_id', zodValidator({ schema: getOrderSchema, source: 'params'
 
 /** PUT /api/orders/:order_id/delivery-status */
 router.put('/:order_id/delivery-status', AuthMiddleware.authorize('ADMIN', 'MANAGER'), zodValidator({ schema: updateDeliveryStatusSchema, source: 'body' }), updateDeliveryStatusController);
+
+/** PUT /api/orders/:order_id/payment-method (solo ADMIN) */
+router.put('/:order_id/payment-method', AuthMiddleware.authorize('ADMIN'), zodValidator({ schema: updateOrderPaymentMethodSchema, source: 'body' }), updateOrderPaymentMethodController);
 
 /** PUT /api/orders/:order_id */
 router.put('/:order_id', zodValidator({ schema: updateOrderSchema, source: 'body' }), updateOrderController);
