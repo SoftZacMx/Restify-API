@@ -6,7 +6,10 @@ import { Expense } from '../../../../src/core/domain/entities/expense.entity';
 import { ExpenseItem } from '../../../../src/core/domain/entities/expense-item.entity';
 import { Product } from '../../../../src/core/domain/entities/product.entity';
 import { StockService } from '../../../../src/core/application/services/stock.service';
-import { PrismaService } from '../../../../src/core/infrastructure/config/prisma.config';
+import { getPrisma } from '../../../../src/core/infrastructure/database/prisma/get-prisma';
+
+jest.mock('../../../../src/core/infrastructure/database/prisma/get-prisma');
+const mockGetPrisma = getPrisma as jest.MockedFunction<typeof getPrisma>;
 
 function buildExpenseItem(id: string, productId: string, amount: number, subtotal: number, total: number) {
   return new ExpenseItem(id, 'exp-1', productId, amount, subtotal, total, 'PCS', new Date(), new Date());
@@ -21,7 +24,6 @@ describe('CreateExpenseUseCase', () => {
   let mockExpenseRepository: jest.Mocked<IExpenseRepository>;
   let mockProductRepository: jest.Mocked<IProductRepository>;
   let mockStockService: jest.Mocked<Pick<StockService, 'recordPurchase' | 'recordPurchaseReversal'>>;
-  let mockPrismaService: jest.Mocked<PrismaService>;
   const mockTx = { __isMockTx: true } as any;
 
   beforeEach(() => {
@@ -52,16 +54,13 @@ describe('CreateExpenseUseCase', () => {
       recordPurchaseReversal: jest.fn().mockResolvedValue(null),
     };
 
-    mockPrismaService = {
-      getClient: jest.fn().mockReturnValue({
-        $transaction: jest.fn().mockImplementation((cb: Function) => cb(mockTx)),
-      }),
-    } as unknown as jest.Mocked<PrismaService>;
+    mockGetPrisma.mockReturnValue({
+      $transaction: jest.fn().mockImplementation((cb: Function) => cb(mockTx)),
+    } as any);
 
     useCase = new CreateExpenseUseCase(
       mockExpenseRepository,
       mockProductRepository,
-      mockPrismaService,
       mockStockService as unknown as StockService,
       { get: jest.fn().mockResolvedValue('America/Mexico_City') } as any
     );

@@ -1,7 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import { IExpenseRepository } from '../../../domain/interfaces/expense-repository.interface';
 import { AppError } from '../../../../shared/errors';
-import { PrismaService } from '../../../infrastructure/config/prisma.config';
+import { getPrisma } from '../../../infrastructure/database/prisma/get-prisma';
 import { StockService } from '../../services/stock.service';
 
 export interface DeleteExpenseInput {
@@ -14,7 +14,6 @@ export interface DeleteExpenseInput {
 export class DeleteExpenseUseCase {
   constructor(
     @inject('IExpenseRepository') private readonly expenseRepository: IExpenseRepository,
-    @inject(PrismaService) private readonly prismaService: PrismaService,
     @inject(StockService) private readonly stockService: StockService
   ) {}
 
@@ -28,7 +27,7 @@ export class DeleteExpenseUseCase {
     // y el flujo se reduce al delete directo (mismo comportamiento que antes).
     const items = await this.expenseRepository.findItemsByExpenseId(input.expense_id);
 
-    const prisma = this.prismaService.getClient();
+    const prisma = getPrisma();
     await prisma.$transaction(async (tx) => {
       // Compensar cada compra con un ADJUSTMENT antes del delete (mientras los expense_items
       // todavía existen y la FK del movement compensatorio es válida). El cascade del delete

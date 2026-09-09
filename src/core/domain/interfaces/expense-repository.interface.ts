@@ -1,4 +1,5 @@
-import { ExpenseType, Prisma } from '@prisma/client';
+import { ExpenseType } from '@prisma/client';
+import { TenantTransactionClient } from '../../infrastructure/database/prisma/get-prisma';
 import { Expense } from '../entities/expense.entity';
 import { ExpenseItem } from '../entities/expense-item.entity';
 
@@ -79,7 +80,7 @@ export interface IExpenseRepository {
       userId: string | null;
       items: ExpenseItemInput[];
     },
-    tx?: Prisma.TransactionClient
+    tx?: TenantTransactionClient
   ): Promise<{ expense: Expense; items: ExpenseItem[] }>;
   update(
     id: string,
@@ -93,7 +94,7 @@ export interface IExpenseRepository {
       paymentMethod?: number;
     }
   ): Promise<Expense>;
-  delete(id: string, tx?: Prisma.TransactionClient): Promise<void>;
+  delete(id: string, tx?: TenantTransactionClient): Promise<void>;
 
   // Items methods (only for MERCHANDISE type)
   createItem(data: {
@@ -104,7 +105,7 @@ export interface IExpenseRepository {
     total: number;
     unitOfMeasure?: string | null;
   }): Promise<ExpenseItem>;
-  findItemsByExpenseId(expenseId: string, tx?: Prisma.TransactionClient): Promise<ExpenseItem[]>;
+  findItemsByExpenseId(expenseId: string, tx?: TenantTransactionClient): Promise<ExpenseItem[]>;
   updateItem(
     id: string,
     data: {

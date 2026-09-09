@@ -1,6 +1,6 @@
 import { inject, injectable } from 'tsyringe';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
-import { PrismaService } from '../../../infrastructure/config/prisma.config';
+import { getPrisma } from '../../../infrastructure/database/prisma/get-prisma';
 import { StockService } from '../../services/stock.service';
 import { AppError } from '../../../../shared/errors';
 
@@ -14,7 +14,6 @@ export interface DeleteOrderUseCaseInput {
 export class DeleteOrderUseCase {
   constructor(
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
-    @inject(PrismaService) private readonly prismaService: PrismaService,
     @inject(StockService) private readonly stockService: StockService,
   ) {}
 
@@ -27,7 +26,7 @@ export class DeleteOrderUseCase {
     // Lookup de items fuera de la transacción — solo lectura, no necesita locking.
     const items = await this.orderRepository.findOrderItemsByOrderId(input.order_id);
 
-    const prisma = this.prismaService.getClient();
+    const prisma = getPrisma();
     await prisma.$transaction(async (tx) => {
       // Revertir stock por TODOS los OrderItems en una sola pasada (Fase 4.2).
       // Mientras los OrderItems siguen vivos, los SALE originales tienen orderItemId válido.

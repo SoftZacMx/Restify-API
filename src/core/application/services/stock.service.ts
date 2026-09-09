@@ -1,7 +1,6 @@
-import { inject, injectable } from 'tsyringe';
-import { Prisma, PrismaClient, Product, StockMovement, StockMovementType, UnitOfMeasure } from '@prisma/client';
-import { getPrisma } from '../../infrastructure/database/prisma/get-prisma';
-import { PrismaService } from '../../infrastructure/config/prisma.config';
+import { injectable } from 'tsyringe';
+import { Prisma, Product, StockMovement, StockMovementType, UnitOfMeasure } from '@prisma/client';
+import { getPrisma, TenantTransactionClient } from '../../infrastructure/database/prisma/get-prisma';
 import { AppError } from '../../../shared/errors';
 import { convertQuantity, unitsCompatible } from '../../../shared/utils/unit-conversion.util';
 
@@ -125,16 +124,8 @@ type StockBatchProduct = Pick<Product, 'id' | 'unitOfMeasure' | 'trackStock' | '
  */
 @injectable()
 export class StockService {
-  // Cliente base: necesario para abrir $transaction cuyo `tx` sea Prisma.TransactionClient.
-  // El aislamiento dentro de la tx se garantiza con branchId explícito (derivado del product).
-  private readonly txClient: PrismaClient;
-
-  constructor(@inject(PrismaService) prismaService: PrismaService) {
-    this.txClient = prismaService.getClient();
-  }
-
-  // Cliente extendido: las lecturas fuera de transacción se filtran por branchId
-  // automáticamente vía la tenant extension.
+  // Cliente extendido: la tenant extension filtra e inyecta branchId, también dentro
+  // de las transacciones que abre este servicio.
   private get prisma() {
     return getPrisma();
   }
@@ -152,7 +143,7 @@ export class StockService {
    */
   async recordPurchase(
     input: RecordPurchaseInput,
-    tx?: Prisma.TransactionClient
+    tx?: TenantTransactionClient
   ): Promise<StockMovement | null> {
     const inputQuantity = new Decimal(input.quantity);
     const inputUnitCost = new Decimal(input.unitCost);
@@ -164,7 +155,7 @@ export class StockService {
       throw new AppError('VALIDATION_ERROR', 'unitCost cannot be negative');
     }
 
-    const run = async (client: Prisma.TransactionClient): Promise<StockMovement | null> => {
+    const run = async (client: TenantTransactionClient): Promise<StockMovement | null> => {
       const product = await client.product.findUnique({ where: { id: input.productId } });
       if (!product) {
         throw new AppError('PRODUCT_NOT_FOUND', `Product ${input.productId} not found`);
@@ -233,7 +224,7 @@ export class StockService {
       return movement;
     };
 
-    return tx ? run(tx) : this.txClient.$transaction(run);
+    return tx ? run(tx) : this.prisma.$transaction(run);
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -251,9 +242,9 @@ export class StockService {
   async recordSaleForOrderItem(
     orderItemId: string,
     userId: string | null,
-    tx?: Prisma.TransactionClient
+    tx?: TenantTransactionClient
   ): Promise<StockMovement[]> {
-    const run = async (client: Prisma.TransactionClient): Promise<StockMovement[]> => {
+    const run = async (client: TenantTransactionClient): Promise<StockMovement[]> => {
       const orderItem = await client.orderItem.findUnique({
         where: { id: orderItemId },
         include: {
@@ -313,7 +304,7 @@ export class StockService {
       return movements;
     };
 
-    return tx ? run(tx) : this.txClient.$transaction(run);
+    return tx ? run(tx) : this.prisma.$transaction(run);
   }
 
   /**
@@ -335,7 +326,7 @@ export class StockService {
     items: StockBatchSaleItem[],
     productMap: Map<string, StockBatchProduct>,
     userId: string | null,
-    tx: Prisma.TransactionClient
+    tx: TenantTransactionClient
   ): Promise<void> {
     if (items.length === 0) return;
 
@@ -419,7 +410,7 @@ export class StockService {
    * 1 unidad del producto por cada `quantity`. Si nada aplica, devuelve [].
    */
   private async discountForMenuItem(
-    client: Prisma.TransactionClient,
+    client: TenantTransactionClient,
     params: {
       menuItem: {
         productId: string | null;
@@ -481,7 +472,7 @@ export class StockService {
 
   /** Descuenta `quantity` unidades del producto y registra el SALE. Devuelve null si trackStock=false. */
   private async discountDirectProduct(
-    client: Prisma.TransactionClient,
+    client: TenantTransactionClient,
     params: {
       productId: string;
       quantity: Prisma.Decimal;
@@ -524,9 +515,9 @@ export class StockService {
     orderItemId: string,
     userId: string | null,
     reason: string,
-    tx?: Prisma.TransactionClient
+    tx?: TenantTransactionClient
   ): Promise<StockMovement[]> {
-    const run = async (client: Prisma.TransactionClient): Promise<StockMovement[]> => {
+    const run = async (client: TenantTransactionClient): Promise<StockMovement[]> => {
       const existing = await client.stockMovement.findFirst({
         where: { orderItemId, type: StockMovementType.SALE_REVERSAL },
       });
@@ -563,7 +554,7 @@ export class StockService {
       return reversals;
     };
 
-    return tx ? run(tx) : this.txClient.$transaction(run);
+    return tx ? run(tx) : this.prisma.$transaction(run);
   }
 
   /**
@@ -578,7 +569,7 @@ export class StockService {
     orderItemIds: string[],
     userId: string | null,
     reason: string,
-    tx: Prisma.TransactionClient
+    tx: TenantTransactionClient
   ): Promise<void> {
     if (orderItemIds.length === 0) return;
 
@@ -656,13 +647,13 @@ export class StockService {
    */
   async recordPurchaseReversal(
     input: RecordPurchaseReversalInput,
-    tx?: Prisma.TransactionClient
+    tx?: TenantTransactionClient
   ): Promise<StockMovement | null> {
     if (!input.reason || input.reason.trim().length === 0) {
       throw new AppError('STOCK_REASON_REQUIRED', 'reason is required for purchase reversal');
     }
 
-    const run = async (client: Prisma.TransactionClient): Promise<StockMovement | null> => {
+    const run = async (client: TenantTransactionClient): Promise<StockMovement | null> => {
       // Idempotencia: si ya hay un ADJUSTMENT compensatorio para este expenseItem, salir.
       const existing = await client.stockMovement.findFirst({
         where: {
@@ -704,7 +695,7 @@ export class StockService {
       return adjustment;
     };
 
-    return tx ? run(tx) : this.txClient.$transaction(run);
+    return tx ? run(tx) : this.prisma.$transaction(run);
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -727,7 +718,7 @@ export class StockService {
       throw new AppError('VALIDATION_ERROR', `invalid waste reason: ${input.reason}`);
     }
 
-    return this.txClient.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({ where: { id: input.productId } });
       if (!product) {
         throw new AppError('PRODUCT_NOT_FOUND', `Product ${input.productId} not found`);
@@ -773,7 +764,7 @@ export class StockService {
       throw new AppError('STOCK_REASON_REQUIRED', 'reason is required for adjustment');
     }
 
-    return this.txClient.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({ where: { id: input.productId } });
       if (!product) {
         throw new AppError('PRODUCT_NOT_FOUND', `Product ${input.productId} not found`);

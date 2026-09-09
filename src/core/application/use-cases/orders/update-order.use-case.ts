@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { inject, injectable } from 'tsyringe';
 import { IOrderRepository } from '../../../domain/interfaces/order-repository.interface';
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
-import { PrismaService } from '../../../infrastructure/config/prisma.config';
+import { getPrisma } from '../../../infrastructure/database/prisma/get-prisma';
 import { StockService, StockBatchSaleItem } from '../../services/stock.service';
 import { UpdateOrderInput } from '../../dto/order.dto';
 import { AppError } from '../../../../shared/errors';
@@ -50,7 +50,6 @@ export class UpdateOrderUseCase {
   constructor(
     @inject('IOrderRepository') private readonly orderRepository: IOrderRepository,
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
-    @inject(PrismaService) private readonly prismaService: PrismaService,
     @inject(StockService) private readonly stockService: StockService,
   ) {}
 
@@ -98,7 +97,7 @@ export class UpdateOrderUseCase {
       }
 
       // Bulk-load menuItems con ingredientes y productos asociados.
-      const prisma = this.prismaService.getClient();
+      const prisma = getPrisma();
 
       const menuItemIdsToLoad = new Set<string>();
       const directProductIds = new Set<string>();

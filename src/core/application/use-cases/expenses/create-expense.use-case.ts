@@ -4,7 +4,7 @@ import { IProductRepository } from '../../../domain/interfaces/product-repositor
 import { CreateExpenseInput } from '../../dto/expense.dto';
 import { AppError } from '../../../../shared/errors';
 import { ExpenseType, type UnitOfMeasure } from '@prisma/client';
-import { PrismaService } from '../../../infrastructure/config/prisma.config';
+import { getPrisma } from '../../../infrastructure/database/prisma/get-prisma';
 import { StockService } from '../../services/stock.service';
 import { BranchTimezoneService } from '../../services/branch-timezone.service';
 import { startOfDayInZone } from '../../../../shared/utils/date-range.util';
@@ -39,7 +39,6 @@ export class CreateExpenseUseCase {
   constructor(
     @inject('IExpenseRepository') private readonly expenseRepository: IExpenseRepository,
     @inject('IProductRepository') private readonly productRepository: IProductRepository,
-    @inject(PrismaService) private readonly prismaService: PrismaService,
     @inject(StockService) private readonly stockService: StockService,
     @inject(BranchTimezoneService) private readonly branchTimezoneService: BranchTimezoneService
   ) {}
@@ -94,7 +93,7 @@ export class CreateExpenseUseCase {
       // Create expense + items y registrar movimientos de stock en una sola transacción.
       // Si recordPurchase falla para cualquier item, todo revierte (no quedan items huérfanos
       // sin movement ni stock desactualizado).
-      const prisma = this.prismaService.getClient();
+      const prisma = getPrisma();
       const result = await prisma.$transaction(async (tx) => {
         const created = await this.expenseRepository.createWithItems(
           {

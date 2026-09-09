@@ -1,6 +1,6 @@
-import { inject, injectable } from 'tsyringe';
+import { injectable } from 'tsyringe';
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
-import { PrismaService } from '../../../infrastructure/config/prisma.config';
+import { getPrisma } from '../../../infrastructure/database/prisma/get-prisma';
 import { PayOrderInput } from '../../dto/payment.dto';
 import { AppError } from '../../../../shared/errors';
 
@@ -55,10 +55,6 @@ function isSplitPayment(input: PayOrderInput): input is PayOrderInput & { firstP
 
 @injectable()
 export class PayOrderUseCase {
-  constructor(
-    @inject(PrismaService) private readonly prismaService: PrismaService
-  ) {}
-
   async execute(input: PayOrderInput): Promise<PayOrderResult> {
     if (isSplitPayment(input)) {
       return this.executeSplit(input);
@@ -67,7 +63,7 @@ export class PayOrderUseCase {
   }
 
   private async executeSingle(input: PayOrderInput & { paymentMethod: string; amount: number; transferNumber?: string }): Promise<PayOrderResult> {
-    const prisma = this.prismaService.getClient();
+    const prisma = getPrisma();
     const { orderId, paymentMethod, amount, transferNumber } = input;
 
     const methodEnum = toPaymentMethodEnum(paymentMethod);
@@ -139,7 +135,7 @@ export class PayOrderUseCase {
   }
 
   private async executeSplit(input: PayOrderInput & { firstPayment: { amount: number; paymentMethod: string }; secondPayment: { amount: number; paymentMethod: string } }): Promise<PayOrderResult> {
-    const prisma = this.prismaService.getClient();
+    const prisma = getPrisma();
     const { orderId, firstPayment, secondPayment } = input;
 
     const result = await prisma.$transaction(async (tx) => {

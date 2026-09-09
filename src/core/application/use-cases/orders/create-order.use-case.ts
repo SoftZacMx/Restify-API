@@ -4,7 +4,6 @@ import { IUserRepository } from '../../../domain/interfaces/user-repository.inte
 import { ITableRepository } from '../../../domain/interfaces/table-repository.interface';
 import { IBranchRepository } from '../../../domain/interfaces/branch-repository.interface';
 import { getPrisma } from '../../../infrastructure/database/prisma/get-prisma';
-import { PrismaService } from '../../../infrastructure/config/prisma.config';
 import { StockService, StockBatchSaleItem } from '../../services/stock.service';
 import { CreateOrderInput } from '../../dto/order.dto';
 import { AppError } from '../../../../shared/errors';
@@ -56,15 +55,14 @@ export class CreateOrderUseCase {
     @inject('IUserRepository') private readonly userRepository: IUserRepository,
     @inject('ITableRepository') private readonly tableRepository: ITableRepository,
     @inject('IBranchRepository') private readonly branchRepository: IBranchRepository,
-    @inject(PrismaService) private readonly prismaService: PrismaService,
     @inject(StockService) private readonly stockService: StockService,
   ) {}
 
   async execute(input: CreateOrderInput): Promise<CreateOrderResult> {
     // --- Validaciones (fuera de transacción, solo lecturas) ---
 
-    // branchId del contexto tenant: se asigna explícitamente en cada escritura
-    // (la tenant extension no se propaga de forma fiable dentro de $transaction).
+    // branchId del contexto tenant, solo para validar el horario de la sucursal;
+    // las escrituras las filtra la tenant extension automáticamente (también en $transaction).
     const branchId = getBranchId();
 
     // Validar horario de operación
@@ -183,10 +181,8 @@ export class CreateOrderUseCase {
     }));
 
     // --- Escrituras (dentro de transacción) ---
-    // Cliente base para la tx: el tipo de `tx` debe ser Prisma.TransactionClient
-    // (requerido por stockService); el aislamiento se garantiza con branchId explícito.
-    const result = await this.prismaService.getClient().$transaction(async (tx) => {
-      // Crear orden (branchId explícito desde el contexto tenant)
+    // Cliente extendido: la tenant extension inyecta branchId también dentro de $transaction.
+    const result = await prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
           status: false,
@@ -202,16 +198,14 @@ export class CreateOrderUseCase {
           paymentDiffer: input.paymentDiffer ?? false,
           note: input.note || null,
           userId: input.userId ?? null,
-          branchId: branchId ?? null,
         },
       });
 
       // Reservar la mesa solo si sigue libre: el update condicional es atómico, así que
-      // entre dos órdenes simultáneas sobre la misma mesa solo una la toma. branchId
-      // explícito porque dentro de la transacción no corre el filtro automático.
+      // entre dos órdenes simultáneas sobre la misma mesa solo una la toma.
       if (order.tableId && input.origin.toLowerCase() === 'local') {
         const reserved = await tx.table.updateMany({
-          where: { id: order.tableId, branchId: branchId ?? undefined, availabilityStatus: true },
+          where: { id: order.tableId, availabilityStatus: true },
           data: { availabilityStatus: false },
         });
         if (reserved.count === 0) {
@@ -230,7 +224,6 @@ export class CreateOrderUseCase {
             productId: p.input.productId || null,
             menuItemId: p.input.menuItemId || null,
             note: p.input.note || null,
-            branchId: branchId ?? null,
           })),
         });
 
@@ -243,7 +236,6 @@ export class CreateOrderUseCase {
             extraId: e.input.extraId,
             quantity: e.input.quantity,
             price: e.input.price,
-            branchId: branchId ?? null,
           }))
         );
         if (extraRows.length > 0) {

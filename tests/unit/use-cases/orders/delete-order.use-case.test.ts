@@ -3,14 +3,16 @@ import { IOrderRepository } from '../../../../src/core/domain/interfaces/order-r
 import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { OrderItem } from '../../../../src/core/domain/entities/order-item.entity';
 import { StockService } from '../../../../src/core/application/services/stock.service';
-import { PrismaService } from '../../../../src/core/infrastructure/config/prisma.config';
+import { getPrisma } from '../../../../src/core/infrastructure/database/prisma/get-prisma';
 import { AppError } from '../../../../src/shared/errors';
+
+jest.mock('../../../../src/core/infrastructure/database/prisma/get-prisma');
+const mockGetPrisma = getPrisma as jest.MockedFunction<typeof getPrisma>;
 
 describe('DeleteOrderUseCase', () => {
   let deleteOrderUseCase: DeleteOrderUseCase;
   let mockOrderRepository: jest.Mocked<IOrderRepository>;
   let mockStockService: jest.Mocked<Pick<StockService, 'recordSaleForOrderItem' | 'reverseSaleForOrderItem' | 'reverseSalesBatch'>>;
-  let mockPrismaService: jest.Mocked<PrismaService>;
   const mockTx = {
     table: { update: jest.fn().mockResolvedValue({}) },
     order: { delete: jest.fn().mockResolvedValue({}) },
@@ -43,15 +45,12 @@ describe('DeleteOrderUseCase', () => {
       reverseSalesBatch: jest.fn().mockResolvedValue(undefined),
     };
 
-    mockPrismaService = {
-      getClient: jest.fn().mockReturnValue({
-        $transaction: jest.fn().mockImplementation((cb: Function) => cb(mockTx)),
-      }),
-    } as unknown as jest.Mocked<PrismaService>;
+    mockGetPrisma.mockReturnValue({
+      $transaction: jest.fn().mockImplementation((cb: Function) => cb(mockTx)),
+    } as any);
 
     deleteOrderUseCase = new DeleteOrderUseCase(
       mockOrderRepository,
-      mockPrismaService,
       mockStockService as unknown as StockService,
     );
   });

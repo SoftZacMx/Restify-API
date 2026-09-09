@@ -4,8 +4,11 @@ import { IExpenseRepository } from '../../../../src/core/domain/interfaces/expen
 import { Expense } from '../../../../src/core/domain/entities/expense.entity';
 import { ExpenseItem } from '../../../../src/core/domain/entities/expense-item.entity';
 import { StockService } from '../../../../src/core/application/services/stock.service';
-import { PrismaService } from '../../../../src/core/infrastructure/config/prisma.config';
+import { getPrisma } from '../../../../src/core/infrastructure/database/prisma/get-prisma';
 import { AppError } from '../../../../src/shared/errors';
+
+jest.mock('../../../../src/core/infrastructure/database/prisma/get-prisma');
+const mockGetPrisma = getPrisma as jest.MockedFunction<typeof getPrisma>;
 
 function buildExpenseItem(id: string, productId: string) {
   return new ExpenseItem(id, 'exp-1', productId, 10, 50, 50, 'PCS', new Date(), new Date());
@@ -15,7 +18,6 @@ describe('DeleteExpenseUseCase', () => {
   let useCase: DeleteExpenseUseCase;
   let mockExpenseRepository: jest.Mocked<IExpenseRepository>;
   let mockStockService: jest.Mocked<Pick<StockService, 'recordPurchase' | 'recordPurchaseReversal'>>;
-  let mockPrismaService: jest.Mocked<PrismaService>;
   const mockTx = { __isMockTx: true } as any;
 
   beforeEach(() => {
@@ -41,15 +43,12 @@ describe('DeleteExpenseUseCase', () => {
       recordPurchaseReversal: jest.fn().mockResolvedValue(null),
     };
 
-    mockPrismaService = {
-      getClient: jest.fn().mockReturnValue({
-        $transaction: jest.fn().mockImplementation((cb: Function) => cb(mockTx)),
-      }),
-    } as unknown as jest.Mocked<PrismaService>;
+    mockGetPrisma.mockReturnValue({
+      $transaction: jest.fn().mockImplementation((cb: Function) => cb(mockTx)),
+    } as any);
 
     useCase = new DeleteExpenseUseCase(
       mockExpenseRepository,
-      mockPrismaService,
       mockStockService as unknown as StockService
     );
   });

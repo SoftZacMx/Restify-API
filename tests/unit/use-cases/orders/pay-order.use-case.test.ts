@@ -1,10 +1,12 @@
 import { PaymentStatus, PaymentMethod } from '@prisma/client';
 import { PayOrderUseCase } from '../../../../src/core/application/use-cases/orders/pay-order.use-case';
-import { PrismaService } from '../../../../src/core/infrastructure/config/prisma.config';
+import { getPrisma } from '../../../../src/core/infrastructure/database/prisma/get-prisma';
+
+jest.mock('../../../../src/core/infrastructure/database/prisma/get-prisma');
+const mockGetPrisma = getPrisma as jest.MockedFunction<typeof getPrisma>;
 
 describe('PayOrderUseCase', () => {
   let useCase: PayOrderUseCase;
-  let mockPrismaService: jest.Mocked<PrismaService>;
   let mockTx: {
     order: { findUnique: jest.Mock; update: jest.Mock };
     payment: { create: jest.Mock };
@@ -80,13 +82,11 @@ describe('PayOrderUseCase', () => {
       table: { update: jest.fn() },
     };
 
-    mockPrismaService = {
-      getClient: jest.fn().mockReturnValue({
-        $transaction: jest.fn().mockImplementation((cb: (tx: unknown) => unknown) => cb(mockTx)),
-      }),
-    } as unknown as jest.Mocked<PrismaService>;
+    mockGetPrisma.mockReturnValue({
+      $transaction: jest.fn().mockImplementation((cb: (tx: unknown) => unknown) => cb(mockTx)),
+    } as any);
 
-    useCase = new PayOrderUseCase(mockPrismaService);
+    useCase = new PayOrderUseCase();
   });
 
   afterEach(() => {

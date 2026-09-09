@@ -13,7 +13,6 @@ import { PendingCheckoutRepository } from '../../src/core/infrastructure/databas
 import { ExpenseRepository } from '../../src/core/infrastructure/database/repositories/expense.repository';
 import { BranchRepository } from '../../src/core/infrastructure/database/repositories/branch.repository';
 import { OrganizationRepository } from '../../src/core/infrastructure/database/repositories/organization.repository';
-import { PrismaService } from '../../src/core/infrastructure/config/prisma.config';
 import {
   ensurePaymentE2EEnv,
   shouldSkipPaymentE2E,
@@ -55,7 +54,7 @@ describe('E2E Pagos — ConfirmMercadoPagoPayment (webhook, BD real)', () => {
     pendingCheckoutRepo,
     mp.service,
     new CreateMercadoPagoFeeExpenseUseCase(expenseRepo),
-    new PublicOrderPersistenceService(new PrismaService(), new StockService(new PrismaService())),
+    new PublicOrderPersistenceService(new StockService()),
     new TenantResolverService(branchRepo, orgRepo)
   );
 

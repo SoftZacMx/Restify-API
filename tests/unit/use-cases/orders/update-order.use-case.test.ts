@@ -5,8 +5,11 @@ import { Order } from '../../../../src/core/domain/entities/order.entity';
 import { OrderItem } from '../../../../src/core/domain/entities/order-item.entity';
 import { Table } from '../../../../src/core/domain/entities/table.entity';
 import { StockService } from '../../../../src/core/application/services/stock.service';
-import { PrismaService } from '../../../../src/core/infrastructure/config/prisma.config';
+import { getPrisma } from '../../../../src/core/infrastructure/database/prisma/get-prisma';
 import { AppError } from '../../../../src/shared/errors';
+
+jest.mock('../../../../src/core/infrastructure/database/prisma/get-prisma');
+const mockGetPrisma = getPrisma as jest.MockedFunction<typeof getPrisma>;
 
 describe('UpdateOrderUseCase', () => {
   let updateOrderUseCase: UpdateOrderUseCase;
@@ -77,14 +80,11 @@ describe('UpdateOrderUseCase', () => {
       product: { findMany: jest.fn().mockResolvedValue([]) },
     };
 
-    const mockPrismaService = {
-      getClient: jest.fn().mockReturnValue(mockPrismaClient),
-    } as unknown as PrismaService;
+    mockGetPrisma.mockReturnValue(mockPrismaClient);
 
     updateOrderUseCase = new UpdateOrderUseCase(
       mockOrderRepository,
       mockTableRepository,
-      mockPrismaService,
       mockStockService as unknown as StockService,
     );
   });

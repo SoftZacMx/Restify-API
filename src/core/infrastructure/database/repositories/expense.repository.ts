@@ -1,5 +1,6 @@
-import { PrismaClient, ExpenseType, UnitOfMeasure, Prisma } from '@prisma/client';
+import { PrismaClient, ExpenseType, UnitOfMeasure } from '@prisma/client';
 import { injectable } from 'tsyringe';
+import { getPrisma, TenantTransactionClient } from '../prisma/get-prisma';
 import {
   IExpenseRepository,
   ExpenseFilters,
@@ -216,9 +217,9 @@ export class ExpenseRepository implements IExpenseRepository {
       userId: string | null;
       items: ExpenseItemInput[];
     },
-    tx?: Prisma.TransactionClient
+    tx?: TenantTransactionClient
   ): Promise<{ expense: Expense; items: ExpenseItem[] }> {
-    const run = async (client: Prisma.TransactionClient) => {
+    const run = async (client: TenantTransactionClient) => {
       const expense = await client.expense.create({
         data: {
           title: data.title,
@@ -255,7 +256,7 @@ export class ExpenseRepository implements IExpenseRepository {
       return { expense, items };
     };
 
-    const result = tx ? await run(tx) : await this.prisma.$transaction(run);
+    const result = tx ? await run(tx) : await getPrisma().$transaction(run);
 
     return {
       expense: Expense.fromPrisma(result.expense),
@@ -293,8 +294,8 @@ export class ExpenseRepository implements IExpenseRepository {
     return Expense.fromPrisma(expense);
   }
 
-  async delete(id: string, tx?: Prisma.TransactionClient): Promise<void> {
-    const client = tx ?? this.prisma;
+  async delete(id: string, tx?: TenantTransactionClient): Promise<void> {
+    const client = tx ?? getPrisma();
     await client.expense.delete({
       where: { id },
     });
@@ -323,8 +324,8 @@ export class ExpenseRepository implements IExpenseRepository {
     return ExpenseItem.fromPrisma(item);
   }
 
-  async findItemsByExpenseId(expenseId: string, tx?: Prisma.TransactionClient): Promise<ExpenseItem[]> {
-    const client = tx ?? this.prisma;
+  async findItemsByExpenseId(expenseId: string, tx?: TenantTransactionClient): Promise<ExpenseItem[]> {
+    const client = tx ?? getPrisma();
     const items = await client.expenseItem.findMany({
       where: { expenseId },
       orderBy: {

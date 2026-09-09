@@ -1,6 +1,5 @@
 import { Prisma, StockMovementType } from '@prisma/client';
 import { StockService } from '../../../src/core/application/services/stock.service';
-import { PrismaService } from '../../../src/core/infrastructure/config/prisma.config';
 import { getPrisma } from '../../../src/core/infrastructure/database/prisma/get-prisma';
 import { AppError } from '../../../src/shared/errors';
 
@@ -66,11 +65,10 @@ function createMockPrismaService() {
     $transaction: jest.fn().mockImplementation((cb: Function) => cb(mockTx)),
   };
 
-  const prismaService = {
-    getClient: jest.fn().mockReturnValue(client),
-  } as unknown as PrismaService;
+  // StockService abre sus transacciones con getPrisma() (cliente con tenant extension).
+  mockGetPrisma.mockReturnValue(client as any);
 
-  return { prismaService, mockTx, client };
+  return { mockTx, client };
 }
 
 describe('StockService', () => {
@@ -87,8 +85,8 @@ describe('StockService', () => {
 
   describe('recordPurchase', () => {
     it('recalcula averageCost con la fórmula ponderada y suma stock cuando trackStock=true', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(product());
 
@@ -115,8 +113,8 @@ describe('StockService', () => {
     });
 
     it('convierte unidades compatibles (G → KG) preservando el total', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(product());
 
@@ -140,8 +138,8 @@ describe('StockService', () => {
     });
 
     it('lanza INCOMPATIBLE_UNIT si la unidad no es compatible con la del producto', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(product({ unitOfMeasure: 'PCS' }));
 
@@ -157,8 +155,8 @@ describe('StockService', () => {
     });
 
     it('actualiza averageCost pero NO crea movement ni mueve stock cuando trackStock=false', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(product({ trackStock: false, stockActual: new Decimal(0), averageCost: new Decimal(0) }));
 
@@ -178,8 +176,8 @@ describe('StockService', () => {
     });
 
     it('cuando stock previo + comprado = 0 usa unitCost directo (caso borde)', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(product({ stockActual: new Decimal(0), averageCost: new Decimal(0) }));
 
@@ -195,8 +193,8 @@ describe('StockService', () => {
     });
 
     it('rechaza quantity <= 0', async () => {
-      const { prismaService } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      createMockPrismaService();
+      const service = new StockService();
 
       await expect(
         service.recordPurchase({ productId: 'p', quantity: 0, unitCost: 5, userId: 'u' })
@@ -204,8 +202,8 @@ describe('StockService', () => {
     });
 
     it('rechaza unitCost negativo', async () => {
-      const { prismaService } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      createMockPrismaService();
+      const service = new StockService();
 
       await expect(
         service.recordPurchase({ productId: 'p', quantity: 1, unitCost: -1, userId: 'u' })
@@ -213,8 +211,8 @@ describe('StockService', () => {
     });
 
     it('cuando recibe tx externa, NO abre $transaction propio', async () => {
-      const { prismaService, client, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { client, mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(product());
 
@@ -228,8 +226,8 @@ describe('StockService', () => {
     });
 
     it('lanza PRODUCT_NOT_FOUND si el producto no existe', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(null);
 
@@ -241,8 +239,8 @@ describe('StockService', () => {
 
   describe('recordPurchaseReversal', () => {
     it('crea ADJUSTMENT con cantidad opuesta a la compra original y suma al stock', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.stockMovement.findFirst
         .mockResolvedValueOnce(null)
@@ -272,8 +270,8 @@ describe('StockService', () => {
     });
 
     it('es idempotente: si ya existe ADJUSTMENT para ese expenseItem, devuelve null', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.stockMovement.findFirst.mockResolvedValueOnce({ id: 'existing-adj' });
 
@@ -288,8 +286,8 @@ describe('StockService', () => {
     });
 
     it('es no-op si no hay PURCHASE original', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.stockMovement.findFirst.mockResolvedValue(null);
 
@@ -304,8 +302,8 @@ describe('StockService', () => {
     });
 
     it('usa la tx externa si se pasa', async () => {
-      const { prismaService, client, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { client, mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.stockMovement.findFirst
         .mockResolvedValueOnce(null)
@@ -321,8 +319,8 @@ describe('StockService', () => {
     });
 
     it('rechaza reason vacío', async () => {
-      const { prismaService } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      createMockPrismaService();
+      const service = new StockService();
 
       await expect(
         service.recordPurchaseReversal({ expenseItemId: 'ei', reason: '', userId: 'u' })
@@ -332,8 +330,8 @@ describe('StockService', () => {
 
   describe('recordSaleForOrderItem', () => {
     it('lanza ORDER_ITEM_NOT_FOUND si el order item no existe', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.orderItem.findUnique.mockResolvedValue(null);
 
@@ -343,8 +341,8 @@ describe('StockService', () => {
     });
 
     it('descuenta cada ingrediente de la receta del MenuItem', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.orderItem.findUnique.mockResolvedValue({
         id: 'oi-1',
@@ -369,8 +367,8 @@ describe('StockService', () => {
     });
 
     it('salta ingredientes de productos no encontrados o sin trackStock', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.orderItem.findUnique.mockResolvedValue({
         id: 'oi-1',
@@ -396,8 +394,8 @@ describe('StockService', () => {
     });
 
     it('descuenta 1:1 el producto directo de un MenuItem sin receta', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.orderItem.findUnique.mockResolvedValue({
         id: 'oi-1',
@@ -416,8 +414,8 @@ describe('StockService', () => {
     });
 
     it('no descuenta un producto directo inexistente o sin trackStock', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.orderItem.findUnique.mockResolvedValue({
         id: 'oi-1',
@@ -435,8 +433,8 @@ describe('StockService', () => {
     });
 
     it('descuenta el productId directo de un OrderItem histórico (sin menuItem)', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.orderItem.findUnique.mockResolvedValue({
         id: 'oi-1',
@@ -455,8 +453,8 @@ describe('StockService', () => {
     });
 
     it('no genera movements si no hay menuItem ni productId', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.orderItem.findUnique.mockResolvedValue({
         id: 'oi-1',
@@ -473,8 +471,8 @@ describe('StockService', () => {
     });
 
     it('descuenta también los extras del OrderItem', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.orderItem.findUnique.mockResolvedValue({
         id: 'oi-1',
@@ -502,8 +500,8 @@ describe('StockService', () => {
     });
 
     it('usa la tx externa si se pasa', async () => {
-      const { prismaService, client, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { client, mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.orderItem.findUnique.mockResolvedValue({
         id: 'oi-1',
@@ -525,8 +523,8 @@ describe('StockService', () => {
       new Map(items.map((p) => [p.id, p]));
 
     it('no-op si items está vacío', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       await service.recordSalesBatch([], new Map(), 'user-1', mockTx as any);
 
@@ -535,8 +533,8 @@ describe('StockService', () => {
     });
 
     it('descuenta ingredientes de receta, producto directo y extras, acumulando deltas', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       const productMap = baseProductMap([
         product({ id: 'ing-1' }),
@@ -577,8 +575,8 @@ describe('StockService', () => {
     });
 
     it('ignora productos sin trackStock y no encontrados', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       const productMap = baseProductMap([product({ id: 'tracked' }), product({ id: 'no-track', trackStock: false })]);
       const items = [
@@ -613,8 +611,8 @@ describe('StockService', () => {
     });
 
     it('no-op si no se generó ningún movement', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       await service.recordSalesBatch(
         [{ orderItemId: 'oi-1', quantity: 1, menuItem: null, productId: 'missing', extras: [] }],
@@ -627,8 +625,8 @@ describe('StockService', () => {
     });
 
     it('advierte si el stock queda negativo', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       const productMap = baseProductMap([product({ id: 'prod-x', stockActual: new Decimal(1) })]);
       const items = [
@@ -649,8 +647,8 @@ describe('StockService', () => {
 
   describe('reverseSaleForOrderItem', () => {
     it('es idempotente: devuelve [] si ya existe un SALE_REVERSAL', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.stockMovement.findFirst.mockResolvedValueOnce({ id: 'existing-reversal' });
 
@@ -661,8 +659,8 @@ describe('StockService', () => {
     });
 
     it('devuelve [] si no hay ventas previas', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.stockMovement.findFirst.mockResolvedValueOnce(null);
       mockTx.stockMovement.findMany.mockResolvedValueOnce([]);
@@ -674,8 +672,8 @@ describe('StockService', () => {
     });
 
     it('usa la tx externa si se pasa', async () => {
-      const { prismaService, client, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { client, mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.stockMovement.findFirst.mockResolvedValueOnce(null);
       mockTx.stockMovement.findMany.mockResolvedValueOnce([movement({ type: StockMovementType.SALE })]);
@@ -687,8 +685,8 @@ describe('StockService', () => {
     });
 
     it('revierte cada venta con SALE_REVERSAL y devuelve el stock', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.stockMovement.findFirst.mockResolvedValueOnce(null);
       mockTx.stockMovement.findMany.mockResolvedValueOnce([
@@ -709,8 +707,8 @@ describe('StockService', () => {
 
   describe('reverseSalesBatch', () => {
     it('no-op si orderItemIds está vacío', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       await service.reverseSalesBatch([], 'user-1', 'cancelled', mockTx as any);
 
@@ -719,8 +717,8 @@ describe('StockService', () => {
     });
 
     it('no-op si todos los items ya fueron revertidos', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.stockMovement.findMany.mockResolvedValueOnce([
         { orderItemId: 'oi-1' },
@@ -733,8 +731,8 @@ describe('StockService', () => {
     });
 
     it('no-op si no hay ventas originales', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.stockMovement.findMany
         .mockResolvedValueOnce([]) // alreadyReversed
@@ -746,8 +744,8 @@ describe('StockService', () => {
     });
 
     it('revierte en bulk los items pendientes, ignorando los ya revertidos', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.stockMovement.findMany
         .mockResolvedValueOnce([{ orderItemId: 'oi-1' }]) // oi-1 ya revertido
@@ -773,8 +771,8 @@ describe('StockService', () => {
 
   describe('recordWaste', () => {
     it('rechaza quantity <= 0', async () => {
-      const { prismaService } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      createMockPrismaService();
+      const service = new StockService();
 
       await expect(
         service.recordWaste({ productId: 'p', quantity: 0, reason: 'EXPIRED', userId: 'u' })
@@ -782,8 +780,8 @@ describe('StockService', () => {
     });
 
     it('rechaza reason vacío', async () => {
-      const { prismaService } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      createMockPrismaService();
+      const service = new StockService();
 
       await expect(
         service.recordWaste({ productId: 'p', quantity: 1, reason: '' as any, userId: 'u' })
@@ -791,8 +789,8 @@ describe('StockService', () => {
     });
 
     it('rechaza un motivo inválido', async () => {
-      const { prismaService } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      createMockPrismaService();
+      const service = new StockService();
 
       await expect(
         service.recordWaste({ productId: 'p', quantity: 1, reason: 'NOPE' as any, userId: 'u' })
@@ -800,8 +798,8 @@ describe('StockService', () => {
     });
 
     it('lanza PRODUCT_NOT_FOUND si el producto no existe', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(null);
 
@@ -811,8 +809,8 @@ describe('StockService', () => {
     });
 
     it('es no-op si el producto no trackea stock', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(product({ trackStock: false }));
 
@@ -823,8 +821,8 @@ describe('StockService', () => {
     });
 
     it('crea movement WASTE y descuenta stock', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(product());
 
@@ -846,8 +844,8 @@ describe('StockService', () => {
     });
 
     it('advierte si el stock queda negativo', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(product({ stockActual: new Decimal(1) }));
 
@@ -859,8 +857,8 @@ describe('StockService', () => {
 
   describe('recordAdjustment', () => {
     it('rechaza newStock negativo', async () => {
-      const { prismaService } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      createMockPrismaService();
+      const service = new StockService();
 
       await expect(
         service.recordAdjustment({ productId: 'p', newStock: -1, reason: 'count', userId: 'u' })
@@ -868,8 +866,8 @@ describe('StockService', () => {
     });
 
     it('rechaza reason vacío', async () => {
-      const { prismaService } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      createMockPrismaService();
+      const service = new StockService();
 
       await expect(
         service.recordAdjustment({ productId: 'p', newStock: 5, reason: '  ', userId: 'u' })
@@ -877,8 +875,8 @@ describe('StockService', () => {
     });
 
     it('lanza PRODUCT_NOT_FOUND si el producto no existe', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(null);
 
@@ -888,8 +886,8 @@ describe('StockService', () => {
     });
 
     it('es no-op si el producto no trackea stock', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(product({ trackStock: false }));
 
@@ -899,8 +897,8 @@ describe('StockService', () => {
     });
 
     it('es no-op si la diferencia es 0', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(product());
 
@@ -911,8 +909,8 @@ describe('StockService', () => {
     });
 
     it('crea movement ADJUSTMENT con la diferencia y setea el stock', async () => {
-      const { prismaService, mockTx } = createMockPrismaService();
-      const service = new StockService(prismaService);
+      const { mockTx } = createMockPrismaService();
+      const service = new StockService();
 
       mockTx.product.findUnique.mockResolvedValue(product({ stockActual: new Decimal(7) }));
 
@@ -950,8 +948,7 @@ describe('StockService', () => {
     });
 
     function makeService(): StockService {
-      const { prismaService } = createMockPrismaService();
-      return new StockService(prismaService);
+      return new StockService();
     }
 
     describe('getStockSummary', () => {

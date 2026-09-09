@@ -86,7 +86,7 @@ describe('PublicOrderPersistenceService', () => {
 
   function buildService(prismaOverrides: Parameters<typeof createMockPrismaService>[0] = {}) {
     mockPrismaService = createMockPrismaService(prismaOverrides);
-    service = new PublicOrderPersistenceService(mockPrismaService as any, mockStockService);
+    service = new PublicOrderPersistenceService(mockStockService);
   }
 
   beforeEach(() => {
@@ -190,7 +190,6 @@ describe('PublicOrderPersistenceService', () => {
           userId: null,
           origin: 'online-pickup',
           customerName: 'Juan',
-          branchId: 'branch-1',
         }),
       });
       expect(mockPrismaService.mockTx.orderItem.createMany).toHaveBeenCalled();

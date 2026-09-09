@@ -1,9 +1,18 @@
 import { PrismaClient } from '@prisma/client';
 import { createTenantExtension } from './tenant-extension';
 
+export type ExtendedPrismaClient = ReturnType<typeof createTenantExtension>;
+
+// Cliente que recibe el callback de `getPrisma().$transaction(...)`: mantiene el
+// filtro de tenant. Es el tipo a usar para los `tx` que se pasan entre capas.
+export type TenantTransactionClient = Omit<
+  ExtendedPrismaClient,
+  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+>;
+
 // Un solo pool: el cliente extendido deriva del base y comparte sus conexiones.
 let basePrismaClient: PrismaClient | null = null;
-let prismaClientWithExtension: ReturnType<typeof createTenantExtension> | null = null;
+let prismaClientWithExtension: ExtendedPrismaClient | null = null;
 
 // Lazy: no depende de que el .env ya esté cargado al importar este módulo.
 function getOrCreateBaseClient(): PrismaClient {

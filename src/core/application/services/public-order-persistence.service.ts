@@ -1,7 +1,6 @@
 import { inject, injectable } from 'tsyringe';
 import { randomUUID } from 'crypto';
 import { getPrisma } from '../../infrastructure/database/prisma/get-prisma';
-import { PrismaService } from '../../infrastructure/config/prisma.config';
 import { StockService, StockBatchSaleItem } from './stock.service';
 import { AppError } from '../../../shared/errors';
 
@@ -51,7 +50,6 @@ export interface PersistedPublicOrder {
 @injectable()
 export class PublicOrderPersistenceService {
   constructor(
-    @inject(PrismaService) private readonly prismaService: PrismaService,
     @inject(StockService) private readonly stockService: StockService,
   ) {}
 
@@ -171,7 +169,7 @@ export class PublicOrderPersistenceService {
       extras: (item.extras ?? []).map((extra) => ({ id: randomUUID(), input: extra })),
     }));
 
-    const result = await this.prismaService.getClient().$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
           status: false,
@@ -194,7 +192,6 @@ export class PublicOrderPersistenceService {
           deliveryAddress: input.deliveryAddress ?? null,
           scheduledAt: input.scheduledAt ?? null,
           trackingToken,
-          branchId: input.branchId,
         },
       });
 
@@ -207,7 +204,6 @@ export class PublicOrderPersistenceService {
           productId: null,
           menuItemId: p.input.menuItemId,
           note: p.input.note ?? null,
-          branchId: input.branchId,
         })),
       });
 
@@ -219,7 +215,6 @@ export class PublicOrderPersistenceService {
           extraId: e.input.extraId,
           quantity: e.input.quantity,
           price: Number(menuItemMap.get(e.input.extraId)!.price),
-          branchId: input.branchId,
         }))
       );
       if (extraRows.length > 0) {

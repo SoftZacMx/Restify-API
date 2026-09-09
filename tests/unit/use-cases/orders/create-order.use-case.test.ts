@@ -191,7 +191,6 @@ describe('CreateOrderUseCase', () => {
       mockUserRepository,
       mockTableRepository,
       mockBranchRepository,
-      mockPrismaService as any,
       mockStockService,
     );
   });
@@ -266,7 +265,6 @@ describe('CreateOrderUseCase', () => {
         mockUserRepository,
         mockTableRepository,
         mockBranchRepository,
-        mockPrismaWithTable as any,
         mockStockServiceLocal,
       );
 
@@ -316,7 +314,6 @@ describe('CreateOrderUseCase', () => {
         mockUserRepository,
         mockTableRepository,
         mockBranchRepository,
-        mockPrismaWithTable as any,
         mockStockServiceLocal,
       );
 
@@ -398,7 +395,6 @@ describe('CreateOrderUseCase', () => {
         mockUserRepository,
         mockTableRepository,
         mockBranchRepository,
-        mockPrismaNoProduct as any,
         mockStockServiceLocal,
       );
 
@@ -435,7 +431,6 @@ describe('CreateOrderUseCase', () => {
         mockUserRepository,
         mockTableRepository,
         mockBranchRepository,
-        mockPrismaNoMenuItem as any,
         mockStockServiceLocal,
       );
 
