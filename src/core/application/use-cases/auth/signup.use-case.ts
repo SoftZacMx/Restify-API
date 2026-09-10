@@ -10,6 +10,9 @@ import { SendVerificationEmailUseCase } from './send-verification-email.use-case
 import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 import { logger } from '../../../../shared/utils/logger';
 
+/** Nombre del plan free creado por la migración inicial. Mismo que usan los scripts de seed. */
+const FREE_PLAN_NAME = 'Free Legacy';
+
 export interface SignupResult {
   token: string;
   user: {
@@ -78,11 +81,18 @@ export class SignupUseCase {
           currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 3);
         }
 
+        // El plan free lo crea la migración inicial. De él sale el límite de
+        // sucursales; si faltara, la suscripción queda sin plan y aplica el default.
+        const freePlan = await tx.subscriptionPlan.findUnique({
+          where: { name: FREE_PLAN_NAME },
+        });
+
         await tx.subscription.create({
           data: {
             organizationId: org.id,
             status: SubscriptionStatus.ACTIVE,
             currentPeriodEnd,
+            planId: freePlan?.id ?? null,
           },
         });
 

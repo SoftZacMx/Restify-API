@@ -19,7 +19,7 @@ export class CreateBranchUseCase {
 
     const [activeCount, maxBranches] = await Promise.all([
       this.branchRepository.countActiveByOrganizationId(organizationId),
-      this.branchLimitService.getMaxBranches(organizationId),
+      this.branchLimitService.getMaxBranches(),
     ]);
 
     if (activeCount >= maxBranches) {

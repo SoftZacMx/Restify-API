@@ -1,47 +1,45 @@
 import { BranchLimitService } from '../../../src/core/application/services/branch-limit.service';
-import { OrganizationPlan } from '@prisma/client';
 
 describe('BranchLimitService', () => {
   let service: BranchLimitService;
-  let organizationRepository: { findById: jest.Mock };
+  let subscriptionRepository: { find: jest.Mock };
+  let planRepository: { findById: jest.Mock };
 
   beforeEach(() => {
-    organizationRepository = { findById: jest.fn() };
-    service = new BranchLimitService(organizationRepository as any);
+    subscriptionRepository = { find: jest.fn() };
+    planRepository = { findById: jest.fn() };
+    service = new BranchLimitService(
+      subscriptionRepository as any,
+      planRepository as any
+    );
   });
 
-  it('lanza ORGANIZATION_NOT_FOUND si la org no existe', async () => {
-    organizationRepository.findById.mockResolvedValue(null);
+  it('devuelve el maxBranches del plan de la suscripcion', async () => {
+    subscriptionRepository.find.mockResolvedValue({ id: 'sub-1', planId: 'plan-1' });
+    planRepository.findById.mockResolvedValue({ id: 'plan-1', maxBranches: 10 });
 
-    await expect(service.getMaxBranches('org-1')).rejects.toMatchObject({
-      code: 'ORGANIZATION_NOT_FOUND',
-    });
+    await expect(service.getMaxBranches()).resolves.toBe(10);
+    expect(planRepository.findById).toHaveBeenCalledWith('plan-1');
   });
 
-  it('devuelve 3 para el plan FREE', async () => {
-    organizationRepository.findById.mockResolvedValue({ id: 'org-1', plan: OrganizationPlan.FREE });
+  it('devuelve el default si no hay suscripcion', async () => {
+    subscriptionRepository.find.mockResolvedValue(null);
 
-    await expect(service.getMaxBranches('org-1')).resolves.toBe(3);
+    await expect(service.getMaxBranches()).resolves.toBe(3);
+    expect(planRepository.findById).not.toHaveBeenCalled();
   });
 
-  it('devuelve 10 para el plan PRO', async () => {
-    organizationRepository.findById.mockResolvedValue({ id: 'org-1', plan: OrganizationPlan.PRO });
+  it('devuelve el default si la suscripcion no tiene plan', async () => {
+    subscriptionRepository.find.mockResolvedValue({ id: 'sub-1', planId: null });
 
-    await expect(service.getMaxBranches('org-1')).resolves.toBe(10);
+    await expect(service.getMaxBranches()).resolves.toBe(3);
+    expect(planRepository.findById).not.toHaveBeenCalled();
   });
 
-  it('devuelve 999 para el plan ENTERPRISE', async () => {
-    organizationRepository.findById.mockResolvedValue({
-      id: 'org-1',
-      plan: OrganizationPlan.ENTERPRISE,
-    });
+  it('devuelve el default si el plan referenciado no existe', async () => {
+    subscriptionRepository.find.mockResolvedValue({ id: 'sub-1', planId: 'plan-borrado' });
+    planRepository.findById.mockResolvedValue(null);
 
-    await expect(service.getMaxBranches('org-1')).resolves.toBe(999);
-  });
-
-  it('cae a FREE si el plan es desconocido', async () => {
-    organizationRepository.findById.mockResolvedValue({ id: 'org-1', plan: 'UNKNOWN' });
-
-    await expect(service.getMaxBranches('org-1')).resolves.toBe(3);
+    await expect(service.getMaxBranches()).resolves.toBe(3);
   });
 });

@@ -65,6 +65,9 @@ describe('SignupUseCase', () => {
     txMock = {
       organization: { create: jest.fn().mockResolvedValue({ id: 'org-1', name: 'Acme' }) },
       subscription: { create: jest.fn().mockResolvedValue({}) },
+      subscriptionPlan: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'plan-free', name: 'Free Legacy' }),
+      },
       user: {
         create: jest.fn().mockResolvedValue({
           id: 'user-1',
@@ -110,7 +113,12 @@ describe('SignupUseCase', () => {
       data: { name: 'Acme', plan: OrganizationPlan.FREE },
     });
     expect(txMock.subscription.create).toHaveBeenCalledWith({
-      data: { organizationId: 'org-1', status: SubscriptionStatus.ACTIVE, currentPeriodEnd: undefined },
+      data: {
+        organizationId: 'org-1',
+        status: SubscriptionStatus.ACTIVE,
+        currentPeriodEnd: undefined,
+        planId: 'plan-free',
+      },
     });
     expect(txMock.user.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ email: 'juan@example.com', rol: 'OWNER', organizationId: 'org-1' }),

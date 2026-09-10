@@ -651,3 +651,27 @@ ALTER TABLE `subscriptions` ADD CONSTRAINT `subscriptions_planId_fkey` FOREIGN K
 -- AddForeignKey
 ALTER TABLE `subscriptions` ADD CONSTRAINT `subscriptions_organizationId_fkey` FOREIGN KEY (`organizationId`) REFERENCES `organizations`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
+
+-- Plan gratuito: el registro se lo asigna a cada organizacion nueva y de aqui
+-- sale su limite de sucursales. El nombre es la llave: no debe cambiar.
+INSERT INTO `subscription_plans` (
+    `id`,
+    `name`,
+    `billingPeriod`,
+    `price`,
+    `stripePriceId`,
+    `maxBranches`,
+    `status`,
+    `createdAt`,
+    `updatedAt`
+) VALUES (
+    UUID(),
+    'Free Legacy',
+    NULL,
+    0,
+    NULL,
+    3,
+    true,
+    NOW(3),
+    NOW(3)
+);
