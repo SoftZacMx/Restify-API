@@ -26,4 +26,5 @@ COPY --from=builder /app/src/core/infrastructure/database/prisma ./src/core/infr
 # Crear .env vacío en runtime también
 RUN touch .env
 EXPOSE 3000
-CMD ["node", "dist/server/server.js"]
+# Aplica migraciones pendientes antes de servir. Si fallan, el server no arranca.
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=./src/core/infrastructure/database/prisma/schema.prisma && node dist/server/server.js"]
