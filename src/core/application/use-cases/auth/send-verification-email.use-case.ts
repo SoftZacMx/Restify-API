@@ -1,6 +1,7 @@
 import { inject, injectable } from 'tsyringe';
 import { JwtUtil } from '../../../../shared/utils/jwt.util';
 import { EmailService } from '../../../infrastructure/messaging/email.service';
+import { renderEmail, escapeHtml } from '../../../infrastructure/messaging/email-template';
 import { logger } from '../../../../shared/utils/logger';
 
 export interface SendVerificationEmailInput {
@@ -29,20 +30,16 @@ export class SendVerificationEmailUseCase {
     });
 
     const verifyUrl = `${this.appBaseUrl()}/verify-email?token=${encodeURIComponent(token)}`;
-    const greeting = input.name ? `Hola ${input.name},` : 'Hola,';
+    const greeting = input.name ? `Hola ${escapeHtml(input.name)},` : 'Hola,';
 
-    const html = `
-      <p>${greeting}</p>
-      <p>Gracias por registrarte en Restify. Confirma tu correo haciendo clic en el siguiente botón:</p>
-      <p>
-        <a href="${verifyUrl}"
-           style="display:inline-block;padding:12px 20px;background:#111827;color:#fff;text-decoration:none;border-radius:6px;">
-          Verificar mi cuenta
-        </a>
-      </p>
-      <p>O copia este enlace en tu navegador:<br/><a href="${verifyUrl}">${verifyUrl}</a></p>
-      <p>El enlace caduca en 24 horas. Si no creaste esta cuenta, puedes ignorar este correo.</p>
-    `.trim();
+    const html = renderEmail({
+      label: 'Verificación de correo',
+      title: 'Confirma tu correo',
+      greeting,
+      body: ['Gracias por registrarte en Restify. Confirma tu correo para empezar a usar tu cuenta.'],
+      action: { label: 'Verificar mi cuenta', url: verifyUrl },
+      footer: 'El enlace caduca en 24 horas. Si no creaste esta cuenta, puedes ignorar este correo.',
+    });
 
     await this.emailService.send({
       to: input.email,

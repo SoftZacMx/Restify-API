@@ -4,6 +4,7 @@ import { IOrganizationRepository } from '../../../domain/interfaces/organization
 import { RequestReactivationInput } from '../../dto/organization.dto';
 import { JwtUtil } from '../../../../shared/utils/jwt.util';
 import { EmailService } from '../../../infrastructure/messaging/email.service';
+import { renderEmail, escapeHtml } from '../../../infrastructure/messaging/email-template';
 import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 import { logger } from '../../../../shared/utils/logger';
 
@@ -73,19 +74,16 @@ export class RequestOrganizationReactivationUseCase {
 
     const reactivateUrl = `${this.appBaseUrl()}/reactivate-organization?token=${encodeURIComponent(token)}`;
 
-    const html = `
-      <p>Hola,</p>
-      <p>Recibimos una solicitud para reactivar tu organización <strong>${org.name}</strong> en Restify.</p>
-      <p>Haz clic en el siguiente botón para reactivarla y volver a entrar:</p>
-      <p>
-        <a href="${reactivateUrl}"
-           style="display:inline-block;padding:12px 20px;background:#111827;color:#fff;text-decoration:none;border-radius:6px;">
-          Reactivar mi organización
-        </a>
-      </p>
-      <p>O copia este enlace en tu navegador:<br/><a href="${reactivateUrl}">${reactivateUrl}</a></p>
-      <p>El enlace caduca en 10 minutos. Si no solicitaste esto, puedes ignorar este correo.</p>
-    `.trim();
+    const html = renderEmail({
+      label: 'Reactivación de cuenta',
+      title: 'Reactiva tu organización',
+      greeting: 'Hola,',
+      body: [
+        `Recibimos una solicitud para reactivar tu organización <strong>${escapeHtml(org.name)}</strong> en Restify.`,
+      ],
+      action: { label: 'Reactivar mi organización', url: reactivateUrl },
+      footer: 'El enlace caduca en 10 minutos. Si no solicitaste esto, puedes ignorar este correo.',
+    });
 
     // Best-effort: si el correo falla (SES caído, remitente no verificado, etc.) lo
     // registramos pero NO propagamos el error, para mantener la respuesta uniforme 200

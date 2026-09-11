@@ -3,6 +3,7 @@ import { IUserRepository } from '../../../domain/interfaces/user-repository.inte
 import { RequestPasswordResetInput } from '../../dto/auth.dto';
 import { JwtUtil } from '../../../../shared/utils/jwt.util';
 import { EmailService } from '../../../infrastructure/messaging/email.service';
+import { renderEmail, escapeHtml } from '../../../infrastructure/messaging/email-template';
 import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 import { logger } from '../../../../shared/utils/logger';
 
@@ -34,22 +35,17 @@ export class RequestPasswordResetUseCase {
     });
 
     const resetUrl = `${this.appBaseUrl()}/auth/reset-password?token=${encodeURIComponent(token)}`;
-    const greeting = user.name ? `Hola ${user.name},` : 'Hola,';
+    const greeting = user.name ? `Hola ${escapeHtml(user.name)},` : 'Hola,';
 
-    const html = `
-      <p>${greeting}</p>
-      <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta de Restify.
-         Haz clic en el siguiente botón para elegir una nueva contraseña:</p>
-      <p>
-        <a href="${resetUrl}"
-           style="display:inline-block;padding:12px 20px;background:#111827;color:#fff;text-decoration:none;border-radius:6px;">
-          Restablecer contraseña
-        </a>
-      </p>
-      <p>O copia este enlace en tu navegador:<br/><a href="${resetUrl}">${resetUrl}</a></p>
-      <p>El enlace caduca en 5 minutos. Si no solicitaste este cambio, puedes ignorar este correo:
-         tu contraseña seguirá siendo la misma.</p>
-    `.trim();
+    const html = renderEmail({
+      label: 'Restablecer contraseña',
+      title: 'Elige una contraseña nueva',
+      greeting,
+      body: ['Elige una nueva contraseña para tu cuenta de Restify desde el siguiente enlace.'],
+      action: { label: 'Restablecer contraseña', url: resetUrl },
+      footer:
+        'El enlace caduca en 5 minutos. Si no solicitaste este cambio, puedes ignorar este correo: tu contraseña seguirá siendo la misma.',
+    });
 
     // El envío es best-effort: si el correo falla (SES caído, remitente no verificado, etc.)
     // lo registramos pero NO propagamos el error, para mantener la respuesta uniforme 200
