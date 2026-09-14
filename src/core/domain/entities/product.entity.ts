@@ -15,7 +15,8 @@ export class Product {
     public readonly unitOfMeasure: UnitOfMeasure | null = null,
     public readonly minStockAlert: number | null = null,
     // Transversal — Storage de imágenes (S3): URL pública de la imagen del producto.
-    public readonly imageUrl: string | null = null
+    public readonly imageUrl: string | null = null,
+    public readonly imageKey: string | null = null
   ) {}
 }
 

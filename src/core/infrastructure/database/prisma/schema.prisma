@@ -153,6 +153,7 @@ model Product {
   name             String
   description      String?
   imageUrl         String?
+  imageKey         String?
   registrationDate DateTime       @default(now())
   status           Boolean        @default(true)
   userId           String

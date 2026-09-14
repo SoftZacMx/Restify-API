@@ -26,7 +26,8 @@ export class ProductRepository implements IProductRepository {
       product.trackStock,
       product.unitOfMeasure,
       product.minStockAlert != null ? Number(product.minStockAlert) : null,
-      product.imageUrl
+      product.imageUrl,
+      product.imageKey
     );
   }
 
@@ -53,7 +54,8 @@ export class ProductRepository implements IProductRepository {
           product.trackStock,
           product.unitOfMeasure,
           product.minStockAlert != null ? Number(product.minStockAlert) : null,
-          product.imageUrl
+          product.imageUrl,
+          product.imageKey
         )
     );
   }
@@ -96,7 +98,8 @@ export class ProductRepository implements IProductRepository {
           product.trackStock,
           product.unitOfMeasure,
           product.minStockAlert != null ? Number(product.minStockAlert) : null,
-          product.imageUrl
+          product.imageUrl,
+          product.imageKey
         )
     );
   }
@@ -110,6 +113,7 @@ export class ProductRepository implements IProductRepository {
     unitOfMeasure?: import('@prisma/client').UnitOfMeasure | null;
     minStockAlert?: number | null;
     imageUrl?: string | null;
+    imageKey?: string | null;
   }): Promise<Product> {
     const product = await this.prisma.product.create({
       data: {
@@ -118,6 +122,7 @@ export class ProductRepository implements IProductRepository {
         status: data.status,
         userId: data.userId,
         ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
+        ...(data.imageKey !== undefined && { imageKey: data.imageKey }),
         ...(data.trackStock !== undefined && { trackStock: data.trackStock }),
         ...(data.unitOfMeasure !== undefined && { unitOfMeasure: data.unitOfMeasure }),
         ...(data.minStockAlert !== undefined && {
@@ -138,7 +143,8 @@ export class ProductRepository implements IProductRepository {
       product.trackStock,
       product.unitOfMeasure,
       product.minStockAlert != null ? Number(product.minStockAlert) : null,
-      product.imageUrl
+      product.imageUrl,
+      product.imageKey
     );
   }
 
@@ -149,6 +155,7 @@ export class ProductRepository implements IProductRepository {
       description?: string | null;
       status?: boolean;
       imageUrl?: string | null;
+      imageKey?: string | null;
     }
   ): Promise<Product> {
     const updateData: any = {};
@@ -157,6 +164,7 @@ export class ProductRepository implements IProductRepository {
     if (data.description !== undefined) updateData.description = data.description;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl;
+    if (data.imageKey !== undefined) updateData.imageKey = data.imageKey;
 
     const product = await this.prisma.product.update({
       where: { id },
@@ -175,7 +183,8 @@ export class ProductRepository implements IProductRepository {
       product.trackStock,
       product.unitOfMeasure,
       product.minStockAlert != null ? Number(product.minStockAlert) : null,
-      product.imageUrl
+      product.imageUrl,
+      product.imageKey
     );
   }
 

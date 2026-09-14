@@ -8,6 +8,7 @@ export const createProductSchema = z.object({
   name: z.string().min(1, 'Name is required').max(200, 'Name is too long'),
   description: z.string().max(1000, 'Description is too long').optional().nullable(),
   imageUrl: z.string().url('Invalid image URL').optional().nullable(),
+  imageKey: z.string().optional().nullable(),
   status: z.boolean().default(true),
   userId: z.string().uuid('Invalid user ID format'),
   // Stock config opcional desde la creación (si no se manda, defaults seguros).
@@ -21,6 +22,7 @@ export const updateProductSchema = z.object({
   name: z.string().min(1, 'Name is required').max(200, 'Name is too long').optional(),
   description: z.string().max(1000, 'Description is too long').optional().nullable(),
   imageUrl: z.string().url('Invalid image URL').optional().nullable(),
+  imageKey: z.string().optional().nullable(),
   status: z.boolean().optional(),
 });
 

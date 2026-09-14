@@ -18,6 +18,7 @@ export interface CreateProductResult {
   unitOfMeasure: UnitOfMeasure | null;
   minStockAlert: number | null;
   imageUrl: string | null;
+  imageKey: string | null;
 }
 
 @injectable()
@@ -44,6 +45,7 @@ export class CreateProductUseCase {
       unitOfMeasure: input.unitOfMeasure,
       minStockAlert: input.minStockAlert,
       imageUrl: input.imageUrl,
+      imageKey: input.imageKey,
     });
 
     return {
@@ -59,6 +61,7 @@ export class CreateProductUseCase {
       unitOfMeasure: product.unitOfMeasure,
       minStockAlert: product.minStockAlert,
       imageUrl: product.imageUrl,
+      imageKey: product.imageKey,
     };
   }
 }

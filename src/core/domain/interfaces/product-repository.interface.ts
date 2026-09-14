@@ -20,12 +20,14 @@ export interface IProductRepository {
     unitOfMeasure?: UnitOfMeasure | null;
     minStockAlert?: number | null;
     imageUrl?: string | null;
+    imageKey?: string | null;
   }): Promise<Product>;
   update(id: string, data: {
     name?: string;
     description?: string | null;
     status?: boolean;
     imageUrl?: string | null;
+    imageKey?: string | null;
   }): Promise<Product>;
   delete(id: string): Promise<void>;
 }

@@ -1,11 +1,13 @@
 import { DeleteProductUseCase } from '../../../../src/core/application/use-cases/products/delete-product.use-case';
 import { IProductRepository } from '../../../../src/core/domain/interfaces/product-repository.interface';
+import { IFileStorage } from '../../../../src/core/domain/interfaces/file-storage.interface';
 import { Product } from '../../../../src/core/domain/entities/product.entity';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('DeleteProductUseCase', () => {
   let deleteProductUseCase: DeleteProductUseCase;
   let mockProductRepository: jest.Mocked<IProductRepository>;
+  let mockFileStorage: jest.Mocked<IFileStorage>;
 
   beforeEach(() => {
     mockProductRepository = {
@@ -17,7 +19,12 @@ describe('DeleteProductUseCase', () => {
       delete: jest.fn(),
     };
 
-    deleteProductUseCase = new DeleteProductUseCase(mockProductRepository);
+    mockFileStorage = {
+      upload: jest.fn(),
+      delete: jest.fn(),
+    };
+
+    deleteProductUseCase = new DeleteProductUseCase(mockProductRepository, mockFileStorage);
   });
 
   afterEach(() => {
@@ -48,6 +55,7 @@ describe('DeleteProductUseCase', () => {
 
       expect(mockProductRepository.findById).toHaveBeenCalledWith('123');
       expect(mockProductRepository.delete).toHaveBeenCalledWith('123');
+      expect(mockFileStorage.delete).not.toHaveBeenCalled();
     });
 
     it('should throw error when product not found', async () => {
@@ -60,6 +68,29 @@ describe('DeleteProductUseCase', () => {
         expect(error).toBeInstanceOf(AppError);
         expect((error as AppError).code).toBe('PRODUCT_NOT_FOUND');
       }
+    });
+
+    const productWithImage = new Product(
+      '123', 'Test Product', 'Description', new Date(), true, '456', new Date(), new Date(),
+      false, null, null, 'https://cdn/x.webp', 'branches/b/products/x.webp'
+    );
+
+    it('should delete the image from storage when product has imageKey', async () => {
+      mockProductRepository.findById.mockResolvedValue(productWithImage);
+      mockProductRepository.delete.mockResolvedValue();
+
+      await deleteProductUseCase.execute(validInput);
+
+      expect(mockFileStorage.delete).toHaveBeenCalledWith('branches/b/products/x.webp');
+    });
+
+    it('should not fail the deletion when storage.delete throws (best-effort)', async () => {
+      mockProductRepository.findById.mockResolvedValue(productWithImage);
+      mockProductRepository.delete.mockResolvedValue();
+      mockFileStorage.delete.mockRejectedValue(new Error('S3 down'));
+
+      await expect(deleteProductUseCase.execute(validInput)).resolves.toBeUndefined();
+      expect(mockProductRepository.delete).toHaveBeenCalledWith('123');
     });
   });
 });
