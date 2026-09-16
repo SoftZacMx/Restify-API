@@ -69,7 +69,7 @@ export class ExpenseRepository implements IExpenseRepository {
     const expenses = await this.prisma.expense.findMany({
       where,
       orderBy: {
-        date: 'desc',
+        createdAt: 'desc',
       },
       skip: pagination?.skip,
       take: pagination?.take,
@@ -108,7 +108,7 @@ export class ExpenseRepository implements IExpenseRepository {
 
     const expenses = await this.prisma.expense.findMany({
       where,
-      orderBy: { date: 'desc' },
+      orderBy: { createdAt: 'desc' },
       skip: pagination?.skip,
       take: pagination?.take,
       include: {
