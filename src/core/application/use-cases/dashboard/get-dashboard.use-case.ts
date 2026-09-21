@@ -64,15 +64,20 @@ export class GetDashboardUseCase {
       paidOrdersToday,
       paidOrdersLast7Days,
       activeOrdersList,
+      activeOrdersCount,
       recentOrdersList,
-      paidOrdersForCompleted,
+      lastCompletedOrdersList,
       occupiedTablesList,
     ] = await Promise.all([
       this.orderRepository.findAll({ status: true, dateFrom: todayStart, dateTo: todayEnd }),
       this.orderRepository.findAll({ status: true, dateFrom: sevenDaysAgoStart, dateTo: todayEnd }),
-      this.orderRepository.findAll({ status: false }),
-      this.orderRepository.findAll({}), // all orders, already ordered by date desc
-      this.orderRepository.findAll({ status: true, dateFrom: thirtyDaysAgo, dateTo: now }),
+      this.orderRepository.findAll({ status: false }, { skip: 0, take: 20 }),
+      this.orderRepository.count({ status: false }),
+      this.orderRepository.findAll({}, { skip: 0, take: 10 }),
+      this.orderRepository.findAll(
+        { status: true, delivered: true, dateFrom: thirtyDaysAgo, dateTo: now },
+        { skip: 0, take: 5 }
+      ),
       this.tableRepository.findAll({ availabilityStatus: false }),
     ]);
 
@@ -99,12 +104,11 @@ export class GetDashboardUseCase {
       tableNameByTableId.set(t.id, t.name);
     }
 
-    const activeOrdersItems = activeOrdersList.slice(0, 20).map((o) => orderToSummary(o, tableNameByTableId));
-    const recentOrders = recentOrdersList.slice(0, 10).map((o) => orderToSummary(o, tableNameByTableId));
-    const lastCompletedOrders = paidOrdersForCompleted
-      .filter((o) => o.delivered)
-      .slice(0, 5)
-      .map((o) => orderToSummary(o, tableNameByTableId));
+    const activeOrdersItems = activeOrdersList.map((o) => orderToSummary(o, tableNameByTableId));
+    const recentOrders = recentOrdersList.map((o) => orderToSummary(o, tableNameByTableId));
+    const lastCompletedOrders = lastCompletedOrdersList.map((o) =>
+      orderToSummary(o, tableNameByTableId)
+    );
 
     const occupiedTablesItems = occupiedTablesList.map((t) => ({
       id: t.id,
@@ -114,7 +118,7 @@ export class GetDashboardUseCase {
     return {
       salesToday,
       salesLast7Days: { total: salesLast7DaysTotal, byDay },
-      activeOrders: { count: activeOrdersList.length, items: activeOrdersItems },
+      activeOrders: { count: activeOrdersCount, items: activeOrdersItems },
       occupiedTables: { count: occupiedTablesList.length, items: occupiedTablesItems },
       recentOrders,
       lastCompletedOrders,

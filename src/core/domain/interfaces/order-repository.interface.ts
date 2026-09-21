@@ -4,6 +4,7 @@ import { OrderItemExtra } from '../entities/order-item-extra.entity';
 
 export interface OrderFilters {
   status?: boolean;
+  delivered?: boolean;
   userId?: string;
   tableId?: string;
   paymentMethod?: number;

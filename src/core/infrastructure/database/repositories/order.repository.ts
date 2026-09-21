@@ -67,6 +67,9 @@ export class OrderRepository implements IOrderRepository {
     if (filters?.status !== undefined) {
       where.status = filters.status;
     }
+    if (filters?.delivered !== undefined) {
+      where.delivered = filters.delivered;
+    }
     if (filters?.userId) {
       where.userId = filters.userId;
     }

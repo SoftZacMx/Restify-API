@@ -112,7 +112,6 @@ describe('GetDashboardUseCase', () => {
     ];
     const completed = [
       makeOrder({ id: 'o8', status: true, delivered: true, total: 10, tableId: 'table-1' }),
-      makeOrder({ id: 'o9', status: true, delivered: false, total: 20 }),
     ];
 
     orderRepository.findAll
@@ -121,6 +120,7 @@ describe('GetDashboardUseCase', () => {
       .mockResolvedValueOnce(active)
       .mockResolvedValueOnce(recent)
       .mockResolvedValueOnce(completed);
+    orderRepository.count.mockResolvedValue(2);
     tableRepository.findAll
       .mockResolvedValueOnce([makeTable('table-1', 'Mesa 1'), makeTable('table-2', 'Mesa 2')])
       .mockResolvedValueOnce([makeTable('table-1', 'Mesa 1')]);
@@ -128,6 +128,13 @@ describe('GetDashboardUseCase', () => {
     const result = await useCase.execute();
 
     expect(branchTimezoneService.get).toHaveBeenCalledTimes(1);
+    expect(orderRepository.count).toHaveBeenCalledWith({ status: false });
+    expect(orderRepository.findAll).toHaveBeenCalledWith({ status: false }, { skip: 0, take: 20 });
+    expect(orderRepository.findAll).toHaveBeenCalledWith({}, { skip: 0, take: 10 });
+    expect(orderRepository.findAll).toHaveBeenCalledWith(
+      expect.objectContaining({ status: true, delivered: true }),
+      { skip: 0, take: 5 }
+    );
     expect(result.salesToday).toBe(100);
     expect(result.salesLast7Days.total).toBe(105);
     expect(result.salesLast7Days.byDay).toHaveLength(7);
@@ -156,6 +163,7 @@ describe('GetDashboardUseCase', () => {
 
   it('devuelve ceros y listas vacías cuando no hay datos', async () => {
     orderRepository.findAll.mockResolvedValue([]);
+    orderRepository.count.mockResolvedValue(0);
     tableRepository.findAll.mockResolvedValue([]);
 
     const result = await useCase.execute();
