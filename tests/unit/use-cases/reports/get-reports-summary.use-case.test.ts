@@ -1,4 +1,4 @@
-import { fromZonedTime } from 'date-fns-tz';
+import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { GetReportsSummaryUseCase } from '../../../../src/core/application/use-cases/reports/get-reports-summary.use-case';
 import { IReportsSummaryRepository } from '../../../../src/core/domain/interfaces/reports-summary-repository.interface';
 import { BranchTimezoneService } from '../../../../src/core/application/services/branch-timezone.service';
@@ -69,11 +69,13 @@ describe('GetReportsSummaryUseCase', () => {
 
   it('usa ahora como dateTo cuando falta dateTo', async () => {
     const before = Date.now();
-    await useCase.execute({ dateFrom: '2026-07-01' });
+    // dateFrom relativo a hoy: una fecha fija superaría el límite de 92 días con el paso del tiempo.
+    const dateFromDay = formatInTimeZone(new Date(before - 10 * DAY_MS), TIMEZONE, 'yyyy-MM-dd');
+    await useCase.execute({ dateFrom: dateFromDay });
     const after = Date.now();
 
     const [dateFrom, dateTo] = reportsSummaryRepository.getSummary.mock.calls[0];
-    expect(dateFrom).toEqual(startOfDayInZone('2026-07-01', TIMEZONE));
+    expect(dateFrom).toEqual(startOfDayInZone(dateFromDay, TIMEZONE));
     expect(dateTo.getTime()).toBeGreaterThanOrEqual(before);
     expect(dateTo.getTime()).toBeLessThanOrEqual(after);
   });
