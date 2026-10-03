@@ -67,7 +67,7 @@ export class TableRepository implements ITableRepository {
     const tables = await this.prisma.table.findMany({
       where,
       orderBy: {
-        name: 'asc',
+        createdAt: 'desc',
       },
     });
 
