@@ -235,6 +235,37 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     expect(mockStripeService.createCheckoutSession).not.toHaveBeenCalled();
   });
 
+  it('allows checkout when the active subscription is a different plan (upgrade, e.g. Free onboarding)', async () => {
+    const activeFreeSub = new Subscription(
+      'sub-id-1',
+      'org-1',
+      null,
+      null,
+      SubscriptionStatus.ACTIVE,
+      null,
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      false,
+      'plan-free',
+      new Date(),
+      new Date()
+    );
+
+    mockUserRepository.findById.mockResolvedValue(mockAdminUser);
+    mockPlanRepository.findById.mockResolvedValue(mockPlan);
+    mockOrganizationRepository.findById.mockResolvedValue(mockOrganization);
+    mockSubscriptionRepository.find.mockResolvedValue(activeFreeSub);
+    mockStripeService.createCustomer.mockResolvedValue('cus_test_123');
+    mockStripeService.createCheckoutSession.mockResolvedValue({
+      sessionId: 'cs_test_789',
+      url: 'https://checkout.stripe.com/cs_test_789',
+    });
+
+    const result = await useCase.execute(input);
+
+    expect(result.checkoutUrl).toBe('https://checkout.stripe.com/cs_test_789');
+    expect(mockSubscriptionRepository.update).toHaveBeenCalledWith('sub-id-1', { planId: 'plan-monthly-1' });
+  });
+
   it('should throw error when plan is not found', async () => {
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
     mockPlanRepository.findById.mockResolvedValue(null);

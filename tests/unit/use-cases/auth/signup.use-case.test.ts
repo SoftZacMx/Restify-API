@@ -46,6 +46,7 @@ describe('SignupUseCase', () => {
   let sendVerificationEmail: jest.Mocked<SendVerificationEmailUseCase>;
 
   const validInput = {
+    planId: 'plan-free',
     user: { email: 'juan@example.com', password: 'Password123', name: 'Juan', lastName: 'Perez' },
     organization: { name: 'Acme' },
     branch: {
@@ -65,9 +66,6 @@ describe('SignupUseCase', () => {
     txMock = {
       organization: { create: jest.fn().mockResolvedValue({ id: 'org-1', name: 'Acme' }) },
       subscription: { create: jest.fn().mockResolvedValue({}) },
-      subscriptionPlan: {
-        findUnique: jest.fn().mockResolvedValue({ id: 'plan-free', name: 'Free Legacy' }),
-      },
       user: {
         create: jest.fn().mockResolvedValue({
           id: 'user-1',
@@ -83,6 +81,10 @@ describe('SignupUseCase', () => {
 
     prismaMock = {
       user: { findUnique: jest.fn().mockResolvedValue(null) },
+      // El plan se busca fuera de la transacción (antes de crear nada).
+      subscriptionPlan: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'plan-free', name: 'Free Legacy', status: true, stripePriceId: null }),
+      },
       $transaction: jest.fn(async (fn: any) => fn(txMock)),
     };
 
@@ -151,6 +153,53 @@ describe('SignupUseCase', () => {
       code: 'EMAIL_ALREADY_EXISTS',
     });
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rechaza con SUBSCRIPTION_PLAN_NOT_FOUND si el plan no existe o está inactivo', async () => {
+    prismaMock.subscriptionPlan.findUnique.mockResolvedValue(null);
+
+    await expect(useCase.execute(validInput as any)).rejects.toMatchObject({
+      code: 'SUBSCRIPTION_PLAN_NOT_FOUND',
+    });
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('plan de pago con billing habilitado: no crea suscripción, requiresCheckout=true', async () => {
+    prismaMock.subscriptionPlan.findUnique.mockResolvedValue({
+      id: 'plan-paid',
+      name: 'Mensual',
+      status: true,
+      stripePriceId: 'price_123',
+    });
+
+    const result = await useCase.execute({ ...validInput, planId: 'plan-paid' } as any);
+
+    expect(txMock.subscription.create).not.toHaveBeenCalled();
+    expect(result.planId).toBe('plan-paid');
+    expect(result.requiresCheckout).toBe(true);
+  });
+
+  it('plan Free: crea suscripción ACTIVE, requiresCheckout=false', async () => {
+    const result = await useCase.execute(validInput as any);
+
+    expect(txMock.subscription.create).toHaveBeenCalled();
+    expect(result.planId).toBe('plan-free');
+    expect(result.requiresCheckout).toBe(false);
+  });
+
+  it('plan de pago con billing deshabilitado: se trata como Free (crea suscripción, requiresCheckout=false)', async () => {
+    process.env.BILLING_ENABLED = 'false';
+    prismaMock.subscriptionPlan.findUnique.mockResolvedValue({
+      id: 'plan-paid',
+      name: 'Mensual',
+      status: true,
+      stripePriceId: 'price_123',
+    });
+
+    const result = await useCase.execute({ ...validInput, planId: 'plan-paid' } as any);
+
+    expect(txMock.subscription.create).toHaveBeenCalled();
+    expect(result.requiresCheckout).toBe(false);
   });
 
   it('asigna un período de 3 años a la suscripción cuando el billing está deshabilitado', async () => {
