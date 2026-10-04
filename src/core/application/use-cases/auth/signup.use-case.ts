@@ -10,9 +10,6 @@ import { SendVerificationEmailUseCase } from './send-verification-email.use-case
 import { withoutTenant } from '../../../infrastructure/tenant/tenant-context';
 import { logger } from '../../../../shared/utils/logger';
 
-/** Nombre del plan free creado por la migración inicial. Mismo que usan los scripts de seed. */
-const FREE_PLAN_NAME = 'Free Legacy';
-
 export interface SignupResult {
   token: string;
   user: {
@@ -31,6 +28,10 @@ export interface SignupResult {
     id: string;
     name: string;
   };
+  /** Plan elegido en el registro. */
+  planId: string;
+  /** true si el plan elegido es de pago: el frontend debe redirigir a Stripe Checkout. */
+  requiresCheckout: boolean;
 }
 
 @injectable()
@@ -44,7 +45,7 @@ export class SignupUseCase {
   ) {}
 
   async execute(input: SignupInput): Promise<SignupResult> {
-    const { user: userInput, organization: orgInput, branch: branchInput } = input;
+    const { planId, user: userInput, organization: orgInput, branch: branchInput } = input;
 
     // Verificar email único (fuera de transacción para fail-fast)
     const existingUser = await withoutTenant(async () => {
@@ -54,6 +55,22 @@ export class SignupUseCase {
     if (existingUser) {
       throw new AppError('EMAIL_ALREADY_EXISTS', 'An account with this email already exists');
     }
+
+    // Validar el plan elegido (fuera de transacción, igual que la validación de email)
+    const plan = await withoutTenant(async () => {
+      return this.prisma.subscriptionPlan.findUnique({ where: { id: planId } });
+    });
+
+    if (!plan || !plan.status) {
+      throw new AppError('SUBSCRIPTION_PLAN_NOT_FOUND');
+    }
+
+    // Un plan es Free si no tiene precio de Stripe asociado; cualquier plan con
+    // stripePriceId requiere pasar por checkout para activarse.
+    const isFreePlan = !plan.stripePriceId;
+    // Sin billing no hay checkout que active un plan de pago: se trata como Free
+    // para no dejar la organización sin acceso.
+    const billingDisabled = process.env.BILLING_ENABLED === 'false';
 
     // Hash password
     const passwordHash = await BcryptUtil.hash(userInput.password);
@@ -69,32 +86,30 @@ export class SignupUseCase {
           },
         });
 
-        // 2. Crear subscription free.
-        // Cuando el billing está deshabilitado (BILLING_ENABLED=false) no hay flujo de
+        // 2. Crear subscription — solo si el plan elegido es Free, o si el billing
+        // está deshabilitado. Cuando el billing está deshabilitado no hay flujo de
         // pago que asigne un período, así que la suscripción quedaría ACTIVE pero sin
-        // currentPeriodEnd → la lógica de estado la trataría como "expirada". Para evitarlo
-        // le damos un período largo (hoy + 3 años) que la mantiene activa sin intervención.
-        const billingDisabled = process.env.BILLING_ENABLED === 'false';
-        let currentPeriodEnd: Date | undefined;
-        if (billingDisabled) {
-          currentPeriodEnd = new Date();
-          currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 3);
+        // currentPeriodEnd → la lógica de estado la trataría como "expirada". Para
+        // evitarlo le damos un período largo (hoy + 3 años) que la mantiene activa
+        // sin intervención.
+        if (isFreePlan || billingDisabled) {
+          let currentPeriodEnd: Date | undefined;
+          if (billingDisabled) {
+            currentPeriodEnd = new Date();
+            currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 3);
+          }
+
+          await tx.subscription.create({
+            data: {
+              organizationId: org.id,
+              status: SubscriptionStatus.ACTIVE,
+              currentPeriodEnd,
+              planId: plan.id,
+            },
+          });
         }
-
-        // El plan free lo crea la migración inicial. De él sale el límite de
-        // sucursales; si faltara, la suscripción queda sin plan y aplica el default.
-        const freePlan = await tx.subscriptionPlan.findUnique({
-          where: { name: FREE_PLAN_NAME },
-        });
-
-        await tx.subscription.create({
-          data: {
-            organizationId: org.id,
-            status: SubscriptionStatus.ACTIVE,
-            currentPeriodEnd,
-            planId: freePlan?.id ?? null,
-          },
-        });
+        // Si el plan es de pago (con billing habilitado), no se crea ninguna fila aquí:
+        // CreateSubscriptionCheckoutUseCase la crea como EXPIRED al llamar al checkout.
 
         // 3. Crear usuario owner
         const user = await tx.user.create({
@@ -177,6 +192,8 @@ export class SignupUseCase {
         id: result.branch.id,
         name: result.branch.name,
       },
+      planId: plan.id,
+      requiresCheckout: !isFreePlan && !billingDisabled,
     };
   }
 }

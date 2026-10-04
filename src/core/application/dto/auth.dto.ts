@@ -71,6 +71,7 @@ export const resetPasswordSchema = z.object({
 });
 
 export const signupSchema = z.object({
+  planId: z.string().uuid('Invalid plan ID format'),
   user: z.object({
     email: z.string().email('Invalid email format'),
     password: z.string()

@@ -5,7 +5,6 @@ import { IOrganizationRepository } from '../../../domain/interfaces/organization
 import { IUserRepository } from '../../../domain/interfaces/user-repository.interface';
 import { StripeSubscriptionService } from '../../../infrastructure/payment-gateways/stripe-subscription.service';
 import { AppError } from '../../../../shared/errors';
-import { OWNER_ADMIN } from '../../../../shared/constants/roles.constants';
 
 export interface CreateSubscriptionCheckoutInput {
   userId: string;
@@ -32,11 +31,11 @@ export class CreateSubscriptionCheckoutUseCase {
   ) {}
 
   async execute(input: CreateSubscriptionCheckoutInput): Promise<CreateSubscriptionCheckoutResult> {
-    // 0. Validar que sea ADMIN
+    // 0. Obtener el usuario (para el Customer de Stripe). El rol ya lo valida la
+    // ruta con AuthMiddleware.authorize(...OWNER_ADMIN) antes de llegar aquí.
     const user = await this.userRepository.findById(input.userId);
-
-    if (!user || !OWNER_ADMIN.includes(user.rol as any)) {
-      throw new AppError('FORBIDDEN', 'Solo el administrador puede gestionar la suscripción');
+    if (!user) {
+      throw new AppError('USER_NOT_FOUND');
     }
 
     // 1. Buscar el plan en la base de datos
@@ -48,8 +47,16 @@ export class CreateSubscriptionCheckoutUseCase {
     // 2. Buscar suscripción existente
     const existing = await this.subscriptionRepository.find();
 
-    // 3. Si ya existe y está activa, no permitir otra
-    if (existing && existing.status === 'ACTIVE') {
+    // 3. Solo bloquear si ya está pagando activamente ese MISMO plan (evita
+    // duplicar la suscripción en Stripe). Si la activa es otra (p. ej. el Free del
+    // onboarding, o un plan distinto), se permite continuar: es un upgrade/cambio
+    // de plan y el webhook actualizará esta misma fila al confirmarse el pago.
+    const isActiveOnSamePlan =
+      existing?.status === 'ACTIVE' &&
+      !!existing.stripeSubscriptionId &&
+      existing.planId === plan.id;
+
+    if (isActiveOnSamePlan) {
       throw new AppError('SUBSCRIPTION_ALREADY_ACTIVE');
     }
 
