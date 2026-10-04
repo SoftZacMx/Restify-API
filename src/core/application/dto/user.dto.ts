@@ -15,7 +15,8 @@ export const createUserSchema = z.object({
     .regex(/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/, 'Debe incluir al menos un carácter especial'),
   phone: z.string().max(20, 'Phone number is too long').optional().nullable(),
   status: z.boolean().default(true),
-  rol: z.nativeEnum(UserRole, {
+  // OWNER queda fuera: debe existir un único owner por organización y no se gestiona desde este módulo.
+  rol: z.enum(['ADMIN', 'MANAGER', 'WAITER', 'CHEF'], {
     errorMap: () => ({ message: 'Invalid role. Must be ADMIN, MANAGER, WAITER, or CHEF' }),
   }),
   // Sucursales asignadas (para roles no org-wide: MANAGER, WAITER, CHEF).
@@ -38,7 +39,7 @@ export const updateUserSchema = z.object({
     .optional(),
   phone: z.string().max(20, 'Phone number is too long').optional().nullable(),
   status: z.boolean().optional(),
-  rol: z.nativeEnum(UserRole, {
+  rol: z.enum(['ADMIN', 'MANAGER', 'WAITER', 'CHEF'], {
     errorMap: () => ({ message: 'Invalid role. Must be ADMIN, MANAGER, WAITER, or CHEF' }),
   }).optional(),
   // Si se envía, reemplaza el set de sucursales asignadas al usuario.

@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 const envSchema = z.object({
   // Server
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  // 'qa' se agrega como ambiente de staging (se comporta como no-production/no-development).
+  NODE_ENV: z.enum(['development', 'production', 'test', 'qa']).default('development'),
   PORT: z.string().default('3000'),
 
   // Database

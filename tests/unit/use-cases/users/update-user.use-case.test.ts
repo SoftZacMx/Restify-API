@@ -208,5 +208,33 @@ describe('UpdateUserUseCase', () => {
 
       expect(mockUserBranchAccessRepository.replaceForUser).not.toHaveBeenCalled();
     });
+
+    it('should throw CANNOT_MODIFY_OWNER when the target user is the owner', async () => {
+      mockUserRepository.findById.mockResolvedValue(buildUser({ rol: UserRole.OWNER }));
+
+      try {
+        await run(userId, { name: 'Jane' });
+        fail('Should have thrown an error');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AppError);
+        expect((error as AppError).code).toBe('CANNOT_MODIFY_OWNER');
+      }
+
+      expect(mockUserRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw CANNOT_ASSIGN_OWNER_ROLE when trying to promote to owner', async () => {
+      mockUserRepository.findById.mockResolvedValue(buildUser({ rol: UserRole.WAITER }));
+
+      try {
+        await run(userId, { rol: 'OWNER' as never });
+        fail('Should have thrown an error');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AppError);
+        expect((error as AppError).code).toBe('CANNOT_ASSIGN_OWNER_ROLE');
+      }
+
+      expect(mockUserRepository.update).not.toHaveBeenCalled();
+    });
   });
 });

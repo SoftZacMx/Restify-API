@@ -25,6 +25,11 @@ export class ResetUserPasswordUseCase {
       throw new AppError('USER_NOT_FOUND');
     }
 
+    // La contraseña del propietario no se gestiona desde este módulo.
+    if (user.isOwner()) {
+      throw new AppError('CANNOT_MODIFY_OWNER', 'No se puede resetear la contraseña del propietario');
+    }
+
     await this.userRepository.markForPasswordReset(user.id);
   }
 }

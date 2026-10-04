@@ -46,6 +46,11 @@ export class CreateUserUseCase {
   ) {}
 
   async execute(input: CreateUserInput): Promise<CreateUserResult> {
+    // El rol OWNER no se asigna desde la gestión de usuarios (único owner por org, cuenta de sistema).
+    if (input.rol === UserRole.OWNER) {
+      throw new AppError('CANNOT_ASSIGN_OWNER_ROLE', 'El rol OWNER no se puede asignar desde la gestión de usuarios');
+    }
+
     // Check if user with email already exists
     const existingUser = await this.userRepository.findByEmail(input.email);
     if (existingUser) {

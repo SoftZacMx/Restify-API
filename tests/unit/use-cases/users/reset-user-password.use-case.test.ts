@@ -89,4 +89,18 @@ describe('ResetUserPasswordUseCase', () => {
 
     expect(mockUserRepository.markForPasswordReset).not.toHaveBeenCalled();
   });
+
+  it('should throw CANNOT_MODIFY_OWNER when the target is the owner', async () => {
+    mockUserRepository.findById.mockResolvedValue(buildUser({ rol: UserRole.OWNER }));
+
+    try {
+      await run('123');
+      fail('Should have thrown an error');
+    } catch (error) {
+      expect(error).toBeInstanceOf(AppError);
+      expect((error as AppError).code).toBe('CANNOT_MODIFY_OWNER');
+    }
+
+    expect(mockUserRepository.markForPasswordReset).not.toHaveBeenCalled();
+  });
 });

@@ -16,6 +16,11 @@ export class DeleteUserUseCase {
       throw new AppError('USER_NOT_FOUND');
     }
 
+    // La cuenta del propietario no se puede desactivar (debe existir siempre un owner).
+    if (user.isOwner()) {
+      throw new AppError('CANNOT_MODIFY_OWNER', 'No se puede desactivar la cuenta del propietario');
+    }
+
     // Check if user is already deactivated (soft deleted)
     if (!user.isActive()) {
       throw new AppError('USER_ALREADY_DEACTIVATED', 'El usuario ya está desactivado');

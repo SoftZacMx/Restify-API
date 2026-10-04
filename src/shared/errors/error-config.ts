@@ -37,6 +37,16 @@ export const ERROR_CONFIG = {
     statusCode: 403,
     category: 'AUTH',
   },
+  CANNOT_MODIFY_OWNER: {
+    message: 'The owner account cannot be modified',
+    statusCode: 403,
+    category: 'BUSINESS',
+  },
+  CANNOT_ASSIGN_OWNER_ROLE: {
+    message: 'The OWNER role cannot be assigned through user management',
+    statusCode: 400,
+    category: 'VALIDATION',
+  },
   INVALID_CREDENTIALS: {
     message: 'Invalid email or password',
     statusCode: 401,

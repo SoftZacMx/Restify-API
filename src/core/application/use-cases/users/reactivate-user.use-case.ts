@@ -16,6 +16,11 @@ export class ReactivateUserUseCase {
       throw new AppError('USER_NOT_FOUND');
     }
 
+    // Defensa en profundidad: la cuenta del propietario nunca debería estar desactivada.
+    if (user.isOwner()) {
+      throw new AppError('CANNOT_MODIFY_OWNER', 'La cuenta del propietario no se puede reactivar');
+    }
+
     // Check if user is already active
     if (user.isActive()) {
       throw new AppError('USER_ALREADY_ACTIVE', 'El usuario ya está activo');

@@ -74,6 +74,38 @@ describe('DeleteUserUseCase', () => {
         expect((error as AppError).code).toBe('USER_NOT_FOUND');
       }
     });
+
+    it('should not delete the owner account', async () => {
+      const mockOwner = new User(
+        'owner-1',
+        'Owner',
+        'User',
+        null,
+        'owner@example.com',
+        'hashed_password',
+        null,
+        true,
+        UserRole.OWNER,
+        'org-1',
+        UserAccountStatus.ACTIVE,
+        0,
+        null,
+        false,
+        new Date(),
+        new Date()
+      );
+
+      mockUserRepository.findById.mockResolvedValue(mockOwner);
+
+      try {
+        await deleteUserUseCase.execute(validInput);
+        fail('Should have thrown an error');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AppError);
+        expect((error as AppError).code).toBe('CANNOT_MODIFY_OWNER');
+      }
+      expect(mockUserRepository.delete).not.toHaveBeenCalled();
+    });
   });
 });
 

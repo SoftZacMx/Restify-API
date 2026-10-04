@@ -3,7 +3,7 @@ import { IUserRepository } from '../../../../src/core/domain/interfaces/user-rep
 import { User } from '../../../../src/core/domain/entities/user.entity';
 import { UserRole, UserAccountStatus } from '@prisma/client';
 
-function makeUser(status: boolean): User {
+function makeUser(status: boolean, rol: UserRole = UserRole.WAITER): User {
   return new User(
     'user-1',
     'Juan',
@@ -13,7 +13,7 @@ function makeUser(status: boolean): User {
     'hashed',
     null,
     status,
-    UserRole.WAITER,
+    rol,
     'org-1',
     UserAccountStatus.ACTIVE,
     0,
@@ -67,6 +67,15 @@ describe('ReactivateUserUseCase', () => {
 
     await expect(useCase.execute({ user_id: 'user-1' })).rejects.toMatchObject({
       code: 'USER_ALREADY_ACTIVE',
+    });
+    expect(userRepository.reactivate).not.toHaveBeenCalled();
+  });
+
+  it('lanza CANNOT_MODIFY_OWNER si el objetivo es el owner', async () => {
+    userRepository.findById.mockResolvedValue(makeUser(false, UserRole.OWNER));
+
+    await expect(useCase.execute({ user_id: 'user-1' })).rejects.toMatchObject({
+      code: 'CANNOT_MODIFY_OWNER',
     });
     expect(userRepository.reactivate).not.toHaveBeenCalled();
   });

@@ -33,10 +33,21 @@ export class UpdateUserUseCase {
   ) {}
 
   async execute(userId: string, input: UpdateUserInput): Promise<UpdateUserResult> {
+    // El rol OWNER no se asigna desde la gestión de usuarios (único owner por org, cuenta de sistema).
+    // El cast permite compilar: el DTO ya excluye OWNER, esto es defensa en profundidad.
+    if ((input.rol as UserRole) === UserRole.OWNER) {
+      throw new AppError('CANNOT_ASSIGN_OWNER_ROLE', 'El rol OWNER no se puede asignar desde la gestión de usuarios');
+    }
+
     // Check if user exists
     const existingUser = await this.userRepository.findById(userId);
     if (!existingUser) {
       throw new AppError('USER_NOT_FOUND');
+    }
+
+    // La cuenta del propietario no se modifica por este módulo (incluye desactivar y resetear password inline).
+    if (existingUser.isOwner()) {
+      throw new AppError('CANNOT_MODIFY_OWNER', 'La cuenta del propietario no se puede modificar');
     }
 
     // If email is being updated, check if new email already exists

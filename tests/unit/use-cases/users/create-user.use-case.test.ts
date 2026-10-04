@@ -204,5 +204,23 @@ describe('CreateUserUseCase', () => {
       expect(mockUserBranchAccessRepository.replaceForUser).not.toHaveBeenCalled();
       expect(mockBranchRepository.findAllIdsByOrganizationId).not.toHaveBeenCalled();
     });
+
+    it('should throw CANNOT_ASSIGN_OWNER_ROLE when trying to create an owner', async () => {
+      try {
+        await run({
+          name: 'Fake',
+          last_name: 'Owner',
+          email: 'fake-owner@example.com',
+          password: 'password123',
+          rol: 'OWNER' as never,
+        });
+        fail('Should have thrown an error');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AppError);
+        expect((error as AppError).code).toBe('CANNOT_ASSIGN_OWNER_ROLE');
+      }
+
+      expect(mockUserRepository.create).not.toHaveBeenCalled();
+    });
   });
 });
