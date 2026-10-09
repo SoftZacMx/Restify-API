@@ -1,4 +1,4 @@
-import { PrismaClient, OrganizationPlan } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { getPrisma } from '../../src/core/infrastructure/database/prisma/get-prisma';
 import {
   MercadoPagoService,
@@ -46,7 +46,7 @@ export async function createPaymentE2ETenant(
   const ts = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const org = await prisma.organization.create({
-    data: { name: `E2E Payments Org ${ts}`, plan: OrganizationPlan.FREE },
+    data: { name: `E2E Payments Org ${ts}` },
   });
 
   const branch = await prisma.branch.create({

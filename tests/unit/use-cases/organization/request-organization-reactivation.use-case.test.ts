@@ -4,7 +4,7 @@ import { IUserRepository } from '../../../../src/core/domain/interfaces/user-rep
 import { IOrganizationRepository, OrganizationRecord } from '../../../../src/core/domain/interfaces/organization-repository.interface';
 import { User } from '../../../../src/core/domain/entities/user.entity';
 import { JwtUtil } from '../../../../src/shared/utils/jwt.util';
-import { OrganizationPlan, UserRole, UserAccountStatus } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
 
 const ORG_ID = 'org-1';
 
@@ -33,7 +33,6 @@ function buildOrg(overrides: Partial<OrganizationRecord> = {}): OrganizationReco
   return {
     id: overrides.id ?? ORG_ID,
     name: overrides.name ?? 'Acme',
-    plan: overrides.plan ?? OrganizationPlan.FREE,
     status: overrides.status ?? 'CANCELLED',
     deletedAt: 'deletedAt' in overrides ? overrides.deletedAt! : new Date(),
   };

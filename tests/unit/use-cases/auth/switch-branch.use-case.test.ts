@@ -6,7 +6,7 @@ import { IOrganizationRepository } from '../../../../src/core/domain/interfaces/
 import { User } from '../../../../src/core/domain/entities/user.entity';
 import { Branch } from '../../../../src/core/domain/entities/branch.entity';
 import { JwtUtil } from '../../../../src/shared/utils/jwt.util';
-import { UserRole, UserAccountStatus, OrganizationPlan } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
 
 jest.mock('../../../../src/shared/utils/jwt.util');
 
@@ -124,7 +124,7 @@ describe('SwitchBranchUseCase', () => {
 
     (JwtUtil.generateToken as jest.Mock).mockReturnValue('new-token');
     userRepository.findById.mockResolvedValue(makeUser());
-    organizationRepository.findById.mockResolvedValue({ id: 'org-1', plan: OrganizationPlan.FREE, status: 'ACTIVE' } as any);
+    organizationRepository.findById.mockResolvedValue({ id: 'org-1', status: 'ACTIVE' } as any);
     branchRepository.findByIdAndOrganizationId.mockResolvedValue(makeBranch());
   });
 

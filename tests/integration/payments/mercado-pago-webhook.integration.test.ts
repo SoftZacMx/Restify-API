@@ -2,7 +2,6 @@ import request from 'supertest';
 import { randomUUID } from 'crypto';
 import {
   PrismaClient,
-  OrganizationPlan,
   UserRole,
   PaymentStatus,
   PendingCheckoutStatus,
@@ -80,7 +79,7 @@ describe('Mercado Pago Webhook Integration', () => {
 
     try {
       const org = await prisma.organization.create({
-        data: { name: `Webhook Org ${Date.now()}`, plan: OrganizationPlan.FREE },
+        data: { name: `Webhook Org ${Date.now()}` },
       });
       organizationId = org.id;
 

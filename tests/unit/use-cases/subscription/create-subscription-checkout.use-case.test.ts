@@ -7,7 +7,7 @@ import { StripeSubscriptionService } from '../../../../src/core/infrastructure/p
 import { Subscription } from '../../../../src/core/domain/entities/subscription.entity';
 import { SubscriptionPlan } from '../../../../src/core/domain/entities/subscription-plan.entity';
 import { User } from '../../../../src/core/domain/entities/user.entity';
-import { SubscriptionStatus, UserRole, BillingPeriod, OrganizationPlan } from '@prisma/client';
+import { SubscriptionStatus, UserRole, BillingPeriod } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 
 describe('CreateSubscriptionCheckoutUseCase', () => {
@@ -40,7 +40,6 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
   const mockOrganization: OrganizationRecord = {
     id: 'org-1',
     name: 'Mi Restaurante',
-    plan: OrganizationPlan.FREE,
     status: 'ACTIVE',
     deletedAt: null,
   };

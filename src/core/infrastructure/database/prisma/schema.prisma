@@ -11,12 +11,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum OrganizationPlan {
-  FREE
-  PRO
-  ENTERPRISE
-}
-
 enum OrganizationStatus {
   ACTIVE
   SUSPENDED
@@ -33,7 +27,6 @@ model Organization {
   id        String             @id @default(uuid())
   name      String
   slug      String?            @unique
-  plan      OrganizationPlan   @default(FREE)
   status    OrganizationStatus @default(ACTIVE)
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt

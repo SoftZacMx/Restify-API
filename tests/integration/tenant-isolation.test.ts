@@ -1,6 +1,6 @@
 import { runWithTenant, withoutTenant, getOrganizationId, getBranchId } from '../../src/core/infrastructure/tenant/tenant-context';
 import { getPrisma } from '../../src/core/infrastructure/database/prisma/get-prisma';
-import { PrismaClient, OrganizationPlan } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { shouldSkipIntegration } from './utils';
 
 // Los describes que tocan BD solo corren contra la BD local de pruebas
@@ -118,7 +118,7 @@ describe('Tenant Isolation', () => {
     beforeAll(async () => {
       if (dbTestsSkipped) return;
       const org = await basePrisma.organization.create({
-        data: { name: `Tenant Isolation Org ${Date.now()}`, plan: OrganizationPlan.FREE },
+        data: { name: `Tenant Isolation Org ${Date.now()}` },
       });
       seededOrgId = org.id;
 

@@ -1,4 +1,4 @@
-import { PrismaClient, OrganizationPlan, StockMovementType, UnitOfMeasure } from '@prisma/client';
+import { PrismaClient, StockMovementType, UnitOfMeasure } from '@prisma/client';
 import { getPrisma } from '../../src/core/infrastructure/database/prisma/get-prisma';
 import { runWithTenant } from '../../src/core/infrastructure/tenant/tenant-context';
 import { ensureTestEnv, shouldSkipIntegration } from './utils';
@@ -41,11 +41,11 @@ describe('Etapa 3.5 — Stock & Recipe Isolation (Integration)', () => {
     ensureTestEnv();
 
     const orgA = await basePrisma.organization.create({
-      data: { name: `Stock Iso Org A ${Date.now()}`, plan: OrganizationPlan.FREE },
+      data: { name: `Stock Iso Org A ${Date.now()}` },
     });
     orgAId = orgA.id;
     const orgB = await basePrisma.organization.create({
-      data: { name: `Stock Iso Org B ${Date.now()}`, plan: OrganizationPlan.FREE },
+      data: { name: `Stock Iso Org B ${Date.now()}` },
     });
     orgBId = orgB.id;
 

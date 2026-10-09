@@ -24,7 +24,6 @@ async function seedDemoData() {
     create: {
       name: 'Demo Restaurant',
       slug: 'demo-restaurant',
-      plan: 'FREE',
       status: 'ACTIVE',
     },
   });

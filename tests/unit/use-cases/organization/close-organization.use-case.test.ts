@@ -1,6 +1,5 @@
 import { CloseOrganizationUseCase } from '../../../../src/core/application/use-cases/organization/close-organization.use-case';
 import { IOrganizationRepository, OrganizationRecord } from '../../../../src/core/domain/interfaces/organization-repository.interface';
-import { OrganizationPlan } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 import { runWithTenant } from '../../../../src/core/infrastructure/tenant/tenant-context';
 import { OrganizationRole } from '../../../../src/shared/constants/roles.constants';
@@ -12,7 +11,6 @@ function buildOrg(overrides: Partial<OrganizationRecord> = {}): OrganizationReco
   return {
     id: overrides.id ?? ORG_ID,
     name: overrides.name ?? ORG_NAME,
-    plan: overrides.plan ?? OrganizationPlan.FREE,
     status: overrides.status ?? 'ACTIVE',
     deletedAt: overrides.deletedAt ?? null,
   };

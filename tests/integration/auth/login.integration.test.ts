@@ -1,5 +1,5 @@
 import { container } from 'tsyringe';
-import { PrismaClient, OrganizationPlan } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { LoginUseCase } from '../../../src/core/application/use-cases/auth/login.use-case';
 import { PrismaService } from '../../../src/core/infrastructure/config/prisma.config';
@@ -23,7 +23,7 @@ describe('Login Integration Test', () => {
     if (skipped) return;
 
     const org = await basePrisma.organization.create({
-      data: { name: `Login Test Org ${Date.now()}`, plan: OrganizationPlan.FREE },
+      data: { name: `Login Test Org ${Date.now()}` },
     });
     createdOrgId = org.id;
 

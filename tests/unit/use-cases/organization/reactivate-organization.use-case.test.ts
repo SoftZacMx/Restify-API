@@ -3,7 +3,7 @@ import { IUserRepository } from '../../../../src/core/domain/interfaces/user-rep
 import { IOrganizationRepository, OrganizationRecord } from '../../../../src/core/domain/interfaces/organization-repository.interface';
 import { IBranchRepository } from '../../../../src/core/domain/interfaces/branch-repository.interface';
 import { User } from '../../../../src/core/domain/entities/user.entity';
-import { OrganizationPlan, UserRole, UserAccountStatus } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
 import { JwtUtil } from '../../../../src/shared/utils/jwt.util';
 
 jest.mock('../../../../src/shared/utils/jwt.util');
@@ -36,7 +36,6 @@ function buildOrg(overrides: Partial<OrganizationRecord> = {}): OrganizationReco
   return {
     id: overrides.id ?? ORG_ID,
     name: overrides.name ?? 'Acme',
-    plan: overrides.plan ?? OrganizationPlan.FREE,
     status: overrides.status ?? 'CANCELLED',
     // Respetar `null` explícito (no usar ?? que lo trataría como ausente).
     deletedAt: 'deletedAt' in overrides ? overrides.deletedAt! : new Date(),

@@ -73,14 +73,12 @@ export class OrganizationRepository implements IOrganizationRepository {
   private toRecord(row: {
     id: string;
     name: string;
-    plan: OrganizationRecord['plan'];
     status: OrganizationRecord['status'];
     deletedAt: Date | null;
   }): OrganizationRecord {
     return {
       id: row.id,
       name: row.name,
-      plan: row.plan,
       status: row.status,
       deletedAt: row.deletedAt,
     };

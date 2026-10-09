@@ -1,5 +1,5 @@
 import { inject, injectable } from 'tsyringe';
-import { PrismaClient, OrganizationPlan, SubscriptionStatus } from '@prisma/client';
+import { PrismaClient, SubscriptionStatus } from '@prisma/client';
 import { BcryptUtil } from '../../../../shared/utils/bcrypt.util';
 import { JwtUtil } from '../../../../shared/utils/jwt.util';
 import { SignupInput } from '../../dto/auth.dto';
@@ -82,7 +82,6 @@ export class SignupUseCase {
         const org = await tx.organization.create({
           data: {
             name: orgInput.name,
-            plan: OrganizationPlan.FREE,
           },
         });
 

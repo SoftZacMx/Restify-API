@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { randomUUID } from 'crypto';
-import { PrismaClient, OrganizationPlan, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
 import { JwtUtil } from '../../../src/shared/utils/jwt.util';
 import type { Express } from 'express';
 import { ensureTestEnv as ensureBaseTestEnv, shouldSkipIntegration } from '../utils';
@@ -45,7 +45,7 @@ describe('Public Orders Integration', () => {
 
     try {
       const org = await prisma.organization.create({
-        data: { name: `Public Org ${Date.now()}`, plan: OrganizationPlan.FREE },
+        data: { name: `Public Org ${Date.now()}` },
       });
       organizationId = org.id;
 

@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { PrismaClient, OrganizationPlan, StockMovementType, UnitOfMeasure } from '@prisma/client';
+import { PrismaClient, StockMovementType, UnitOfMeasure } from '@prisma/client';
 import { container } from 'tsyringe';
 import { runWithTenant } from '../../src/core/infrastructure/tenant/tenant-context';
 import { ensureTestEnv, shouldSkipIntegration } from './utils';
@@ -69,11 +69,11 @@ describe('Reports Isolation E2E (stock & sales)', () => {
 
     // --- Seed con basePrisma (bypassa la tenant extension) ---
     const orgA = await basePrisma.organization.create({
-      data: { name: `Reports Iso Org A ${Date.now()}`, plan: OrganizationPlan.FREE },
+      data: { name: `Reports Iso Org A ${Date.now()}` },
     });
     orgAId = orgA.id;
     const orgB = await basePrisma.organization.create({
-      data: { name: `Reports Iso Org B ${Date.now()}`, plan: OrganizationPlan.FREE },
+      data: { name: `Reports Iso Org B ${Date.now()}` },
     });
     orgBId = orgB.id;
 

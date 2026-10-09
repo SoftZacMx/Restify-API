@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { randomUUID } from 'crypto';
-import { PrismaClient, OrganizationPlan, UserRole, PaymentStatus, PendingCheckoutStatus } from '@prisma/client';
+import { PrismaClient, UserRole, PaymentStatus, PendingCheckoutStatus } from '@prisma/client';
 import { encrypt } from '../../../src/shared/utils/crypto.util';
 import type { Express } from 'express';
 import { ensureTestEnv as ensureBaseTestEnv, shouldSkipIntegration } from '../utils';
@@ -68,7 +68,7 @@ describe('Public Checkout Integration', () => {
 
     try {
       const org = await prisma.organization.create({
-        data: { name: `Checkout Org ${Date.now()}`, plan: OrganizationPlan.FREE },
+        data: { name: `Checkout Org ${Date.now()}` },
       });
       organizationId = org.id;
 

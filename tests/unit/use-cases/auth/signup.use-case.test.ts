@@ -5,7 +5,7 @@ import { SendVerificationEmailUseCase } from '../../../../src/core/application/u
 import { BcryptUtil } from '../../../../src/shared/utils/bcrypt.util';
 import { JwtUtil } from '../../../../src/shared/utils/jwt.util';
 import { Branch } from '../../../../src/core/domain/entities/branch.entity';
-import { OrganizationPlan, SubscriptionStatus } from '@prisma/client';
+import { SubscriptionStatus } from '@prisma/client';
 
 jest.mock('../../../../src/shared/utils/bcrypt.util');
 jest.mock('../../../../src/shared/utils/jwt.util');
@@ -112,7 +112,7 @@ describe('SignupUseCase', () => {
 
     expect(BcryptUtil.hash).toHaveBeenCalledWith('Password123');
     expect(txMock.organization.create).toHaveBeenCalledWith({
-      data: { name: 'Acme', plan: OrganizationPlan.FREE },
+      data: { name: 'Acme' },
     });
     expect(txMock.subscription.create).toHaveBeenCalledWith({
       data: {

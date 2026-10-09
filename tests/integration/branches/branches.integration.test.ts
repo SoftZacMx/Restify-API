@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { PrismaClient, OrganizationPlan, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
 import { JwtUtil } from '../../../src/shared/utils/jwt.util';
 import bcrypt from 'bcryptjs';
 import type { Express } from 'express';
@@ -30,7 +30,6 @@ describe('Branches API Integration', () => {
       const org = await prisma.organization.create({
         data: {
           name: `Test Org ${Date.now()}`,
-          plan: OrganizationPlan.FREE,
         },
       });
       organizationId = org.id;
@@ -139,7 +138,7 @@ describe('Branches API Integration', () => {
     }
 
     const limitOrg = await prisma.organization.create({
-      data: { name: `Limit Org ${Date.now()}`, plan: OrganizationPlan.FREE },
+      data: { name: `Limit Org ${Date.now()}` },
     });
 
     const limitToken = JwtUtil.generateToken({

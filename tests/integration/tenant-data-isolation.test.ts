@@ -1,4 +1,4 @@
-import { PrismaClient, OrganizationPlan } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { getPrisma } from '../../src/core/infrastructure/database/prisma/get-prisma';
 import { runWithTenant, withoutTenant } from '../../src/core/infrastructure/tenant/tenant-context';
 import { ensureTestEnv, shouldSkipIntegration } from './utils';
@@ -43,12 +43,12 @@ describe('Task 3.5 — Tenant Data Isolation (Integration)', () => {
 
     // Create two organizations
     const orgA = await basePrisma.organization.create({
-      data: { name: `Isolation Test Org A ${Date.now()}`, plan: OrganizationPlan.FREE },
+      data: { name: `Isolation Test Org A ${Date.now()}` },
     });
     orgAId = orgA.id;
 
     const orgB = await basePrisma.organization.create({
-      data: { name: `Isolation Test Org B ${Date.now()}`, plan: OrganizationPlan.FREE },
+      data: { name: `Isolation Test Org B ${Date.now()}` },
     });
     orgBId = orgB.id;
 

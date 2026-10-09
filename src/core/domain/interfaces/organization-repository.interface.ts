@@ -1,9 +1,6 @@
-import { OrganizationPlan } from '@prisma/client';
-
 export interface OrganizationRecord {
   id: string;
   name: string;
-  plan: OrganizationPlan;
   status: string;
   deletedAt: Date | null;
 }

@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { PrismaClient, OrganizationPlan, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
 import { JwtUtil } from '../../../src/shared/utils/jwt.util';
 import type { Express } from 'express';
 import { ensureTestEnv as ensureBaseTestEnv, shouldSkipIntegration } from '../utils';
@@ -46,7 +46,7 @@ describe('Order Lifecycle API Integration', () => {
 
     try {
       const org = await prisma.organization.create({
-        data: { name: `Order Lifecycle Org ${Date.now()}`, plan: OrganizationPlan.FREE },
+        data: { name: `Order Lifecycle Org ${Date.now()}` },
       });
       organizationId = org.id;
 

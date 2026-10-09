@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { PrismaClient, OrganizationPlan } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { container } from 'tsyringe';
 import { runWithTenant } from '../../src/core/infrastructure/tenant/tenant-context';
 import { ensureTestEnv, shouldSkipIntegration } from './utils';
@@ -80,11 +80,11 @@ describe('Tarea 3.5 — POS Isolation E2E (Integration)', () => {
 
     // --- Seed con basePrisma (bypassa la tenant extension) ---
     const orgA = await basePrisma.organization.create({
-      data: { name: `POS Iso Org A ${Date.now()}`, plan: OrganizationPlan.FREE },
+      data: { name: `POS Iso Org A ${Date.now()}` },
     });
     orgAId = orgA.id;
     const orgB = await basePrisma.organization.create({
-      data: { name: `POS Iso Org B ${Date.now()}`, plan: OrganizationPlan.FREE },
+      data: { name: `POS Iso Org B ${Date.now()}` },
     });
     orgBId = orgB.id;
 

@@ -6,7 +6,7 @@ import { IUserBranchAccessRepository } from '../../../../src/core/domain/interfa
 import { User } from '../../../../src/core/domain/entities/user.entity';
 import { BcryptUtil } from '../../../../src/shared/utils/bcrypt.util';
 import { JwtUtil } from '../../../../src/shared/utils/jwt.util';
-import { UserRole, UserAccountStatus, OrganizationPlan } from '@prisma/client';
+import { UserRole, UserAccountStatus } from '@prisma/client';
 import { AppError } from '../../../../src/shared/errors';
 
 // Mock dependencies
@@ -38,7 +38,6 @@ describe('LoginUseCase', () => {
       findById: jest.fn().mockResolvedValue({
         id: 'org-1',
         name: 'Acme',
-        plan: OrganizationPlan.FREE,
         status: 'ACTIVE',
       }),
       findFirstActive: jest.fn(),
@@ -262,7 +261,6 @@ describe('LoginUseCase', () => {
       mockOrganizationRepository.findById.mockResolvedValue({
         id: 'org-1',
         name: 'Acme',
-        plan: OrganizationPlan.FREE,
         status: 'CANCELLED',
         deletedAt: null,
       });
