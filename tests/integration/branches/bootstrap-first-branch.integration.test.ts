@@ -32,7 +32,6 @@ describe('Bootstrap First Branch Integration', () => {
     const org = await prisma.organization.create({
       data: {
         name: 'Test Restaurant',
-        plan: 'FREE',
         status: 'ACTIVE',
       },
     });

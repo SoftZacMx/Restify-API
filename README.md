@@ -136,9 +136,31 @@ AWS_REGION="us-east-1"
 STRIPE_SECRET_KEY="sk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
 
+# Billing / suscripciones
+BILLING_ENABLED="false"          # false = sin cobro (dev/tests)
+SUBSCRIPTION_TRIAL_DAYS="45"     # días de prueba gratis (sin tarjeta)
+
 # JWT
 JWT_SECRET="your_secret_key"
 ```
+
+### Suscripciones y prueba gratuita
+
+Ya **no existe plan gratuito**: toda organización nace con una suscripción.
+
+- Con `BILLING_ENABLED="true"`, el signup crea la suscripción en estado `TRIALING`
+  con `currentPeriodEnd = hoy + SUBSCRIPTION_TRIAL_DAYS` (default `45`). No se pide
+  tarjeta al registrarse (`requiresCheckout` siempre es `false`).
+- Con `BILLING_ENABLED="false"` (dev/tests) no hay flujo de cobro y la suscripción
+  queda `ACTIVE` por 3 años.
+- Al vencer la prueba, el middleware bloquea (`SubscriptionBlockedPage`) y el cobro
+  se realiza vía Stripe Checkout; los webhooks (`invoice.paid`, `invoice.payment_failed`)
+  renuevan o marcan `PAST_DUE` (gracia de 3 días).
+
+> **Seeds "Free Legacy":** el plan `Free Legacy` se conserva solo para organizaciones
+> legacy y datos demo (`src/core/infrastructure/database/prisma/seeds/*`); el seed de
+> planes para ambientes nuevos (`scripts/seed-subscription-plans.ts`) crea únicamente
+> `Mensual` y `Anual`. No se elimina el plan legacy para no romper datos existentes.
 
 ## 🧪 Testing
 

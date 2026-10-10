@@ -36,6 +36,10 @@
 ## Pagos y efectos externos (TRAMPAS del proyecto)
 - Órdenes y reembolsos: SOLO Mercado Pago. Stripe quedó únicamente para
   suscripciones (todo el Stripe de órdenes se eliminó).
+- Suscripciones: TODO signup crea la suscripción dentro de la transacción. Con
+  `BILLING_ENABLED=false` queda `ACTIVE` (+3 años); con billing activo nace
+  `TRIALING` por `SUBSCRIPTION_TRIAL_DAYS` (default 45) y sin tarjeta. No existe
+  plan gratuito (`requiresCheckout` siempre `false`).
 - Webhook de MP: la verificación de firma está DESACTIVADA a propósito (bug
   conocido de MP); la seguridad viene del re-fetch + idempotencia. No la
   "arregles" reactivándola sin contexto.

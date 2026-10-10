@@ -29,9 +29,13 @@ function ensureTestEnv(): void {
   process.env.EMAIL_ENABLED = 'false';
 }
 
+/** Plan activo creado en `beforeAll`; el signup exige un `planId` válido. */
+let e2ePlanId = '';
+
 /** Cuerpo de signup válido; `suffix` evita colisiones de email/slug entre tests. */
 function buildSignupBody(suffix: string) {
   return {
+    planId: e2ePlanId,
     user: {
       email: `signup-${suffix}@test.local`,
       password: 'Test1234',
@@ -75,6 +79,22 @@ describe('Signup flow E2E (4.1.H)', () => {
     } catch {
       skipped = true;
     }
+
+    // La BD de prueba arranca vacía (globalSetup trunca): creamos un plan activo
+    // para que el signup tenga un `planId` válido.
+    if (!skipped) {
+      const plan = await prisma.subscriptionPlan.create({
+        data: {
+          name: `E2E Mensual ${Date.now()}`,
+          billingPeriod: 'MONTHLY',
+          price: 322000,
+          stripePriceId: `price_e2e_${Date.now()}`,
+          maxBranches: 5,
+          status: true,
+        },
+      });
+      e2ePlanId = plan.id;
+    }
   });
 
   afterAll(async () => {
@@ -82,6 +102,9 @@ describe('Signup flow E2E (4.1.H)', () => {
       // Org → Branch/User/Subscription en cascada; basta borrar las orgs.
       for (const orgId of createdOrgIds) {
         await prisma.organization.delete({ where: { id: orgId } }).catch(() => {});
+      }
+      if (e2ePlanId) {
+        await prisma.subscriptionPlan.delete({ where: { id: e2ePlanId } }).catch(() => {});
       }
     }
     await prisma.$disconnect();
@@ -117,13 +140,14 @@ describe('Signup flow E2E (4.1.H)', () => {
     // La org, el owner, la sucursal y el bootstrap quedaron persistidos.
     const orgRow = await prisma.organization.findUnique({ where: { id: organization.id } });
     expect(orgRow).not.toBeNull();
-    expect(orgRow!.plan).toBe('FREE');
 
     const subscription = await prisma.subscription.findUnique({
       where: { organizationId: organization.id },
     });
     expect(subscription).not.toBeNull();
+    // Con BILLING_ENABLED=false se otorga un período largo en ACTIVE.
     expect(subscription!.status).toBe('ACTIVE');
+    expect(subscription!.planId).toBe(e2ePlanId);
 
     const owner = await prisma.user.findUnique({ where: { id: user.id } });
     expect(owner).not.toBeNull();
@@ -148,6 +172,49 @@ describe('Signup flow E2E (4.1.H)', () => {
     const tables = await prisma.table.findMany({ where: { branchId: branch.id } });
     expect(tables).toHaveLength(1);
     expect(tables[0].name).toBe('Mesa 1');
+  });
+
+  it('signup con BILLING_ENABLED=true crea la suscripción en TRIALING por ~45 días', async () => {
+    if (skipped) {
+      return;
+    }
+
+    const previousBilling = process.env.BILLING_ENABLED;
+    const previousTrial = process.env.SUBSCRIPTION_TRIAL_DAYS;
+    process.env.BILLING_ENABLED = 'true';
+    process.env.SUBSCRIPTION_TRIAL_DAYS = '45';
+
+    try {
+      const body = buildSignupBody(`trial-${Date.now()}`);
+      const res = await request(app).post('/api/auth/signup').send(body).expect(201);
+
+      const { organization, planId, requiresCheckout } = res.body.data;
+      createdOrgIds.add(organization.id);
+
+      // Ya no se redirige a checkout: el trial barre el onboarding.
+      expect(requiresCheckout).toBe(false);
+      expect(planId).toBe(e2ePlanId);
+
+      const subscription = await prisma.subscription.findUnique({
+        where: { organizationId: organization.id },
+      });
+      expect(subscription).not.toBeNull();
+      expect(subscription!.status).toBe('TRIALING');
+      expect(subscription!.currentPeriodEnd).not.toBeNull();
+
+      const days = Math.round(
+        (subscription!.currentPeriodEnd!.getTime() - Date.now()) / (24 * 60 * 60 * 1000)
+      );
+      expect(days).toBeGreaterThanOrEqual(44);
+      expect(days).toBeLessThanOrEqual(46);
+    } finally {
+      process.env.BILLING_ENABLED = previousBilling;
+      if (previousTrial === undefined) {
+        delete process.env.SUBSCRIPTION_TRIAL_DAYS;
+      } else {
+        process.env.SUBSCRIPTION_TRIAL_DAYS = previousTrial;
+      }
+    }
   });
 
   it('signup con email duplicado → 409 EMAIL_ALREADY_EXISTS', async () => {

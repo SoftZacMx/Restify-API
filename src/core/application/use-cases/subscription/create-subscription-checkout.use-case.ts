@@ -47,10 +47,8 @@ export class CreateSubscriptionCheckoutUseCase {
     // 2. Buscar suscripción existente
     const existing = await this.subscriptionRepository.find();
 
-    // 3. Solo bloquear si ya está pagando activamente ese MISMO plan (evita
-    // duplicar la suscripción en Stripe). Si la activa es otra (p. ej. el Free del
-    // onboarding, o un plan distinto), se permite continuar: es un upgrade/cambio
-    // de plan y el webhook actualizará esta misma fila al confirmarse el pago.
+    // 3. Solo bloquear si ya está pagando activamente ese MISMO plan en Stripe
+    // (evita duplicar la suscripción). Durante el trial local no aplica: siempre procede.
     const isActiveOnSamePlan =
       existing?.status === 'ACTIVE' &&
       !!existing.stripeSubscriptionId &&

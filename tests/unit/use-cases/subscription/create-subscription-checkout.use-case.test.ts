@@ -234,8 +234,8 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     expect(mockStripeService.createCheckoutSession).not.toHaveBeenCalled();
   });
 
-  it('allows checkout when the active subscription is a different plan (upgrade, e.g. Free onboarding)', async () => {
-    const activeFreeSub = new Subscription(
+  it('allows checkout when the active subscription is a different plan (plan change)', async () => {
+    const activeOtherPlanSub = new Subscription(
       'sub-id-1',
       'org-1',
       null,
@@ -252,7 +252,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
     mockPlanRepository.findById.mockResolvedValue(mockPlan);
     mockOrganizationRepository.findById.mockResolvedValue(mockOrganization);
-    mockSubscriptionRepository.find.mockResolvedValue(activeFreeSub);
+    mockSubscriptionRepository.find.mockResolvedValue(activeOtherPlanSub);
     mockStripeService.createCustomer.mockResolvedValue('cus_test_123');
     mockStripeService.createCheckoutSession.mockResolvedValue({
       sessionId: 'cs_test_789',
@@ -262,6 +262,40 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     const result = await useCase.execute(input);
 
     expect(result.checkoutUrl).toBe('https://checkout.stripe.com/cs_test_789');
+    expect(mockSubscriptionRepository.update).toHaveBeenCalledWith('sub-id-1', { planId: 'plan-monthly-1' });
+  });
+
+  it('allows checkout during a local trial (TRIALING, no stripe subscription yet)', async () => {
+    const trialingSub = new Subscription(
+      'sub-id-1',
+      'org-1',
+      'cus_test_123',
+      null, // el trial local no tiene suscripción en Stripe
+      SubscriptionStatus.TRIALING,
+      new Date(),
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      false,
+      'plan-monthly-1',
+      new Date(),
+      new Date()
+    );
+
+    mockUserRepository.findById.mockResolvedValue(mockAdminUser);
+    mockPlanRepository.findById.mockResolvedValue(mockPlan);
+    mockOrganizationRepository.findById.mockResolvedValue(mockOrganization);
+    mockSubscriptionRepository.find.mockResolvedValue(trialingSub);
+    mockSubscriptionRepository.update.mockResolvedValue(trialingSub);
+    mockStripeService.createCheckoutSession.mockResolvedValue({
+      sessionId: 'cs_test_trial',
+      url: 'https://checkout.stripe.com/cs_test_trial',
+    });
+
+    const result = await useCase.execute(input);
+
+    expect(result.checkoutUrl).toBe('https://checkout.stripe.com/cs_test_trial');
+    // Reutiliza el customer existente y actualiza el plan, sin crear fila nueva.
+    expect(mockStripeService.createCustomer).not.toHaveBeenCalled();
+    expect(mockSubscriptionRepository.create).not.toHaveBeenCalled();
     expect(mockSubscriptionRepository.update).toHaveBeenCalledWith('sub-id-1', { planId: 'plan-monthly-1' });
   });
 

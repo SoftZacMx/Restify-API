@@ -2,6 +2,7 @@ import { inject, injectable } from 'tsyringe';
 import { PrismaClient, SubscriptionStatus } from '@prisma/client';
 import { BcryptUtil } from '../../../../shared/utils/bcrypt.util';
 import { JwtUtil } from '../../../../shared/utils/jwt.util';
+import { addDays } from '../../../../shared/utils/date.utils';
 import { SignupInput } from '../../dto/auth.dto';
 import { AppError } from '../../../../shared/errors';
 import { CreateFirstBranchUseCase } from '../branches/create-first-branch.use-case';
@@ -30,7 +31,7 @@ export interface SignupResult {
   };
   /** Plan elegido en el registro. */
   planId: string;
-  /** true si el plan elegido es de pago: el frontend debe redirigir a Stripe Checkout. */
+  /** El registro ya no pide pago: siempre false, se mantiene por compatibilidad. */
   requiresCheckout: boolean;
 }
 
@@ -65,12 +66,13 @@ export class SignupUseCase {
       throw new AppError('SUBSCRIPTION_PLAN_NOT_FOUND');
     }
 
-    // Un plan es Free si no tiene precio de Stripe asociado; cualquier plan con
-    // stripePriceId requiere pasar por checkout para activarse.
-    const isFreePlan = !plan.stripePriceId;
-    // Sin billing no hay checkout que active un plan de pago: se trata como Free
-    // para no dejar la organización sin acceso.
+    // Ya no existe plan gratuito: todo signup arranca con un período de prueba.
+    // Sin billing (dev/tests) no hay flujo de cobro, así que se otorga un período
+    // largo que mantiene la suscripción activa sin intervención.
     const billingDisabled = process.env.BILLING_ENABLED === 'false';
+    const trialDays = parseInt(process.env.SUBSCRIPTION_TRIAL_DAYS || '45', 10);
+    const trialStart = new Date();
+    const trialEnd = addDays(trialStart, trialDays);
 
     // Hash password
     const passwordHash = await BcryptUtil.hash(userInput.password);
@@ -85,30 +87,27 @@ export class SignupUseCase {
           },
         });
 
-        // 2. Crear subscription — solo si el plan elegido es Free, o si el billing
-        // está deshabilitado. Cuando el billing está deshabilitado no hay flujo de
-        // pago que asigne un período, así que la suscripción quedaría ACTIVE pero sin
-        // currentPeriodEnd → la lógica de estado la trataría como "expirada". Para
-        // evitarlo le damos un período largo (hoy + 3 años) que la mantiene activa
-        // sin intervención.
-        if (isFreePlan || billingDisabled) {
-          let currentPeriodEnd: Date | undefined;
-          if (billingDisabled) {
-            currentPeriodEnd = new Date();
-            currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 3);
-          }
-
-          await tx.subscription.create({
-            data: {
-              organizationId: org.id,
-              status: SubscriptionStatus.ACTIVE,
-              currentPeriodEnd,
-              planId: plan.id,
-            },
-          });
-        }
-        // Si el plan es de pago (con billing habilitado), no se crea ninguna fila aquí:
-        // CreateSubscriptionCheckoutUseCase la crea como EXPIRED al llamar al checkout.
+        // 2. Crear subscription — el trial barre el onboarding y el acceso se
+        // otorga al instante; el pago solo se pide al vencer o si el negocio
+        // decide "pagar antes".
+        await tx.subscription.create({
+          data:
+            billingDisabled
+              ? {
+                  organizationId: org.id,
+                  planId: plan.id,
+                  status: SubscriptionStatus.ACTIVE,
+                  currentPeriodStart: trialStart,
+                  currentPeriodEnd: addDays(trialStart, 365 * 3),
+                }
+              : {
+                  organizationId: org.id,
+                  planId: plan.id,
+                  status: SubscriptionStatus.TRIALING,
+                  currentPeriodStart: trialStart,
+                  currentPeriodEnd: trialEnd,
+                },
+        });
 
         // 3. Crear usuario owner
         const user = await tx.user.create({
@@ -192,7 +191,7 @@ export class SignupUseCase {
         name: result.branch.name,
       },
       planId: plan.id,
-      requiresCheckout: !isFreePlan && !billingDisabled,
+      requiresCheckout: false,
     };
   }
 }

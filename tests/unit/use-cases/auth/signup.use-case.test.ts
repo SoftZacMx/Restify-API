@@ -4,6 +4,7 @@ import { BootstrapBranchService } from '../../../../src/core/application/service
 import { SendVerificationEmailUseCase } from '../../../../src/core/application/use-cases/auth/send-verification-email.use-case';
 import { BcryptUtil } from '../../../../src/shared/utils/bcrypt.util';
 import { JwtUtil } from '../../../../src/shared/utils/jwt.util';
+import { addDays } from '../../../../src/shared/utils/date.utils';
 import { Branch } from '../../../../src/core/domain/entities/branch.entity';
 import { SubscriptionStatus } from '@prisma/client';
 
@@ -114,14 +115,17 @@ describe('SignupUseCase', () => {
     expect(txMock.organization.create).toHaveBeenCalledWith({
       data: { name: 'Acme' },
     });
-    expect(txMock.subscription.create).toHaveBeenCalledWith({
-      data: {
-        organizationId: 'org-1',
-        status: SubscriptionStatus.ACTIVE,
-        currentPeriodEnd: undefined,
-        planId: 'plan-free',
-      },
+    const subscriptionData = txMock.subscription.create.mock.calls[0][0].data;
+    expect(subscriptionData).toMatchObject({
+      organizationId: 'org-1',
+      status: SubscriptionStatus.TRIALING,
+      planId: 'plan-free',
     });
+    expect(subscriptionData.currentPeriodStart).toBeInstanceOf(Date);
+    expect(subscriptionData.currentPeriodEnd).toBeInstanceOf(Date);
+    const trialDays =
+      (subscriptionData.currentPeriodEnd.getTime() - subscriptionData.currentPeriodStart.getTime()) / 86_400_000;
+    expect(Math.round(trialDays)).toBe(45);
     expect(txMock.user.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ email: 'juan@example.com', rol: 'OWNER', organizationId: 'org-1' }),
     });
@@ -164,7 +168,7 @@ describe('SignupUseCase', () => {
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
-  it('plan de pago con billing habilitado: no crea suscripción, requiresCheckout=true', async () => {
+  it('plan de pago con billing habilitado: crea suscripción TRIALING, requiereCheckout=false', async () => {
     prismaMock.subscriptionPlan.findUnique.mockResolvedValue({
       id: 'plan-paid',
       name: 'Mensual',
@@ -174,15 +178,17 @@ describe('SignupUseCase', () => {
 
     const result = await useCase.execute({ ...validInput, planId: 'plan-paid' } as any);
 
-    expect(txMock.subscription.create).not.toHaveBeenCalled();
+    const subscriptionData = txMock.subscription.create.mock.calls[0][0].data;
+    expect(subscriptionData.status).toBe(SubscriptionStatus.TRIALING);
     expect(result.planId).toBe('plan-paid');
-    expect(result.requiresCheckout).toBe(true);
+    expect(result.requiresCheckout).toBe(false);
   });
 
-  it('plan Free: crea suscripción ACTIVE, requiresCheckout=false', async () => {
+  it('plan Free (legacy): crea suscripción TRIALING, requiereCheckout=false', async () => {
     const result = await useCase.execute(validInput as any);
 
-    expect(txMock.subscription.create).toHaveBeenCalled();
+    const subscriptionData = txMock.subscription.create.mock.calls[0][0].data;
+    expect(subscriptionData.status).toBe(SubscriptionStatus.TRIALING);
     expect(result.planId).toBe('plan-free');
     expect(result.requiresCheckout).toBe(false);
   });
@@ -205,17 +211,17 @@ describe('SignupUseCase', () => {
   it('asigna un período de 3 años a la suscripción cuando el billing está deshabilitado', async () => {
     process.env.BILLING_ENABLED = 'false';
 
-    const before = new Date();
-    before.setFullYear(before.getFullYear() + 3);
+    const executeStart = new Date();
     await useCase.execute(validInput as any);
-    const after = new Date();
-    after.setFullYear(after.getFullYear() + 3);
+    const executeEnd = new Date();
 
     const subscriptionData = txMock.subscription.create.mock.calls[0][0].data;
     expect(subscriptionData.status).toBe(SubscriptionStatus.ACTIVE);
     expect(subscriptionData.currentPeriodEnd).toBeInstanceOf(Date);
-    expect(subscriptionData.currentPeriodEnd.getTime()).toBeGreaterThanOrEqual(before.getTime());
-    expect(subscriptionData.currentPeriodEnd.getTime()).toBeLessThanOrEqual(after.getTime());
+    const expectedStart = addDays(executeStart, 365 * 3);
+    const expectedEnd = addDays(executeEnd, 365 * 3);
+    expect(subscriptionData.currentPeriodEnd.getTime()).toBeGreaterThanOrEqual(expectedStart.getTime());
+    expect(subscriptionData.currentPeriodEnd.getTime()).toBeLessThanOrEqual(expectedEnd.getTime());
   });
 
   it('un fallo del correo de verificación no aborta el alta', async () => {

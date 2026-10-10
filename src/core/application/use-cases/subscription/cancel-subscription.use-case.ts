@@ -1,4 +1,5 @@
 import { inject, injectable } from 'tsyringe';
+import { SubscriptionStatus } from '@prisma/client';
 import { ISubscriptionRepository } from '../../../domain/interfaces/subscription-repository.interface';
 import { StripeSubscriptionService } from '../../../infrastructure/payment-gateways/stripe-subscription.service';
 import { AppError } from '../../../../shared/errors';
@@ -28,7 +29,16 @@ export class CancelSubscriptionUseCase {
     }
 
     if (!subscription.stripeSubscriptionId) {
-      throw new AppError('SUBSCRIPTION_NOT_ACTIVE');
+      const canceled = await this.subscriptionRepository.update(subscription.id, {
+        status: SubscriptionStatus.CANCELED,
+        cancelAtPeriodEnd: false,
+      });
+
+      return {
+        message: 'La suscripción se canceló de forma inmediata',
+        cancelAtPeriodEnd: false,
+        currentPeriodEnd: canceled.currentPeriodEnd,
+      };
     }
 
     // Cancelar al final del período en Stripe

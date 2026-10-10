@@ -66,6 +66,25 @@ describe('SubscriptionMiddleware', () => {
     expect(mockRes.status).not.toHaveBeenCalled();
   });
 
+  it('should return 403 when a TRIALING subscription has expired', async () => {
+    mockFindFirst.mockResolvedValue({
+      status: 'TRIALING',
+      currentPeriodEnd: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // prueba vencida ayer
+    });
+
+    await SubscriptionMiddleware.validateSubscription(mockReq, mockRes, mockNext);
+
+    expect(mockNext).not.toHaveBeenCalled();
+    expect(mockRes.status).toHaveBeenCalledWith(403);
+    expect(mockRes.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          code: 'SUBSCRIPTION_EXPIRED',
+        }),
+      })
+    );
+  });
+
   it('should return 403 when no subscription exists', async () => {
     mockFindFirst.mockResolvedValue(null);
 

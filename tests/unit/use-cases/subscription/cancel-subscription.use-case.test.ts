@@ -122,29 +122,47 @@ describe('CancelSubscriptionUseCase', () => {
     }
   });
 
-  it('should throw error when subscription has no stripe subscription id', async () => {
-    const noStripeSub = new Subscription(
+  it('cancels a local trial immediately when there is no stripe subscription yet', async () => {
+    const trialingSub = new Subscription(
       'sub-id-1',
       'org-1',
-      'cus_test_123',
-      null, // no stripeSubscriptionId
-      SubscriptionStatus.ACTIVE,
+      null, // aún no hay Stripe en el trial local
+      null,
+      SubscriptionStatus.TRIALING,
       new Date(),
       periodEnd,
       false,
-      null,
+      'plan-monthly-1',
       new Date(),
       new Date()
     );
 
-    mockSubscriptionRepository.find.mockResolvedValue(noStripeSub);
+    const canceledSub = new Subscription(
+      'sub-id-1',
+      'org-1',
+      null,
+      null,
+      SubscriptionStatus.CANCELED,
+      new Date(),
+      periodEnd,
+      false,
+      'plan-monthly-1',
+      new Date(),
+      new Date()
+    );
 
-    try {
-      await useCase.execute();
-      fail('Should have thrown an error');
-    } catch (error) {
-      expect(error).toBeInstanceOf(AppError);
-      expect((error as AppError).code).toBe('SUBSCRIPTION_NOT_ACTIVE');
-    }
+    mockSubscriptionRepository.find.mockResolvedValue(trialingSub);
+    mockSubscriptionRepository.update.mockResolvedValue(canceledSub);
+
+    const result = await useCase.execute();
+
+    expect(result.cancelAtPeriodEnd).toBe(false);
+    expect(result.currentPeriodEnd).toEqual(periodEnd);
+    expect(mockSubscriptionRepository.update).toHaveBeenCalledWith('sub-id-1', {
+      status: SubscriptionStatus.CANCELED,
+      cancelAtPeriodEnd: false,
+    });
+    // El trial local no existe en Stripe: no debe llamarse a Stripe.
+    expect(mockStripeService.cancelSubscription).not.toHaveBeenCalled();
   });
 });
