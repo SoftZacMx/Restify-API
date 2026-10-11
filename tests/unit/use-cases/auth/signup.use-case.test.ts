@@ -84,7 +84,7 @@ describe('SignupUseCase', () => {
       user: { findUnique: jest.fn().mockResolvedValue(null) },
       // El plan se busca fuera de la transacción (antes de crear nada).
       subscriptionPlan: {
-        findUnique: jest.fn().mockResolvedValue({ id: 'plan-free', name: 'Free Legacy', status: true, stripePriceId: null }),
+        findFirst: jest.fn().mockResolvedValue({ id: 'plan-free', name: 'Free Legacy', status: true, stripePriceId: null }),
       },
       $transaction: jest.fn(async (fn: any) => fn(txMock)),
     };
@@ -160,7 +160,7 @@ describe('SignupUseCase', () => {
   });
 
   it('rechaza con SUBSCRIPTION_PLAN_NOT_FOUND si el plan no existe o está inactivo', async () => {
-    prismaMock.subscriptionPlan.findUnique.mockResolvedValue(null);
+    prismaMock.subscriptionPlan.findFirst.mockResolvedValue(null);
 
     await expect(useCase.execute(validInput as any)).rejects.toMatchObject({
       code: 'SUBSCRIPTION_PLAN_NOT_FOUND',
@@ -168,8 +168,16 @@ describe('SignupUseCase', () => {
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
+  it('busca el plan solo entre los públicos: activos y sin organizaciones asignadas', async () => {
+    await useCase.execute({ ...validInput, planId: 'plan-free' } as any);
+
+    expect(prismaMock.subscriptionPlan.findFirst).toHaveBeenCalledWith({
+      where: { id: 'plan-free', status: true, restrictedTo: { none: {} } },
+    });
+  });
+
   it('plan de pago con billing habilitado: crea suscripción TRIALING, requiereCheckout=false', async () => {
-    prismaMock.subscriptionPlan.findUnique.mockResolvedValue({
+    prismaMock.subscriptionPlan.findFirst.mockResolvedValue({
       id: 'plan-paid',
       name: 'Mensual',
       status: true,
@@ -195,7 +203,7 @@ describe('SignupUseCase', () => {
 
   it('plan de pago con billing deshabilitado: se trata como Free (crea suscripción, requiresCheckout=false)', async () => {
     process.env.BILLING_ENABLED = 'false';
-    prismaMock.subscriptionPlan.findUnique.mockResolvedValue({
+    prismaMock.subscriptionPlan.findFirst.mockResolvedValue({
       id: 'plan-paid',
       name: 'Mensual',
       status: true,

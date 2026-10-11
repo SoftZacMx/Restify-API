@@ -39,6 +39,7 @@ export const GLOBAL_MODELS = new Set([
   'Branch',
   'UserBranchAccess',
   'SubscriptionPlan',
+  'SubscriptionPlanOrganization',
 ]);
 
 /**

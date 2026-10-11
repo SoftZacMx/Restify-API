@@ -35,6 +35,7 @@ model Organization {
   users        User[]
   branches     Branch[]
   subscription Subscription? // 1:1 relación
+  privatePlans SubscriptionPlanOrganization[]
 
   @@map("organizations")
 }
@@ -721,8 +722,23 @@ model SubscriptionPlan {
   updatedAt     DateTime       @updatedAt
 
   subscriptions Subscription[]
+  restrictedTo  SubscriptionPlanOrganization[] // vacío = plan público
 
   @@map("subscription_plans")
+}
+
+// Organizaciones a las que se asigna un plan restringido
+model SubscriptionPlanOrganization {
+  planId         String
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  plan         SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([planId, organizationId])
+  @@index([organizationId])
+  @@map("subscription_plan_organizations")
 }
 
 // Subscription Entity (1:1 con Organization en multi-tenancy)

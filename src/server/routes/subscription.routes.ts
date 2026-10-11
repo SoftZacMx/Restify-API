@@ -6,6 +6,7 @@ import {
   reactivateSubscriptionController,
   stripeWebhookController,
   listSubscriptionPlansController,
+  listAvailableSubscriptionPlansController,
   verifySubscriptionCheckoutController,
 } from '../../controllers/subscription';
 import { AuthMiddleware } from '../middleware/auth.middleware';
@@ -39,6 +40,9 @@ router.use(TenantMiddleware.attach);
  * "suscripción vencida", bloqueándolos aunque la suscripción esté activa.
  */
 router.get('/status', getSubscriptionStatusController);
+
+/** GET /api/subscription/plans/available — Planes que puede contratar mi organización */
+router.get('/plans/available', listAvailableSubscriptionPlansController);
 
 // Rutas que sí requieren rol OWNER/ADMIN (gestión de la suscripción)
 router.use(AuthMiddleware.authorize(...OWNER_ADMIN));

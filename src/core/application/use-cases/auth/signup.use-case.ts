@@ -59,10 +59,12 @@ export class SignupUseCase {
 
     // Validar el plan elegido (fuera de transacción, igual que la validación de email)
     const plan = await withoutTenant(async () => {
-      return this.prisma.subscriptionPlan.findUnique({ where: { id: planId } });
+      return this.prisma.subscriptionPlan.findFirst({
+        where: { id: planId, status: true, restrictedTo: { none: {} } },
+      });
     });
 
-    if (!plan || !plan.status) {
+    if (!plan) {
       throw new AppError('SUBSCRIPTION_PLAN_NOT_FOUND');
     }
 

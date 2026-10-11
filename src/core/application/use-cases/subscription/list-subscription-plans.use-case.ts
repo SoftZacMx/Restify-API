@@ -14,8 +14,10 @@ export class ListSubscriptionPlansUseCase {
     @inject('ISubscriptionPlanRepository') private readonly planRepository: ISubscriptionPlanRepository
   ) {}
 
-  async execute(): Promise<SubscriptionPlanDTO[]> {
-    const plans = await this.planRepository.findActive();
+  async execute(organizationId?: string): Promise<SubscriptionPlanDTO[]> {
+    const plans = organizationId
+      ? await this.planRepository.findAvailableFor(organizationId)
+      : await this.planRepository.findPublic();
 
     return plans.map((plan) => ({
       id: plan.id,

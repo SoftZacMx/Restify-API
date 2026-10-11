@@ -7,6 +7,7 @@ import {
   PaymentMethod,
   PaymentGateway,
   ExpenseType,
+  SubscriptionStatus,
 } from '@prisma/client';
 
 /**
@@ -20,16 +21,18 @@ import {
  *
  * DRY_RUN=1 (o --dry-run): solo lee la base vieja, arma los mapas, valida la
  * integridad de las relaciones y reporta qué insertaría. No escribe nada.
- *
- * MARK_VERIFIED=1 (o --verified): marca todos los usuarios con email verificado y
- * cuenta activa, para que puedan entrar sin esperar el correo de verificación
- * (útil en migraciones de prueba). Sin el flag: emailVerifiedAt queda null y la
- * cuenta respeta el estado original.
  */
 
 const OWNER_EMAIL = 'karinaorlaz@hotmail.com';
+const DELIYUNOS_PLAN = {
+  name: 'Deliyunos',
+  billingPeriod: 'MONTHLY' as const,
+  price: 291000,
+  stripePriceId: 'price_1UPRo5PQJ16P6deM9sik1QTS',
+  maxBranches: 1,
+  status: true,
+};
 const DRY = process.env.DRY_RUN === '1' || process.argv.includes('--dry-run');
-const VERIFIED = process.env.MARK_VERIFIED === '1' || process.argv.includes('--verified');
 // Reemplaza una migración previa: borra la org Deliyunos existente (cascade) antes de migrar.
 const RESET = process.env.RESET === '1' || process.argv.includes('--reset');
 
@@ -96,10 +99,13 @@ async function main() {
   const orgId = randomUUID();
   const branchId = randomUUID();
   const [company] = (await oldDb.$queryRawUnsafe<any[]>('SELECT * FROM companies LIMIT 1')) ?? [];
+  const [oldSubscription] =
+    (await oldDb.$queryRawUnsafe<any[]>('SELECT * FROM subscriptions LIMIT 1')) ?? [];
+  if (!oldSubscription) throw new Error('La base vieja no tiene fila en subscriptions.');
 
   if (!DRY) {
     await db.organization.create({
-      data: { id: orgId, name: 'Deliyunos', slug: 'deliyunos', plan: 'FREE', status: 'ACTIVE' },
+      data: { id: orgId, name: 'Deliyunos', slug: 'deliyunos', status: 'ACTIVE' },
     });
     await db.branch.create({
       data: {
@@ -109,10 +115,10 @@ async function main() {
         slug: 'deliyunos-condesa',
         state: 'Zacatecas',
         city: 'Guadalupe',
-        street: company?.street ?? 'N/D',
-        exteriorNumber: company?.exteriorNumber ?? 'N/D',
-        phone: company?.phone ?? 'N/D',
-        rfc: company?.rfc ?? null,
+        street: 'Sin dato',
+        exteriorNumber: 'Sin dato',
+        phone: 'Sin dato',
+        rfc: null,
         logoUrl: company?.logoUrl ?? null,
         startOperations: company?.startOperations ?? null,
         endOperations: company?.endOperations ?? null,
@@ -124,18 +130,32 @@ async function main() {
       },
     });
     const plan = await db.subscriptionPlan.upsert({
-      where: { name: 'Free Legacy' },
+      where: { name: DELIYUNOS_PLAN.name },
       update: {},
-      create: { name: 'Free Legacy', price: 0, maxBranches: 3, status: true },
+      create: DELIYUNOS_PLAN,
+    });
+    await db.subscriptionPlanOrganization.create({
+      data: { planId: plan.id, organizationId: orgId },
     });
     await db.subscription.create({
-      data: { organizationId: orgId, planId: plan.id, status: 'ACTIVE' },
+      data: {
+        organizationId: orgId,
+        planId: plan.id,
+        stripeCustomerId: oldSubscription.stripeCustomerId ?? null,
+        stripeSubscriptionId: oldSubscription.stripeSubscriptionId ?? null,
+        status: oldSubscription.status as SubscriptionStatus,
+        currentPeriodStart: oldSubscription.currentPeriodStart ?? null,
+        currentPeriodEnd: oldSubscription.currentPeriodEnd ?? null,
+        cancelAtPeriodEnd: bool(oldSubscription.cancelAtPeriodEnd),
+        createdAt: oldSubscription.createdAt,
+      },
     });
   }
 
   // ── 1. Usuarios (+ acceso a la sucursal) ────────────────────────────────
   const users = await oldDb.$queryRawUnsafe<any[]>('SELECT * FROM users');
   const emailsVistos = new Set<string>();
+  let activeUsers = 0;
   let karinaOldId: string | null = null;
   for (const u of users) {
     const email = String(u.email).toLowerCase();
@@ -148,6 +168,8 @@ async function main() {
     if (email === OWNER_EMAIL) karinaOldId = u.id;
     if (emailsVistos.has(email)) warn(`Email duplicado en users: ${email}`);
     emailsVistos.add(email);
+    const isActive = bool(u.status);
+    if (isActive) activeUsers++;
     if (DRY) continue;
     await db.user.create({
       data: {
@@ -158,13 +180,13 @@ async function main() {
         email: u.email,
         password: u.password, // hash bcrypt tal cual
         phone: u.phone ?? null,
-        status: VERIFIED ? true : bool(u.status),
+        status: isActive,
         rol: (email === OWNER_EMAIL ? 'OWNER' : u.rol) as UserRole,
         organizationId: orgId,
-        accountStatus: (VERIFIED || bool(u.status) ? 'ACTIVE' : 'DISABLED') as UserAccountStatus,
+        accountStatus: (isActive ? 'ACTIVE' : 'DISABLED') as UserAccountStatus,
         tokenVersion: 0,
         mustChangePassword: false,
-        emailVerifiedAt: VERIFIED ? new Date() : null,
+        emailVerifiedAt: isActive ? new Date() : null,
         createdAt: u.createdAt,
         updatedAt: u.updatedAt,
       },
@@ -425,9 +447,15 @@ async function main() {
 
   const modo = DRY ? 'DRY-RUN (no se escribió nada)' : 'ESCRITO en destino';
   console.log(`\n=== Migración Deliyunos — ${modo} ===`);
-  console.log(`Emails/cuentas verificados: ${VERIFIED ? 'SÍ (forzado por flag)' : 'no (estado original)'}`);
+  console.log(
+    `Plan: ${DELIYUNOS_PLAN.name} ($${DELIYUNOS_PLAN.price / 100} ${DELIYUNOS_PLAN.billingPeriod}) | ` +
+      `Suscripción: ${oldSubscription.status} ${oldSubscription.currentPeriodStart?.toISOString?.()} → ` +
+      `${oldSubscription.currentPeriodEnd?.toISOString?.()} | customer ${oldSubscription.stripeCustomerId}`
+  );
   console.table({
     usuarios_reales: userMap.size,
+    usuarios_activos_verificados: activeUsers,
+    usuarios_dados_de_baja: userMap.size - activeUsers,
     usuarios_demo_excluidos: demoIds.size,
     categorias: categories.length,
     productos: products.length,

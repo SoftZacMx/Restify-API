@@ -74,16 +74,54 @@ describe('SubscriptionPlanRepository', () => {
     });
   });
 
-  describe('findActive', () => {
-    it('should return only active plans', async () => {
+  describe('findPublic', () => {
+    it('should return only active plans without assigned organizations', async () => {
       mockPrismaClient.subscriptionPlan.findMany.mockResolvedValue([mockMonthlyPlan, mockAnnualPlan]);
 
-      const result = await repository.findActive();
+      const result = await repository.findPublic();
 
       expect(result).toHaveLength(2);
       expect(result.every((p) => p.status === true)).toBe(true);
       expect(mockPrismaClient.subscriptionPlan.findMany).toHaveBeenCalledWith({
-        where: { status: true },
+        where: { status: true, restrictedTo: { none: {} } },
+        orderBy: { price: 'asc' },
+      });
+    });
+  });
+
+  describe('findAvailableFor', () => {
+    it('should return only the plans assigned to the organization', async () => {
+      mockPrismaClient.subscriptionPlan.findMany.mockResolvedValueOnce([mockAnnualPlan]);
+
+      const result = await repository.findAvailableFor('org-1');
+
+      expect(result.map((p) => p.id)).toEqual(['plan-2']);
+      expect(mockPrismaClient.subscriptionPlan.findMany).toHaveBeenCalledTimes(1);
+      expect(mockPrismaClient.subscriptionPlan.findMany).toHaveBeenCalledWith({
+        where: { restrictedTo: { some: { organizationId: 'org-1' } } },
+        orderBy: { price: 'asc' },
+      });
+    });
+
+    it('should not return inactive assigned plans nor fall back to public plans', async () => {
+      mockPrismaClient.subscriptionPlan.findMany.mockResolvedValueOnce([mockInactivePlan]);
+
+      const result = await repository.findAvailableFor('org-1');
+
+      expect(result).toEqual([]);
+      expect(mockPrismaClient.subscriptionPlan.findMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return public plans when the organization has no assigned plans', async () => {
+      mockPrismaClient.subscriptionPlan.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([mockMonthlyPlan]);
+
+      const result = await repository.findAvailableFor('org-2');
+
+      expect(result.map((p) => p.id)).toEqual(['plan-1']);
+      expect(mockPrismaClient.subscriptionPlan.findMany).toHaveBeenLastCalledWith({
+        where: { status: true, restrictedTo: { none: {} } },
         orderBy: { price: 'asc' },
       });
     });

@@ -66,7 +66,8 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
 
     mockPlanRepository = {
       findAll: jest.fn(),
-      findActive: jest.fn(),
+      findPublic: jest.fn(),
+      findAvailableFor: jest.fn(),
       findById: jest.fn(),
       findByStripePriceId: jest.fn(),
     };
@@ -123,7 +124,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
 
   it('should create checkout session for new subscription with plan', async () => {
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
-    mockPlanRepository.findById.mockResolvedValue(mockPlan);
+    mockPlanRepository.findAvailableFor.mockResolvedValue([mockPlan]);
     mockOrganizationRepository.findById.mockResolvedValue(mockOrganization);
     mockSubscriptionRepository.find.mockResolvedValue(null);
     mockStripeService.createCustomer.mockResolvedValue('cus_test_123');
@@ -184,7 +185,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     );
 
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
-    mockPlanRepository.findById.mockResolvedValue(mockPlan);
+    mockPlanRepository.findAvailableFor.mockResolvedValue([mockPlan]);
     mockOrganizationRepository.findById.mockResolvedValue(mockOrganization);
     mockSubscriptionRepository.find.mockResolvedValue(existingSub);
     mockSubscriptionRepository.update.mockResolvedValue(existingSub);
@@ -220,7 +221,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     );
 
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
-    mockPlanRepository.findById.mockResolvedValue(mockPlan);
+    mockPlanRepository.findAvailableFor.mockResolvedValue([mockPlan]);
     mockSubscriptionRepository.find.mockResolvedValue(activeSub);
 
     try {
@@ -250,7 +251,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     );
 
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
-    mockPlanRepository.findById.mockResolvedValue(mockPlan);
+    mockPlanRepository.findAvailableFor.mockResolvedValue([mockPlan]);
     mockOrganizationRepository.findById.mockResolvedValue(mockOrganization);
     mockSubscriptionRepository.find.mockResolvedValue(activeOtherPlanSub);
     mockStripeService.createCustomer.mockResolvedValue('cus_test_123');
@@ -281,7 +282,7 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     );
 
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
-    mockPlanRepository.findById.mockResolvedValue(mockPlan);
+    mockPlanRepository.findAvailableFor.mockResolvedValue([mockPlan]);
     mockOrganizationRepository.findById.mockResolvedValue(mockOrganization);
     mockSubscriptionRepository.find.mockResolvedValue(trialingSub);
     mockSubscriptionRepository.update.mockResolvedValue(trialingSub);
@@ -299,9 +300,31 @@ describe('CreateSubscriptionCheckoutUseCase', () => {
     expect(mockSubscriptionRepository.update).toHaveBeenCalledWith('sub-id-1', { planId: 'plan-monthly-1' });
   });
 
+  it('should reject a plan that exists but is not available for the organization', async () => {
+    const otherOrganizationPlan = new SubscriptionPlan(
+      'plan-private-1',
+      'Privado',
+      BillingPeriod.MONTHLY,
+      291000,
+      'price_private',
+      1,
+      true,
+      new Date(),
+      new Date()
+    );
+    mockUserRepository.findById.mockResolvedValue(mockAdminUser);
+    mockPlanRepository.findAvailableFor.mockResolvedValue([otherOrganizationPlan]);
+
+    await expect(useCase.execute(input)).rejects.toMatchObject({
+      code: 'SUBSCRIPTION_PLAN_NOT_FOUND',
+    });
+    expect(mockPlanRepository.findAvailableFor).toHaveBeenCalledWith('org-1');
+    expect(mockStripeService.createCheckoutSession).not.toHaveBeenCalled();
+  });
+
   it('should throw error when plan is not found', async () => {
     mockUserRepository.findById.mockResolvedValue(mockAdminUser);
-    mockPlanRepository.findById.mockResolvedValue(null);
+    mockPlanRepository.findAvailableFor.mockResolvedValue([]);
 
     try {
       await useCase.execute(input);

@@ -13,13 +13,26 @@ export class SubscriptionPlanRepository implements ISubscriptionPlanRepository {
     return plans.map(this.toEntity);
   }
 
-  async findActive(): Promise<SubscriptionPlan[]> {
+  async findPublic(): Promise<SubscriptionPlan[]> {
     const plans = await this.prisma.subscriptionPlan.findMany({
-      where: { status: true },
+      where: { status: true, restrictedTo: { none: {} } },
       orderBy: { price: 'asc' },
     });
 
     return plans.map(this.toEntity);
+  }
+
+  async findAvailableFor(organizationId: string): Promise<SubscriptionPlan[]> {
+    const assignedPlans = await this.prisma.subscriptionPlan.findMany({
+      where: { restrictedTo: { some: { organizationId } } },
+      orderBy: { price: 'asc' },
+    });
+
+    if (assignedPlans.length === 0) {
+      return this.findPublic();
+    }
+
+    return assignedPlans.filter((plan) => plan.status).map(this.toEntity);
   }
 
   async findById(id: string): Promise<SubscriptionPlan | null> {

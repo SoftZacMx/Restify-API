@@ -17,7 +17,8 @@ describe('ListSubscriptionPlansUseCase', () => {
   beforeEach(() => {
     mockPlanRepository = {
       findAll: jest.fn(),
-      findActive: jest.fn(),
+      findPublic: jest.fn(),
+      findAvailableFor: jest.fn(),
       findById: jest.fn(),
       findByStripePriceId: jest.fn(),
     };
@@ -30,7 +31,7 @@ describe('ListSubscriptionPlansUseCase', () => {
   });
 
   it('should return active plans mapped to DTOs', async () => {
-    mockPlanRepository.findActive.mockResolvedValue(mockPlans);
+    mockPlanRepository.findPublic.mockResolvedValue(mockPlans);
 
     const result = await useCase.execute();
 
@@ -47,11 +48,11 @@ describe('ListSubscriptionPlansUseCase', () => {
       billingPeriod: 'ANNUAL',
       price: 3112300,
     });
-    expect(mockPlanRepository.findActive).toHaveBeenCalled();
+    expect(mockPlanRepository.findPublic).toHaveBeenCalled();
   });
 
   it('should not include stripePriceId or status in DTOs', async () => {
-    mockPlanRepository.findActive.mockResolvedValue(mockPlans);
+    mockPlanRepository.findPublic.mockResolvedValue(mockPlans);
 
     const result = await useCase.execute();
 
@@ -60,12 +61,22 @@ describe('ListSubscriptionPlansUseCase', () => {
     expect(result[0]).not.toHaveProperty('createdAt');
   });
 
+  it('should return the plans available for the organization when one is given', async () => {
+    mockPlanRepository.findAvailableFor.mockResolvedValue([mockPlans[1]]);
+
+    const result = await useCase.execute('org-1');
+
+    expect(result.map((plan) => plan.id)).toEqual(['plan-2']);
+    expect(mockPlanRepository.findAvailableFor).toHaveBeenCalledWith('org-1');
+    expect(mockPlanRepository.findPublic).not.toHaveBeenCalled();
+  });
+
   it('should return empty array when no active plans', async () => {
-    mockPlanRepository.findActive.mockResolvedValue([]);
+    mockPlanRepository.findPublic.mockResolvedValue([]);
 
     const result = await useCase.execute();
 
     expect(result).toEqual([]);
-    expect(mockPlanRepository.findActive).toHaveBeenCalled();
+    expect(mockPlanRepository.findPublic).toHaveBeenCalled();
   });
 });

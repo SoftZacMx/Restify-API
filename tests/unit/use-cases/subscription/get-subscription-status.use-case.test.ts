@@ -19,7 +19,8 @@ describe('GetSubscriptionStatusUseCase', () => {
 
     mockPlanRepository = {
       findAll: jest.fn(),
-      findActive: jest.fn(),
+      findPublic: jest.fn(),
+      findAvailableFor: jest.fn(),
       findById: jest.fn(),
       findByStripePriceId: jest.fn(),
     };

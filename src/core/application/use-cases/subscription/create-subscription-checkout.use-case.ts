@@ -38,9 +38,10 @@ export class CreateSubscriptionCheckoutUseCase {
       throw new AppError('USER_NOT_FOUND');
     }
 
-    // 1. Buscar el plan en la base de datos
-    const plan = await this.planRepository.findById(input.planId);
-    if (!plan || !plan.status) {
+    // 1. Buscar el plan entre los disponibles para la organización
+    const availablePlans = await this.planRepository.findAvailableFor(user.organizationId);
+    const plan = availablePlans.find((availablePlan) => availablePlan.id === input.planId);
+    if (!plan) {
       throw new AppError('SUBSCRIPTION_PLAN_NOT_FOUND');
     }
 
