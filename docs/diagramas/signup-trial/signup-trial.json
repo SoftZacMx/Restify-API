@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Registro y período de prueba",
+    "viewBox": [820, 520],
+    "column_fit": "spread",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    { "id": "negocio", "type": "external", "label": "Negocio", "sublabel": "dueño" },
+    { "id": "restify", "type": "backend", "label": "Restify", "sublabel": "app y API" },
+    { "id": "correo", "type": "messagebus", "label": "Correo", "sublabel": "verificación" }
+  ],
+  "messages": [
+    { "from": "negocio", "to": "restify", "y": 190, "label": "Se registra con un plan", "variant": "emphasis" },
+    { "from": "restify", "to": "correo", "y": 236, "label": "Envía verificación", "variant": "dashed" },
+    { "from": "restify", "to": "negocio", "y": 282, "label": "Trial de 45 días activo", "variant": "return" },
+    { "from": "correo", "to": "negocio", "y": 328, "label": "Link de verificación", "variant": "dashed" },
+    { "from": "negocio", "to": "restify", "y": 374, "label": "Usa la app sin tarjeta", "variant": "default" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "Sin tarjeta", "items": ["El negocio entra al instante y paga solo cuando quiera", "Sin billing, la cuenta nace activa por 3 años"] },
+    { "dot": "amber", "title": "Correo opcional", "items": ["Si el correo falla, el registro sigue y se puede reenviar"] }
+  ]
+}

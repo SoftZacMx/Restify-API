@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Registro, trial, pago y cancelación",
+    "viewBox": [900, 800],
+    "column_fit": "spread",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    { "id": "negocio", "type": "external", "label": "Negocio", "sublabel": "dueño" },
+    { "id": "restify", "type": "backend", "label": "Restify", "sublabel": "app y API" },
+    { "id": "stripe", "type": "cloud", "label": "Stripe", "sublabel": "cobros" },
+    { "id": "correo", "type": "messagebus", "label": "Correo", "sublabel": "verificación" }
+  ],
+  "messages": [
+    { "from": "negocio", "to": "restify", "y": 190, "label": "Se registra", "variant": "emphasis" },
+    { "from": "restify", "to": "correo", "y": 234, "label": "Verificación", "variant": "dashed" },
+    { "from": "restify", "to": "negocio", "y": 278, "label": "Trial de 45 días", "variant": "return" },
+    { "from": "negocio", "to": "restify", "y": 336, "label": "Decide pagar", "variant": "emphasis" },
+    { "from": "restify", "to": "stripe", "y": 380, "label": "Crea sesión de pago", "variant": "default" },
+    { "from": "negocio", "to": "stripe", "y": 424, "label": "Paga con tarjeta", "variant": "emphasis" },
+    { "from": "stripe", "to": "restify", "y": 468, "label": "Aviso: pago exitoso", "variant": "dashed" },
+    { "from": "restify", "to": "negocio", "y": 512, "label": "Suscripción activa", "variant": "return" },
+    { "from": "negocio", "to": "restify", "y": 570, "label": "Cancela", "variant": "default" },
+    { "from": "restify", "to": "stripe", "y": 614, "label": "Cancelar al fin del período", "variant": "default" },
+    { "from": "stripe", "to": "restify", "y": 658, "label": "Aviso: terminada", "variant": "dashed" },
+    { "from": "restify", "to": "negocio", "y": 702, "label": "Sin acceso", "variant": "security" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "Trial", "items": ["El negocio entra sin tarjeta y paga cuando quiera"] },
+    { "dot": "violet", "title": "Stripe", "items": ["Cobra y avisa a Restify; Restify nunca ve la tarjeta"] }
+  ]
+}

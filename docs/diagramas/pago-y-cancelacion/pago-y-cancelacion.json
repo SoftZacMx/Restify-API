@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Pago y cancelación con Stripe",
+    "viewBox": [820, 860],
+    "column_fit": "spread",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    { "id": "negocio", "type": "external", "label": "Negocio", "sublabel": "dueño" },
+    { "id": "restify", "type": "backend", "label": "Restify", "sublabel": "app y API" },
+    { "id": "stripe", "type": "cloud", "label": "Stripe", "sublabel": "cobros" }
+  ],
+  "messages": [
+    { "from": "negocio", "to": "restify", "y": 190, "label": "Quiere pagar", "variant": "emphasis" },
+    { "from": "restify", "to": "stripe", "y": 234, "label": "Crea sesión de pago", "variant": "default" },
+    { "from": "stripe", "to": "restify", "y": 278, "label": "Link de pago", "variant": "return" },
+    { "from": "restify", "to": "negocio", "y": 322, "label": "Lo envía a Stripe", "variant": "return" },
+    { "from": "negocio", "to": "stripe", "y": 366, "label": "Paga con tarjeta", "variant": "emphasis" },
+    { "from": "stripe", "to": "restify", "y": 410, "label": "Aviso: pago exitoso", "variant": "dashed" },
+    { "from": "restify", "to": "negocio", "y": 454, "label": "Suscripción activa", "variant": "return" },
+    { "from": "stripe", "to": "restify", "y": 512, "label": "Cada mes: cobro renovado", "variant": "dashed" },
+    { "from": "stripe", "to": "restify", "y": 556, "label": "Cobro fallido: 3 días de gracia", "variant": "security" },
+    { "from": "negocio", "to": "restify", "y": 614, "label": "Cancela", "variant": "default" },
+    { "from": "restify", "to": "stripe", "y": 658, "label": "Cancelar al fin del período", "variant": "default" },
+    { "from": "stripe", "to": "restify", "y": 702, "label": "Aviso: suscripción terminada", "variant": "dashed" },
+    { "from": "restify", "to": "negocio", "y": 746, "label": "Sin acceso", "variant": "security" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "Pago", "items": ["Restify nunca ve la tarjeta: el pago ocurre en Stripe", "Stripe avisa a Restify y este activa la suscripción"] },
+    { "dot": "amber", "title": "Cancelación", "items": ["Con Stripe: sigue activa hasta el fin del período", "En el trial: se cancela al instante, sin Stripe"] }
+  ]
+}
